@@ -1,0 +1,134 @@
+{
+  "sessionId": "5e68423c-0121-42fc-b374-d64c23efe624",
+  "checklist": {
+    "phases": [
+      {
+        "id": "gather_preferences",
+        "label": "Gather Preferences",
+        "description": "Collect travel requirements from the user (destination, dates, budget, group info, interests, etc.)",
+        "status": "done"
+      },
+      {
+        "id": "shortlist_destinations",
+        "label": "Shortlist Destinations",
+        "description": "Research and shortlist 8-10 destinations matching the user's preferences",
+        "status": "active"
+      },
+      {
+        "id": "select_destinations",
+        "label": "Select Destinations",
+        "description": "Present the shortlisted destinations and let the user choose which ones to explore",
+        "status": "pending"
+      },
+      {
+        "id": "research_experiences",
+        "label": "Research Experiences",
+        "description": "Find activities and experiences at the selected destinations that match preferences",
+        "status": "pending"
+      },
+      {
+        "id": "plan_itinerary",
+        "label": "Plan Itinerary",
+        "description": "Build a day-by-day itinerary slotting places and activities",
+        "status": "pending"
+      },
+      {
+        "id": "research_accommodation_flights",
+        "label": "Research Accommodation & Flights",
+        "description": "Research places to stay and flight options for the trip",
+        "status": "pending"
+      },
+      {
+        "id": "final_plan",
+        "label": "Final Plan",
+        "description": "Present the complete, detailed travel plan with all details",
+        "status": "pending"
+      }
+    ],
+    "activePhaseIndex": 1
+  },
+  "preferences": {
+    "destination": "Greece",
+    "to_date": "2026-06-14",
+    "origin": "Jakarta",
+    "budget": {
+      "amount": 4000,
+      "category": "mid-range",
+      "currency": "USD"
+    },
+    "group_size": 3,
+    "num_nights": 7,
+    "group_type": "family",
+    "from_date": "2026-06-07",
+    "interests": [
+      "history",
+      "mythology"
+    ],
+    "pace_of_travel": "moderate",
+    "ages_in_group": [
+      4
+    ],
+    "travel_themes": [
+      "beaches"
+    ]
+  },
+  "destinationResearch": {
+    "destination_research": [
+      {
+        "reason": "Primary historical hub and gateway to the islands.",
+        "location": "Athens",
+        "description": "The heart of ancient Greece, featuring the Acropolis and Temple of Olympian Zeus. Essential for mythology."
+      },
+      {
+        "location": "Naxos",
+        "reason": "Best mix of kid-friendly beaches and accessible ruins.",
+        "description": "Perfect family island with shallow sandy beaches and the Portara (Temple of Apollo gate)."
+      },
+      {
+        "reason": "Rich mythology and diverse landscapes.",
+        "location": "Crete",
+        "description": "Home of the Minotaur's Labyrinth (Knossos) and pink sand beaches like Elafonisi."
+      },
+      {
+        "description": "Charming seaside base for visiting Mycenae and the Ancient Theater of Epidaurus.",
+        "reason": "Manageable pace with high-density history.",
+        "location": "Nafplio"
+      },
+      {
+        "description": "The 'Navel of the World' and home to the famous Oracle.",
+        "location": "Delphi",
+        "reason": "Key mythological site with stunning scenery."
+      },
+      {
+        "description": "Medieval history mixed with ancient ruins and great resort beaches.",
+        "reason": "Well-preserved history and family infrastructure.",
+        "location": "Rhodes"
+      },
+      {
+        "location": "Santorini",
+        "reason": "Iconic scenery and unique archaeological history.",
+        "description": "The Atlantis myth and the Akrotiri archaeological site."
+      },
+      {
+        "location": "Corfu",
+        "reason": "Lush nature and distinct architectural history.",
+        "description": "Venetian history and the Achilleion Palace (themed around Achilles)."
+      },
+      {
+        "reason": "Top-tier archaeological significance.",
+        "location": "Delos",
+        "description": "Birthplace of Apollo and Artemis; an island-sized museum."
+      },
+      {
+        "location": "Pelion",
+        "reason": "Unique mythology and natural beauty.",
+        "description": "The mythical home of the Centaurs with beautiful beaches and forests."
+      }
+    ]
+  },
+  "selectedDestinations": [],
+  "activitiesResearch": null,
+  "itineraryResearch": null,
+  "accommodationResearch": null,
+  "flightResearch": null
+}

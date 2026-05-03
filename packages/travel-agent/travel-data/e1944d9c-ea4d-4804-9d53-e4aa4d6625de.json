@@ -1,0 +1,157 @@
+{
+  "sessionId": "e1944d9c-ea4d-4804-9d53-e4aa4d6625de",
+  "checklist": {
+    "phases": [
+      {
+        "id": "gather_preferences",
+        "label": "Gather Preferences",
+        "description": "Collect travel requirements from the user (destination, dates, budget, group info, interests, etc.)",
+        "status": "done"
+      },
+      {
+        "id": "shortlist_destinations",
+        "label": "Shortlist Destinations",
+        "description": "Research and shortlist 8-10 destinations matching the user's preferences",
+        "status": "active"
+      },
+      {
+        "id": "select_destinations",
+        "label": "Select Destinations",
+        "description": "Present the shortlisted destinations and let the user choose which ones to explore",
+        "status": "pending"
+      },
+      {
+        "id": "research_experiences",
+        "label": "Research Experiences",
+        "description": "Find activities and experiences at the selected destinations that match preferences",
+        "status": "pending"
+      },
+      {
+        "id": "plan_itinerary",
+        "label": "Plan Itinerary",
+        "description": "Build a day-by-day itinerary slotting places and activities",
+        "status": "pending"
+      },
+      {
+        "id": "research_accommodation_flights",
+        "label": "Research Accommodation & Flights",
+        "description": "Research places to stay and flight options for the trip",
+        "status": "pending"
+      },
+      {
+        "id": "final_plan",
+        "label": "Final Plan",
+        "description": "Present the complete, detailed travel plan with all details",
+        "status": "pending"
+      }
+    ],
+    "activePhaseIndex": 1
+  },
+  "preferences": {
+    "destination": "Greece",
+    "group_size": 3,
+    "num_nights": 6,
+    "budget": {
+      "category": "mid-range",
+      "amount": 4000,
+      "currency": "USD"
+    },
+    "origin": "Jakarta",
+    "to_date": "2026-06-13",
+    "from_date": "2026-06-07",
+    "group_type": "family",
+    "interests": [
+      "history",
+      "mythology",
+      "beaches"
+    ],
+    "pace_of_travel": "medium",
+    "ages_in_group": [
+      4
+    ]
+  },
+  "destinationResearch": {
+    "destination_research": [
+      {
+        "name": "Athens",
+        "tags": [
+          "history",
+          "mythology",
+          "city-break"
+        ],
+        "description": "The heart of Ancient Greece. Perfect for mythology (Acropolis, Temple of Olympian Zeus) and history. The Acropolis Museum is very family-friendly."
+      },
+      {
+        "description": "The largest Greek island, home to the Palace of Knossos (Minotaur's labyrinth legend). Incredible beaches like Elafonisi (pink sand) and shallow waters perfect for a 4-year-old.",
+        "name": "Crete (Heraklion/Chania)",
+        "tags": [
+          "history",
+          "mythology",
+          "beaches",
+          "family-friendly"
+        ]
+      },
+      {
+        "description": "Famous for its Medieval Old Town (UNESCO) and the Colossus of Rhodes legend. Great beaches and the Valley of the Butterflies which a 4-year-old would love.",
+        "name": "Rhodes",
+        "tags": [
+          "history",
+          "medieval",
+          "beaches",
+          "nature"
+        ]
+      },
+      {
+        "description": "The greenest island. Venetian influence, beautiful old town, and shallow, calm beaches like Paleokastritsa. History and mythology (Achilleion Palace) are prominent.",
+        "tags": [
+          "history",
+          "beaches",
+          "scenic"
+        ],
+        "name": "Corfu"
+      },
+      {
+        "tags": [
+          "beaches",
+          "relaxed",
+          "mythology",
+          "family-friendly"
+        ],
+        "name": "Naxos",
+        "description": "The greenest island. Venetian influence, beautiful old town, and shallow, calm beaches like Paleokastritsa. History and mythology (Achilleion Palace) are prominent."
+      },
+      {
+        "description": "Gateway to the Temple of Poseidon at Sounion (stunning sunsets and mythology). Close to Athens, offering a beach-resort feel without leaving the mainland.",
+        "tags": [
+          "mythology",
+          "beaches",
+          "convenient"
+        ],
+        "name": "Athens Riviera (Sounion/Glyfada)"
+      },
+      {
+        "tags": [
+          "history",
+          "mythology",
+          "charming-town"
+        ],
+        "name": "Nafplio",
+        "description": "Peloponnese region. First capital of modern Greece, very close to Epidaurus and Mycenae (crucial for history/mythology fans). Charming streets and nearby sandy beaches."
+      },
+      {
+        "description": "Santorini's quieter neighbor. Incredible beaches, easy pace, and rich in history with the Portara (Temple of Apollo) right at the harbor.",
+        "name": "Naxos",
+        "tags": [
+          "beaches",
+          "history",
+          "family-friendly"
+        ]
+      }
+    ]
+  },
+  "selectedDestinations": [],
+  "activitiesResearch": null,
+  "itineraryResearch": null,
+  "accommodationResearch": null,
+  "flightResearch": null
+}

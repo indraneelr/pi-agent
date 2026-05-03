@@ -1,0 +1,180 @@
+{
+  "sessionId": "trip-1",
+  "checklist": {
+    "phases": [
+      {
+        "id": "gather_preferences",
+        "label": "Gather Preferences",
+        "description": "Collect travel requirements from the user (destination, dates, budget, group info, interests, etc.)",
+        "status": "done"
+      },
+      {
+        "id": "shortlist_destinations",
+        "label": "Shortlist Destinations",
+        "description": "Research and shortlist 8-10 destinations matching the user's preferences",
+        "status": "active"
+      },
+      {
+        "id": "select_destinations",
+        "label": "Select Destinations",
+        "description": "Present the shortlisted destinations and let the user choose which ones to explore",
+        "status": "pending"
+      },
+      {
+        "id": "research_experiences",
+        "label": "Research Experiences",
+        "description": "Find activities and experiences at the selected destinations that match preferences",
+        "status": "pending"
+      },
+      {
+        "id": "plan_itinerary",
+        "label": "Plan Itinerary",
+        "description": "Build a day-by-day itinerary slotting places and activities",
+        "status": "pending"
+      },
+      {
+        "id": "research_accommodation_flights",
+        "label": "Research Accommodation & Flights",
+        "description": "Research places to stay and flight options for the trip",
+        "status": "pending"
+      },
+      {
+        "id": "final_plan",
+        "label": "Final Plan",
+        "description": "Present the complete, detailed travel plan with all details",
+        "status": "pending"
+      }
+    ],
+    "activePhaseIndex": 1
+  },
+  "preferences": {
+    "destination": "Greece",
+    "budget": {
+      "currency": "USD",
+      "amount": 4000,
+      "category": "mid-range"
+    },
+    "to_date": "2026-06-13",
+    "group_size": 3,
+    "from_date": "2026-06-07",
+    "num_nights": 6,
+    "group_type": "family",
+    "origin": "Jakarta",
+    "interests": [
+      "history",
+      "mythology",
+      "beaches"
+    ],
+    "ages_in_group": [
+      4
+    ],
+    "pace_of_travel": "moderate"
+  },
+  "destinationResearch": [
+    {
+      "highlights": [
+        "Acropolis & Parthenon",
+        "National Garden",
+        "Plaka neighborhood"
+      ],
+      "name": "Athens",
+      "region": "Attica",
+      "description": "The cradle of Western civilization. Visit the Acropolis and the Parthenon to bring Greek myths to life for your son. The Plaka district is great for walking."
+    },
+    {
+      "highlights": [
+        "Palace of Knossos",
+        "Elafonisi Beach",
+        "Heraklion Archaeological Museum"
+      ],
+      "name": "Crete",
+      "description": "Greece's largest island. Visit the Palace of Knossos (the Minotaur's labyrinth!) and relax at Elafonisi beach with its pink sand and shallow water.",
+      "region": "Crete"
+    },
+    {
+      "region": "Cyclades",
+      "description": "Famous for its long, sandy, and shallow beaches—perfect for a 4-year-old. The 'Portara' (Temple of Apollo) is a stunning mythological landmark.",
+      "name": "Naxos",
+      "highlights": [
+        "Agios Prokopios Beach",
+        "The Portara",
+        "Chora Old Town"
+      ]
+    },
+    {
+      "highlights": [
+        "Palamidi Fortress",
+        "Ancient Epidaurus",
+        "Mycenae"
+      ],
+      "region": "Peloponnese",
+      "description": "A romantic and historic town. It's a great base to visit the ancient theater of Epidaurus and the ruins of Mycenae (King Agamemnon's home).",
+      "name": "Nafplio"
+    },
+    {
+      "highlights": [
+        "Palace of the Grand Master",
+        "Lindos Acropolis",
+        "Faliraki Beach"
+      ],
+      "description": "Step into a fairy tale in the Medieval Old Town. The Colossus of Rhodes (one of the Seven Wonders) has deep mythological roots.",
+      "region": "Dodecanese islands",
+      "name": "Rhodes"
+    },
+    {
+      "region": "Cyclades",
+      "description": "Stunning views and unique history. Explore Akrotiri, a prehistoric city preserved in volcanic ash, often linked to the myth of Atlantis.",
+      "name": "Santorini",
+      "highlights": [
+        "Akrotiri Ruins",
+        "Oia Sunsets",
+        "Red Beach"
+      ]
+    },
+    {
+      "name": "Corfu",
+      "region": "Ionian Islands",
+      "description": "Known as the 'Emerald Island'. Visit the Achilleion Palace, themed after Achilles, and enjoy the family-friendly Paleokastritsa beaches.",
+      "highlights": [
+        "Achilleion Palace",
+        "Old Fortress",
+        "Paleokastritsa"
+      ]
+    },
+    {
+      "name": "Pelion",
+      "description": "Mythology says this was the summer home of the Gods and the land of the Centaurs. Beautiful combination of mountain villages and beaches.",
+      "region": "Thessaly",
+      "highlights": [
+        "Centaur's Path",
+        "Mylopotamos Beach",
+        "Makrinitsa Village"
+      ]
+    },
+    {
+      "highlights": [
+        "Ancient Oracle of Delphi",
+        "Temple of Apollo",
+        "Galaxidi Waterfront"
+      ],
+      "name": "Delphi & Galaxidi",
+      "description": "The 'Navel of the World'. The ruins of Delphi are epic, and nearby Galaxidi offers a quiet seaside escape with calm waters.",
+      "region": "Central Greece"
+    },
+    {
+      "highlights": [
+        "Asklepion",
+        "Neratzia Castle",
+        "Tigaki Beach"
+      ],
+      "name": "Kos",
+      "region": "Dodecanese islands",
+      "description": "Visit the Asklepion (ancient hospital of Hippocrates) and enjoy the island's many flat, sandy beaches and bicycle paths."
+    }
+  ],
+  "selectedDestinations": [],
+  "activitiesResearch": null,
+  "itineraryResearch": null,
+  "accommodationResearch": null,
+  "flightResearch": null
+}

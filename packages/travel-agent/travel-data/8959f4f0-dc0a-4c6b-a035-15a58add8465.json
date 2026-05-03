@@ -1,0 +1,162 @@
+{
+  "sessionId": "8959f4f0-dc0a-4c6b-a035-15a58add8465",
+  "checklist": {
+    "phases": [
+      {
+        "id": "gather_preferences",
+        "label": "Gather Preferences",
+        "description": "Collect travel requirements from the user (destination, dates, budget, group info, interests, etc.)",
+        "status": "done"
+      },
+      {
+        "id": "shortlist_destinations",
+        "label": "Shortlist Destinations",
+        "description": "Research and shortlist 8-10 destinations matching the user's preferences",
+        "status": "active"
+      },
+      {
+        "id": "select_destinations",
+        "label": "Select Destinations",
+        "description": "Present the shortlisted destinations and let the user choose which ones to explore",
+        "status": "pending"
+      },
+      {
+        "id": "research_experiences",
+        "label": "Research Experiences",
+        "description": "Find activities and experiences at the selected destinations that match preferences",
+        "status": "pending"
+      },
+      {
+        "id": "plan_itinerary",
+        "label": "Plan Itinerary",
+        "description": "Build a day-by-day itinerary slotting places and activities",
+        "status": "pending"
+      },
+      {
+        "id": "research_accommodation_flights",
+        "label": "Research Accommodation & Flights",
+        "description": "Research places to stay and flight options for the trip",
+        "status": "pending"
+      },
+      {
+        "id": "final_plan",
+        "label": "Final Plan",
+        "description": "Present the complete, detailed travel plan with all details",
+        "status": "pending"
+      }
+    ],
+    "activePhaseIndex": 1
+  },
+  "preferences": {
+    "to_date": "2026-06-14",
+    "budget": {
+      "amount": 4000,
+      "currency": "USD",
+      "category": "mid-range"
+    },
+    "destination": "Greece",
+    "group_size": 3,
+    "from_date": "2026-06-07",
+    "origin": "Jakarta",
+    "group_type": "family",
+    "num_nights": 7,
+    "travel_themes": [
+      "beaches",
+      "history",
+      "mythology"
+    ],
+    "pace_of_travel": "relaxed",
+    "ages_in_group": [
+      4
+    ]
+  },
+  "destinationResearch": {
+    "destinations": [
+      {
+        "name": "Athens",
+        "description": "The heart of Ancient Greece. Perfect for mythology (Acropolis, Temple of Olympian Zeus) and history. Kid-friendly parks and museums like the Hellenic Children's Museum.",
+        "highlights": [
+          "Acropolis",
+          "Plaka District",
+          "Hellenic Children's Museum"
+        ]
+      },
+      {
+        "name": "Naxos",
+        "highlights": [
+          "St. George Beach",
+          "Portara (Temple of Apollo)",
+          "Chora Old Town"
+        ],
+        "description": "Known for being the most family-friendly Cycladic island. Shallow sandy beaches (St. George Beach) and the iconic Portara gate from the Temple of Apollo."
+      },
+      {
+        "name": "Crete",
+        "highlights": [
+          "Palace of Knossos",
+          "Elafonisi Beach",
+          "Chania Old Town"
+        ],
+        "description": "The largest island, home to the Palace of Knossos (Minotaur's Labyrinth). Features stunning family-friendly beaches like Elafonisi (pink sand)."
+      },
+      {
+        "name": "Nafplio",
+        "description": "A beautiful coastal town in the Peloponnese. A great base to visit the ancient theater of Epidaurus and the ruins of Mycenae. High mythology value.",
+        "highlights": [
+          "Palamidi Fortress",
+          "Mycenae Ruins",
+          "Epidaurus Theater"
+        ]
+      },
+      {
+        "description": "Famous for its medieval town and the Acropolis of Lindos. Great beaches and the unique Valley of the Butterflies which is a hit with kids.",
+        "highlights": [
+          "Medieval City of Rhodes",
+          "Lindos Acropolis",
+          "Valley of the Butterflies"
+        ],
+        "name": "Rhodes"
+      },
+      {
+        "name": "Corfu",
+        "highlights": [
+          "Paleokastritsa Beach",
+          "Achilleion Palace",
+          "Old Town Corfu"
+        ],
+        "description": "A lush, green island with Venetian influence. Features the Achilleion Palace (dedicated to Achilles) and calm, turquoise waters."
+      },
+      {
+        "name": "Delphi",
+        "highlights": [
+          "Temple of Apollo",
+          "Archaeological Museum of Delphi"
+        ],
+        "description": "The center of the world in ancient times. A bit of a drive from Athens, but essential for mythology enthusiasts. Best as a day trip or overnight."
+      },
+      {
+        "highlights": [
+          "Golden Beach",
+          "Naoussa Village",
+          "Parikia Old Town"
+        ],
+        "description": "A relaxed, quintessential Greek island experience. Pounta and Golden Beach are great for families, with a slower pace than Mykonos or Santorini.",
+        "name": "Paros"
+      },
+      {
+        "name": "Aegina",
+        "description": "Just an hour ferry from Athens. Great for a quick island fix. Features the Temple of Aphaia which forms a 'Holy Triangle' with the Parthenon and Sounion.",
+        "highlights": [
+          "Temple of Aphaia",
+          "Pistachio orchards",
+          "Perdika fishing village"
+        ]
+      }
+    ]
+  },
+  "selectedDestinations": [],
+  "activitiesResearch": null,
+  "itineraryResearch": null,
+  "accommodationResearch": null,
+  "flightResearch": null
+}
