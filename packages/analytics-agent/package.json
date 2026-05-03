@@ -1,0 +1,36 @@
+{
+	"name": "@mariozechner/pi-analytics-agent",
+	"version": "0.0.1",
+	"description": "Analytics agent built on pi-agent-core and pi-ai",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"clean": "rimraf dist",
+		"test": "npx tsx ../../node_modules/vitest/dist/cli.js --run"
+	},
+	"bin": {
+		"analytics-agent": "dist/cli.js"
+	},
+	"dependencies": {
+		"@mariozechner/pi-agent-core": "*",
+		"@mariozechner/pi-ai": "*",
+		"@mariozechner/pi-coding-agent": "*",
+		"@mariozechner/pi-tui": "*",
+		"@sinclair/typebox": "^0.34.14",
+		"chalk": "^5.4.1"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"rimraf": "^6.1.2",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.1",
+		"tsx": "^4.20.3"
+	},
+	"engines": {
+		"node": ">=20.0.0"
+	},
+	"license": "MIT"
+}
