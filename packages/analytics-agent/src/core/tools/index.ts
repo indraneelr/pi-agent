@@ -27,21 +27,26 @@ import { createQueryDataTool } from "./query-data.js";
 import { createReadDocumentTool } from "./read-document.js";
 
 /** Create all analytics tools: analytics-specific + coding-agent tools. */
-export function createAnalyticsTools(runtime: PythonRuntime, cwd?: string): AgentTool<any>[] {
+export function createAnalyticsTools(runtime: PythonRuntime, cwd?: string): AgentTool[] {
 	const workDir = cwd ?? process.cwd();
-	return [
-		// Analytics-specific tools
-		createLoadDataTool(runtime),
-		createDescribeDataTool(runtime),
-		createQueryDataTool(runtime),
-		createReadDocumentTool(runtime),
-		// Coding-agent tools
-		createBashTool(workDir),
-		createReadTool(workDir),
-		createWriteTool(workDir),
-		createEditTool(workDir),
-		createGrepTool(workDir),
-		createFindTool(workDir),
-		createLsTool(workDir),
+	// Each createXTool returns a tool typed against its concrete TypeBox
+	// schema, e.g. `AgentTool<typeof bashSchema>`. Collecting heterogeneous
+	// tools into `AgentTool[]` (whose execute(params) is contravariant)
+	// requires a widening cast — without it tsgo rejects the assignment as
+	// the function-parameter type narrows to `unknown` at the array element
+	// type.
+	const tools: AgentTool[] = [
+		createLoadDataTool(runtime) as AgentTool,
+		createDescribeDataTool(runtime) as AgentTool,
+		createQueryDataTool(runtime) as AgentTool,
+		createReadDocumentTool(runtime) as AgentTool,
+		createBashTool(workDir) as AgentTool,
+		createReadTool(workDir) as AgentTool,
+		createWriteTool(workDir) as AgentTool,
+		createEditTool(workDir) as AgentTool,
+		createGrepTool(workDir) as AgentTool,
+		createFindTool(workDir) as AgentTool,
+		createLsTool(workDir) as AgentTool,
 	];
+	return tools;
 }
