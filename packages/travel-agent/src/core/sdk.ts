@@ -81,12 +81,13 @@ export async function createTravelSession(options: CreateTravelSessionOptions): 
 		},
 	};
 
-	// Create tools
 	const tools = createTravelTools({
 		getState: stateRef.get,
 		setState: stateRef.set,
 		searchProvider: options.searchProvider,
 		persistOpts,
+		model: options.model,
+		getApiKey: options.apiKey ? () => options.apiKey as string : undefined,
 	});
 
 	// Build initial system prompt

@@ -154,6 +154,16 @@ export function formatStateForPrompt(state: TravelState): string {
 		sections.push(formatItinerary(state.itineraryResearch));
 	}
 
+	if (state.accommodationResearch) {
+		sections.push("\n# Accommodation Research\n");
+		sections.push(formatAccommodationResearch(state.accommodationResearch));
+	}
+
+	if (state.flightResearch) {
+		sections.push("\n# Flight Research\n");
+		sections.push(formatFlightResearch(state.flightResearch));
+	}
+
 	return sections.join("\n");
 }
 
@@ -182,7 +192,8 @@ function formatDestinationResearch(research: any): string {
 	for (const sub of subs) {
 		const score = sub.overallScore ? ` (score: ${sub.overallScore})` : "";
 		const desc = sub.description ? sub.description.slice(0, 100) : "";
-		lines.push(`  - ${sub.name || "Unknown"}${score}: ${desc}...`);
+		const imgCount = sub.imageLinks ? sub.imageLinks.length : 0;
+		lines.push(`  - ${sub.name || "Unknown"}${score}: ${desc}... (${imgCount} images)`);
 	}
 	return lines.join("\n");
 }
@@ -198,8 +209,9 @@ function formatActivitiesResearch(research: any): string {
 	for (const activity of research.activities) {
 		const loc = activity.location || "Unknown Location";
 		const list = byLocation.get(loc) ?? [];
+		const imgCount = activity.imageLinks ? activity.imageLinks.length : 0;
 		list.push(
-			`  - ${activity.name || "Unknown"} (${activity.type || "Activity"}, ${activity.estimatedDurationHours || "?"}h)`,
+			`  - ${activity.name || "Unknown"} (${activity.type || "Activity"}, ${activity.estimatedDurationHours || "?"}h) [${imgCount} images]`,
 		);
 		byLocation.set(loc, list);
 	}
@@ -216,12 +228,44 @@ function formatItinerary(research: any): string {
 	const lines: string[] = [];
 	if (research.description) lines.push(research.description);
 	for (const day of research.itinerary) {
-		lines.push(`Day ${day.dayNumber || "?"} (${day.date || "?"}) — ${day.place || "?"}:`);
+		const imgCount = day.imageLinks ? day.imageLinks.length : 0;
+		lines.push(`Day ${day.dayNumber || "?"} (${day.date || "?"}) — ${day.place || "?"} [${imgCount} images]:`);
 		const activities = day.activities || [];
 		for (const act of activities) {
 			const time = act.approxStartTime ?? act.timeSlot ?? "";
 			lines.push(`  ${time} ${act.name || "Unknown"} (${act.type || "Activity"})`);
 		}
+	}
+	return lines.join("\n");
+}
+
+function formatAccommodationResearch(research: any): string {
+	if (!research || !Array.isArray(research.areasToStay)) return "";
+	const lines: string[] = [];
+	if (research.description) lines.push(research.description);
+	for (const area of research.areasToStay) {
+		const imgCount = area.imageLinks ? area.imageLinks.length : 0;
+		lines.push(
+			`Area: ${area.areaToStay || "Unknown"} (${area.city || "?"}, ${area.country || "?"}) [${imgCount} images]`,
+		);
+		lines.push(`  Highlights: ${area.highlights || ""}`);
+		if (area.accommodationLinks && area.accommodationLinks.length > 0) {
+			lines.push(`  Accommodation Links: ${area.accommodationLinks.join(", ")}`);
+		}
+	}
+	return lines.join("\n");
+}
+
+function formatFlightResearch(research: any): string {
+	if (!research || !Array.isArray(research.sample_options)) return "";
+	const lines: string[] = [];
+	lines.push(`Flights: ${research.route_origin || "?"} to ${research.route_destination || "?"}`);
+	lines.push(`Typical fare: ${research.fare_typical_per_person_round_trip || "?"} ${research.fare_currency || ""}`);
+	for (const opt of research.sample_options.slice(0, 3)) {
+		lines.push(
+			`  - ${opt.carrier_names_csv || "Unknown Airlines"} (${opt.stops || "Unknown stops"}, ${opt.duration_hours || "?"}h): ${opt.estimated_fare_amount || "?"} ${opt.estimated_fare_currency || ""}`,
+		);
+		if (opt.booking_url) lines.push(`    Booking: ${opt.booking_url}`);
 	}
 	return lines.join("\n");
 }

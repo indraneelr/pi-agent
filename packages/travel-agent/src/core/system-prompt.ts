@@ -18,25 +18,32 @@ export interface TravelSystemPromptOptions {
 	guidelines?: string[];
 	/** Text to append to the system prompt. */
 	appendSystemPrompt?: string;
+	/** Websites to use for accommodation research. Default: ["Booking.com"] */
+	accommodationWebsites?: string[];
+	/** Websites to use for flight research. Default: ["Skyscanner", "Google Flights"] */
+	flightWebsites?: string[];
+	/** Minimum number of image links to fetch per place/activity. Default: 5 */
+	minImageLinks?: number;
+	/** Travel research websites. Default: ["TripAdvisor", "Viator", "Lonely Planet", "Nomadic Matt", "The Points Guy", "Conde Nast Traveler"] */
+	researchWebsites?: string[];
 }
 
 /** Build the complete system prompt for the travel agent. */
 export function buildTravelSystemPrompt(state: TravelState, options: TravelSystemPromptOptions = {}): string {
 	const sections: string[] = [];
 
+	sections.push(buildMetadata());
 	sections.push(buildRoleSection());
 	sections.push(buildToolsSection());
 	sections.push(buildChecklistSection(state));
-	sections.push(buildPhaseInstructionsSection(state));
+	sections.push(buildPhaseInstructionsSection(state, options));
 	sections.push(buildStateSection(state));
 	sections.push(buildPreferenceReference());
-	sections.push(buildGuidelinesSection(options.guidelines));
+	sections.push(buildGuidelinesSection(options));
 
 	if (options.appendSystemPrompt) {
 		sections.push(options.appendSystemPrompt);
 	}
-
-	sections.push(buildMetadata());
 
 	return sections.join("\n\n");
 }
@@ -63,30 +70,30 @@ function buildChecklistSection(state: TravelState): string {
 	return `# Travel Planning Checklist\n\n${formatChecklist(state.checklist)}`;
 }
 
-function buildPhaseInstructionsSection(state: TravelState): string {
+function buildPhaseInstructionsSection(state: TravelState, options: TravelSystemPromptOptions): string {
 	const active = getActivePhase(state.checklist);
 	if (!active) {
 		return "# Current Phase\n\nAll phases are complete. The travel plan is ready.";
 	}
 
-	const instructions = getPhaseInstructions(state, active.id);
+	const instructions = getPhaseInstructions(state, active.id, options);
 	return `# Current Phase: ${active.label}\n\n${instructions}`;
 }
 
-function getPhaseInstructions(state: TravelState, phaseId: string): string {
+function getPhaseInstructions(state: TravelState, phaseId: string, options: TravelSystemPromptOptions): string {
 	switch (phaseId) {
 		case "gather_preferences":
 			return buildGatherPreferencesInstructions(state);
 		case "shortlist_destinations":
-			return buildShortlistInstructions();
+			return buildShortlistInstructions(options);
 		case "select_destinations":
 			return buildSelectInstructions();
 		case "research_experiences":
-			return buildExperiencesInstructions();
+			return buildExperiencesInstructions(options);
 		case "plan_itinerary":
-			return buildItineraryInstructions();
+			return buildItineraryInstructions(options);
 		case "research_accommodation_flights":
-			return buildAccommodationFlightsInstructions();
+			return buildAccommodationFlightsInstructions(options);
 		case "final_plan":
 			return buildFinalPlanInstructions();
 		default:
@@ -101,20 +108,25 @@ function buildGatherPreferencesInstructions(state: TravelState): string {
 			? `\nMandatory fields still needed: ${pending.join(", ")}`
 			: "\nAll mandatory fields are filled.";
 
+	const date = new Date().toISOString().slice(0, 10);
+
 	return `Gather the user's travel preferences through natural conversation. Ask about their requirements in a friendly, conversational way — don't just list all fields at once.
 ${pendingList}
+
+**IMPORTANT: Today's date is ${date}. Any dates you discuss, research, or save MUST be in the future relative to today!**
 
 Start with the most important details (destination, dates, budget) then ask about optional preferences.
 Save preferences incrementally using update_travel_state with field="preferences".
 Once all mandatory preferences are gathered, confirm with the user and advance the checklist.`;
 }
 
-function buildShortlistInstructions(): string {
+function buildShortlistInstructions(options: TravelSystemPromptOptions): string {
+	const minImageLinks = options.minImageLinks ?? 5;
 	return `Research and shortlist 8-10 destinations (sub-destinations/areas) that match the user's preferences.
 
 Steps:
 1. Use web_search to research destinations matching the preferences
-2. For each potential destination, gather: name, description, why it matches, themes, reviews
+2. For each potential destination, gather: name, description, why it matches, themes, reviews, AND at least ${minImageLinks} valid image URLs (e.g. .jpg/.png)
 3. Score each destination against the user's preferences
 4. Save the research using update_travel_state with field="destination_research"
 5. Present the shortlist to the user with scores and match reasons
@@ -136,39 +148,46 @@ The user may want to:
 - Exclude certain destinations`;
 }
 
-function buildExperiencesInstructions(): string {
+function buildExperiencesInstructions(options: TravelSystemPromptOptions): string {
+	const minImageLinks = options.minImageLinks ?? 5;
 	return `Research activities and experiences at the selected destinations that match the user's preferences.
 
 Steps:
 1. For each selected destination, use web_search to find top activities
-2. Research: name, type, description, duration, cost, reviews, tips
+2. Research: name, type, description, duration, cost, reviews, tips, AND at least ${minImageLinks} valid image URLs (e.g. .jpg/.png) for each activity
 3. Find at least 4-5 activities per destination
 4. Save using update_travel_state with field="activities_research"
 5. Present the activities to the user grouped by destination
 6. Advance when the user is happy with the activity options`;
 }
 
-function buildItineraryInstructions(): string {
+function buildItineraryInstructions(options: TravelSystemPromptOptions): string {
+	const minImageLinks = options.minImageLinks ?? 5;
 	return `Build a day-by-day itinerary slotting the selected places and activities.
 
 Steps:
 1. Organize activities into days considering: travel time, opening hours, logical grouping
 2. Account for the user's pace preference and daily travel time limit
 3. Include transport, dining, and rest time between activities
-4. Save using update_travel_state with field="itinerary_research"
-5. Present the itinerary day by day with times and activities
-6. Advance when the user approves the itinerary`;
+4. Provide at least ${minImageLinks} valid image URLs (e.g. .jpg/.png) representing each day's locations
+5. Save using update_travel_state with field="itinerary_research"
+6. Present the itinerary day by day with times and activities
+7. Advance when the user approves the itinerary`;
 }
 
-function buildAccommodationFlightsInstructions(): string {
+function buildAccommodationFlightsInstructions(options: TravelSystemPromptOptions): string {
+	const flightSites = options.flightWebsites ?? ["Skyscanner", "Google Flights"];
+	const accomSites = options.accommodationWebsites ?? ["Booking.com"];
+	const minImageLinks = options.minImageLinks ?? 5;
+
 	return `Research accommodation areas and flight options for the trip.
 
 Steps:
-1. For each city in the itinerary, use web_search to research best areas to stay
-2. Find nightly rate ranges (budget/mid-range/luxury), transport access, safety tips
+1. For each city in the itinerary, use web_search to research best areas to stay. You MUST use ${accomSites.join(" and ")} for accommodation research.
+2. Find nightly rate ranges (budget/mid-range/luxury), transport access, safety tips, AND provide direct recommendation/booking URLs for specific accommodations. Also provide at least ${minImageLinks} image URLs for the area.
 3. Save accommodation research using update_travel_state with field="accommodation_research"
-4. Research flights from origin to destination (and any inter-city flights)
-5. Find fare ranges, typical carriers, booking links
+4. Research flights from origin to destination (and any inter-city flights). You MUST use ${flightSites.join(" and ")} to find flights.
+5. Provide detailed flight specs including timing, cost, duration, airline, transit details, and booking URLs.
 6. Save flight research using update_travel_state with field="flight_research"
 7. Present options to the user
 8. Advance when the user is satisfied`;
@@ -179,14 +198,15 @@ function buildFinalPlanInstructions(): string {
 
 Include:
 1. Trip overview (destination, dates, group, budget)
-2. Selected destinations with highlights
-3. Day-by-day itinerary with activities, times, and costs
-4. Accommodation recommendations with booking tips
-5. Flight options with booking links
-6. Total estimated budget breakdown
+2. Selected destinations with highlights (render the image links using Markdown syntax: ![Image](url))
+3. Day-by-day itinerary with activities, times, and costs (render the image links using Markdown syntax)
+4. Accommodation recommendations. YOU MUST INCLUDE the actual Accommodation Links collected from your research as clickable Markdown links.
+5. Flight options. YOU MUST INCLUDE the actual Booking Links collected from your research as clickable Markdown links.
+6. Total estimated budget breakdown (Do not hallucinate prices. If you don't know the exact price, state that it is an estimate and provide the source).
 7. Travel tips and important notes
+8. Reference URLs for all the research conducted.
 
-Present this as a polished, comprehensive travel plan. Advance the checklist to mark the plan as complete.`;
+Present this as a polished, comprehensive travel plan in Markdown. Advance the checklist to mark the plan as complete.`;
 }
 
 function buildStateSection(state: TravelState): string {
@@ -231,17 +251,28 @@ Optional (ask about these naturally during conversation):
 - areas_to_cover: Specific areas or neighborhoods to visit`;
 }
 
-function buildGuidelinesSection(extra?: string[]): string {
+function buildGuidelinesSection(options: TravelSystemPromptOptions): string {
+	const researchSites = options.researchWebsites ?? [
+		"TripAdvisor",
+		"Viator",
+		"Lonely Planet",
+		"Nomadic Matt",
+		"The Points Guy",
+		"Conde Nast Traveler",
+	];
+
 	const defaults = [
-		"Always use web_search to research before making recommendations",
+		`Always use web_search to research before making recommendations. Strongly consider searching these websites for high quality travel content: ${researchSites.join(", ")}`,
 		"Save data incrementally using update_travel_state after each research step",
 		"Confirm with the user before advancing to the next phase",
 		"If the user wants changes, use go_back_to_phase to revisit earlier steps",
 		"Present information in a clear, structured way with specific details",
-		"Include source URLs when available",
+		"Include source URLs and image URLs when available",
 		"Be conversational and helpful, not robotic",
+		"DO NOT hallucinate prices or data. If you cannot find a specific price or detail via web search, explicitly state that it is unknown or provide an estimate and label it as an estimate.",
+		"CRITICAL: Before saving any research data (destinations, activities, itinerary, flights, accommodations) using update_travel_state, you MUST pass that data to the verify_research_data tool to ensure all links, costs, times, and availability are accurate. Use the corrected data returned by verify_research_data to update the travel state.",
 	];
-	const all = [...defaults, ...(extra ?? [])];
+	const all = [...defaults, ...(options.guidelines ?? [])];
 	return `# Guidelines\n\n${all.map((g) => `- ${g}`).join("\n")}`;
 }
 

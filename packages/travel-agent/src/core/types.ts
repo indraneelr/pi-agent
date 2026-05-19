@@ -93,6 +93,7 @@ export interface SubDestination {
 	type: string;
 	description: string;
 	imageKeywords?: string;
+	imageLinks?: string[];
 	city?: string;
 	country?: string;
 	themes?: string[];
@@ -109,6 +110,7 @@ export interface Destination {
 	description: string;
 	bestTimeToVisit: string;
 	imageKeywords?: string;
+	imageLinks?: string[];
 	reviews: Reviews;
 	sources: string[];
 }
@@ -141,6 +143,7 @@ export interface Activity {
 	estimatedDurationHours: number;
 	estimatedCost?: number;
 	imageKeywords?: string;
+	imageLinks?: string[];
 	reviews: Reviews;
 	suitableForGroups?: string[];
 	themes?: string[];
@@ -182,6 +185,7 @@ export interface ItineraryDay {
 	country?: string;
 	dayNumber: number;
 	imageKeywords?: string;
+	imageLinks?: string[];
 	activities: ItineraryActivity[];
 }
 
@@ -214,6 +218,8 @@ export interface AccommodationArea {
 	nearbyTransport: string;
 	reviews: Reviews;
 	imageKeywords?: string[];
+	imageLinks?: string[];
+	accommodationLinks?: string[];
 	sources: string[];
 }
 

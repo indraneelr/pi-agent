@@ -15,18 +15,21 @@
 		"travel-agent": "dist/cli.js"
 	},
 	"dependencies": {
+		"@browserbasehq/stagehand": "^3.3.0",
 		"@mariozechner/pi-agent-core": "*",
 		"@mariozechner/pi-ai": "*",
 		"@mariozechner/pi-tui": "*",
 		"@sinclair/typebox": "^0.34.14",
-		"chalk": "^5.4.1"
+		"chalk": "^5.4.1",
+		"playwright": "^1.59.1",
+		"zod": "^3.25.76"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",
 		"rimraf": "^6.1.2",
+		"tsx": "^4.20.3",
 		"typescript": "^5.9.2",
-		"vitest": "^3.2.1",
-		"tsx": "^4.20.3"
+		"vitest": "^3.2.1"
 	},
 	"engines": {
 		"node": ">=20.0.0"

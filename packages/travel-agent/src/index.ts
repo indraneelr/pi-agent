@@ -24,9 +24,17 @@ export { deleteTravelState, loadTravelState, type PersistenceOptions, saveTravel
 export { type CreateTravelSessionOptions, createTravelSession, type TravelSession } from "./core/sdk.js";
 export { createBraveSearchProvider } from "./core/search/brave.js";
 export { createGoogleGeminiSearchProvider } from "./core/search/google-gemini.js";
-export { detectSearchProvider } from "./core/search/index.js";
+export { type DetectSearchProviderOptions, detectSearchProvider } from "./core/search/index.js";
 export { createLinkupSearchProvider } from "./core/search/linkup.js";
 export { createObscuraSearchProvider } from "./core/search/obscura.js";
+export {
+	createStagehandSearchProvider,
+	loadStagehandOptionsFromEnv,
+	type ResolvedStagehandConfig,
+	type StagehandClient,
+	type StagehandSearchEngine,
+	type StagehandSearchOptions,
+} from "./core/search/stagehand.js";
 // Search
 export type { SearchProvider, SearchResult } from "./core/search/types.js";
 // State

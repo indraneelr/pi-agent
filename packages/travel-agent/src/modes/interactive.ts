@@ -171,7 +171,8 @@ export class InteractiveMode {
 				this.addSystemMessage(`Agent Error: ${errMsg}`, "error");
 			}
 		} catch (err) {
-			debugLog(`agent.prompt() threw error: ${err}`);
+			const trace = err instanceof Error ? err.stack : String(err);
+			debugLog(`agent.prompt() threw error:\n${trace}`);
 			this.addSystemMessage(`Error: ${err instanceof Error ? err.message : String(err)}`, "error");
 		} finally {
 			this.isProcessing = false;
@@ -299,7 +300,7 @@ export class InteractiveMode {
 	}
 
 	private handleToolStart(event: { toolCallId: string; toolName: string; args: any }): void {
-		debugLog(`Executing tool: ${event.toolName}`);
+		debugLog(`Executing tool: ${event.toolName} args: ${JSON.stringify(event.args)}`);
 		this.stopLoading();
 		let argsPreview = "";
 		if (event.args) {
@@ -320,7 +321,10 @@ export class InteractiveMode {
 	}
 
 	private handleToolEnd(event: { toolCallId: string; toolName: string; result: any; isError: boolean }): void {
-		debugLog(`Tool finished: ${event.toolName} (isError: ${event.isError})`);
+		const resStr = typeof event.result === "string" ? event.result : JSON.stringify(event.result);
+		debugLog(
+			`Tool finished: ${event.toolName} (isError: ${event.isError}). Result preview: ${resStr?.slice(0, 3000)}`,
+		);
 		this.stopLoading();
 		if (event.isError) {
 			const errorText =

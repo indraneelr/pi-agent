@@ -85,12 +85,33 @@ Environment Variables:
   XAI_API_KEY                xAI
   OPENROUTER_API_KEY         OpenRouter
 
-  BRAVE_API_KEY              Brave Search (for web research)
-  LINKUP_API_KEY             Linkup Search (for web research)
-  GEMINI_API_KEY             Also used for Google Gemini Search
-  USE_OBSCURA                Set to 1 to use Obscura headless browser (no API key needed)
+  Web search (Stagehand is the default — opt-out with USE_STAGEHAND=0):
+  OLLAMA_API_KEY             API key for the default Stagehand LLM
+                             (ollama/minimax-m2.7:cloud). Create one at
+                             https://ollama.com/settings/keys
+  STAGEHAND_MODEL            Override Stagehand LLM, "provider/model" form
+                             (default: ollama/minimax-m2.7:cloud)
+  STAGEHAND_API_KEY          Override the Stagehand LLM API key (takes
+                             precedence over OLLAMA_API_KEY and the
+                             travel-agent's LLM key fallback)
+  STAGEHAND_BASE_URL         Override the LLM provider base URL
+                             (default for ollama/* is https://ollama.com/api)
+  STAGEHAND_HEADLESS         "0"/"false" to show the browser window (default: headless)
+  STAGEHAND_SEARCH_ENGINE    duckduckgo | google | bing (default: duckduckgo)
+  STAGEHAND_VISIT_RESULTS    "1" to fetch a content snippet from each result page
+  STAGEHAND_TIMEOUT_MS       Per-search timeout in ms (default: 120000)
+  STAGEHAND_VERBOSE          Stagehand log level 0|1|2 (default: 0)
+  USE_STAGEHAND              Set to "0" or "false" to disable Stagehand and
+                             fall back to API-key search providers below.
 
-At least one LLM API key is required. One search API key or USE_OBSCURA is required.
+  Fallback search providers (only used when USE_STAGEHAND=0):
+  BRAVE_API_KEY              Brave Search
+  LINKUP_API_KEY             Linkup Search
+  GEMINI_API_KEY             Google Gemini Search
+  USE_OBSCURA                Set to 1 to use Obscura headless browser
+
+At least one LLM API key is required. Stagehand (default) needs OLLAMA_API_KEY
+unless STAGEHAND_MODEL is changed to a non-Ollama model.
 `);
 }
 
@@ -168,11 +189,12 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	// Detect search provider
-	const searchProvider = detectSearchProvider();
+	// Detect search provider (Stagehand is default; pass the LLM key as a
+	// last-resort fallback for non-Ollama Stagehand models).
+	const searchProvider = detectSearchProvider({ stagehandFallbackApiKey: detected.apiKey });
 	if (!searchProvider) {
 		console.error(
-			"No search provider detected. Set BRAVE_API_KEY, LINKUP_API_KEY, GEMINI_API_KEY, or USE_OBSCURA=1.",
+			"No search provider detected. Stagehand is the default — set OLLAMA_API_KEY (https://ollama.com/settings/keys), or disable it with USE_STAGEHAND=0 and set BRAVE_API_KEY / LINKUP_API_KEY / GEMINI_API_KEY / USE_OBSCURA=1.",
 		);
 		process.exit(1);
 	}

@@ -35,6 +35,11 @@ export const GEMINI_DESTINATION_RESEARCH_SCHEMA = {
                     type: 'string',
                     description: 'Search string used to search relevant images on web',
                 },
+                imageLinks: {
+                    type: 'array',
+                    items: { type: 'string', format: 'uri' },
+                    description: 'At least 5 actual image URLs (e.g. .jpg/.png) for this destination',
+                },
                 reviews: {
                     type: 'object',
                     properties: {
@@ -58,6 +63,11 @@ export const GEMINI_DESTINATION_RESEARCH_SCHEMA = {
                     imageKeywords: {
                         type: 'string',
                         description: 'Search string used to search relevant images on web',
+                    },
+                    imageLinks: {
+                        type: 'array',
+                        items: { type: 'string', format: 'uri' },
+                        description: 'At least 5 actual image URLs (e.g. .jpg/.png) for this area',
                     },
                     city: {
                         type: 'string',
@@ -166,6 +176,11 @@ export const GEMINI_ACTIVITIES_RESEARCH_SCHEMA = {
                         type: 'string',
                         description: 'Search string for finding relevant images',
                     },
+                    imageLinks: {
+                        type: 'array',
+                        items: { type: 'string', format: 'uri' },
+                        description: 'At least 5 actual image URLs (e.g. .jpg/.png) for this activity',
+                    },
                     reviews: {
                         type: 'object',
                         properties: {
@@ -222,6 +237,11 @@ export const GEMINI_ITINERARY_SCHEMA = {
                     imageKeywords: {
                         type: 'string',
                         description: 'Search string for finding relevant images for this day (e.g. the place name + highlights)',
+                    },
+                    imageLinks: {
+                        type: 'array',
+                        items: { type: 'string', format: 'uri' },
+                        description: 'At least 5 actual image URLs (e.g. .jpg/.png) representing this day',
                     },
                     activities: {
                         type: 'array',
@@ -344,6 +364,16 @@ export const GEMINI_ACCOMMODATION_SCHEMA = {
                         type: 'array',
                         items: { type: 'string' },
                         description: 'Keywords for image search',
+                    },
+                    imageLinks: {
+                        type: 'array',
+                        items: { type: 'string', format: 'uri' },
+                        description: 'At least 5 actual image URLs (e.g. .jpg/.png) for this accommodation area',
+                    },
+                    accommodationLinks: {
+                        type: 'array',
+                        items: { type: 'string', format: 'uri' },
+                        description: 'Direct booking or recommendation links to specific accommodations in this area',
                     },
                     sources: {
                         type: 'array',
