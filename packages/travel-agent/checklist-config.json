@@ -2,36 +2,36 @@
 	{
 		"id": "gather_preferences",
 		"label": "Gather Preferences",
-		"description": "Collect travel requirements from the user (destination, dates, budget, group info, interests, etc.)"
+		"description": "Collect mandatory trip requirements: dates/window, origin, group, budget/currency, destination intent, plus useful constraints/defaults"
 	},
 	{
 		"id": "shortlist_destinations",
-		"label": "Shortlist Destinations",
-		"description": "Research and shortlist 8-10 destinations matching the user's preferences"
+		"label": "Shortlist Destination/Place Options",
+		"description": "Present choice-first option cards: 3-5 broad destinations or 8-10 places inside a chosen country/region, each with fit, days, logistics, budget, season, and tradeoff"
 	},
 	{
 		"id": "select_destinations",
-		"label": "Select Destinations",
-		"description": "Present the shortlisted destinations and let the user choose which ones to explore"
+		"label": "Select Places",
+		"description": "Let the user choose places from the option menu before researching detailed activities"
 	},
 	{
 		"id": "research_experiences",
-		"label": "Research Experiences",
-		"description": "Find activities and experiences at the selected destinations that match preferences"
+		"label": "Research Activity Options",
+		"description": "For selected places, present 4-6 real activity/experience options per place, grouped by practicality, and ask the user to choose/approve"
 	},
 	{
 		"id": "plan_itinerary",
 		"label": "Plan Itinerary",
-		"description": "Build a day-by-day itinerary slotting places and activities"
+		"description": "Build a day-by-day itinerary from approved places and activities with transit, meals, check-in/out, and downtime"
 	},
 	{
 		"id": "research_accommodation_flights",
 		"label": "Research Accommodation & Flights",
-		"description": "Research places to stay and flight options for the trip"
+		"description": "Present 4-6 flight options and 4-6 lodging options per overnight location when available, with live-data caveats and tradeoffs"
 	},
 	{
 		"id": "final_plan",
 		"label": "Final Plan",
-		"description": "Present the complete, detailed travel plan with all details"
+		"description": "Reconcile selected choices into the complete itinerary, transport plan, budget, map-ready stops, and essential information"
 	}
 ]

@@ -92,6 +92,24 @@ export interface SubDestination {
 	name: string;
 	type: string;
 	description: string;
+	/** Compact decision label, e.g. "best for beaches" or "best value". */
+	bestFor?: string;
+	/** Why this option matches the user's profile. */
+	why?: string;
+	/** Rough number of days/nights to allocate to this place. */
+	roughDays?: string;
+	/** Logistical fit: route/base/proximity note, e.g. "easy ferry from Athens". */
+	logisticsFit?: string;
+	/** Budget fit for the user's stated budget; label estimates clearly. */
+	budgetFit?: string;
+	/** Season/weather note for the trip window. */
+	seasonNote?: string;
+	/** Honest downside/tradeoff to support choosing. */
+	tradeoff?: string;
+	/** Search query or prompt for the UI/image tool. */
+	imageQuery?: string;
+	/** UI selection state; defaults false when rendered. */
+	selected?: boolean;
 	imageKeywords?: string;
 	imageLinks?: string[];
 	city?: string;
@@ -129,6 +147,9 @@ export interface DestinationResearch {
 	tripHighlights: string[];
 	travelTips: string[];
 	preferencesUsed: PreferencesUsed;
+	/** What the UI should ask the user to do next, e.g. choose 3-4 places. */
+	nextUserAction?: string;
+	schemaVersion?: "2.0.0";
 }
 
 // =============================================================================
