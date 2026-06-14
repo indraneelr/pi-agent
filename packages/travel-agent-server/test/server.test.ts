@@ -13,7 +13,7 @@ import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { loadConfig } from "../src/config.js";
 import { createServer } from "../src/server.js";
-import type { TravelSessionManager } from "../src/session-manager.js";
+import { TravelSessionManager, type TravelSessionManager as TravelSessionManagerType } from "../src/session-manager.js";
 
 // =============================================================================
 // No-LLM tests (default config, no model configured)
@@ -64,7 +64,7 @@ describe("server without LLM configured", () => {
 		});
 		expect(res.statusCode).toBe(503);
 		const body = res.json();
-		expect(body.error).toContain("Unknown model");
+		expect(body.error).toContain("Ollama Cloud API key");
 	});
 
 	test("GET unknown session returns 404", async () => {
@@ -105,6 +105,30 @@ describe("server without LLM configured", () => {
 });
 
 // =============================================================================
+// Model resolution
+// =============================================================================
+
+describe("TravelSessionManager model resolution", () => {
+	test("supports the Ollama Cloud kimi-k2.6 model used by travel evals", () => {
+		const manager = new TravelSessionManager(
+			loadConfig({
+				TRAVEL_AGENT_PROVIDER: "ollama",
+				TRAVEL_AGENT_MODEL: "kimi-k2.6",
+				TRAVEL_AGENT_DATA_DIR: "/tmp/travel-agent-server-model-test",
+			}),
+		);
+
+		const model = (
+			manager as unknown as { resolveModel: () => { id: string; provider: string; baseUrl?: string } }
+		).resolveModel();
+
+		expect(model.provider).toBe("ollama");
+		expect(model.id).toBe("kimi-k2.6");
+		expect(model.baseUrl).toBe("https://ollama.com/v1");
+	});
+});
+
+// =============================================================================
 // Happy-path tests with mock manager
 // =============================================================================
 
@@ -129,7 +153,7 @@ describe("server with mock manager", () => {
 			state: mockState,
 			status: "idle" as const,
 		}),
-	} as unknown as TravelSessionManager;
+	} as unknown as TravelSessionManagerType;
 
 	beforeAll(async () => {
 		app = createServer(loadConfig({}), mockManager);

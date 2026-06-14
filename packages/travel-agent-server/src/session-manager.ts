@@ -9,13 +9,14 @@ import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { KnownProvider, TextContent } from "@mariozechner/pi-ai";
+import type { KnownProvider, Model, TextContent } from "@mariozechner/pi-ai";
 import { getModels } from "@mariozechner/pi-ai";
 import {
 	createTravelSession,
 	createTravelState,
 	detectSearchProvider,
 	loadChecklistConfig,
+	type SearchProvider,
 	saveTravelState,
 	type TravelSession,
 	type TravelState,
@@ -177,9 +178,15 @@ export class TravelSessionManager {
 	 */
 	private async buildSession(sessionId: string): Promise<TravelSession> {
 		const model = this.resolveModel();
-		const searchProvider = detectSearchProvider(
-			this.config.apiKey ? { stagehandFallbackApiKey: this.config.apiKey } : {},
-		);
+		let searchProvider: SearchProvider | null | undefined;
+		try {
+			searchProvider = detectSearchProvider(
+				this.config.apiKey ? { stagehandFallbackApiKey: this.config.apiKey } : {},
+			);
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			throw new SessionConfigurationError(msg);
+		}
 		if (!searchProvider) {
 			throw new SessionConfigurationError(
 				"No search provider detected. Set BRAVE_API_KEY, LINKUP_API_KEY, or GEMINI_API_KEY.",
@@ -204,6 +211,9 @@ export class TravelSessionManager {
 	 * Throws SessionConfigurationError if the provider or model is unknown.
 	 */
 	private resolveModel() {
+		const customModel = resolveCustomModel(this.config.provider, this.config.modelId);
+		if (customModel) return customModel;
+
 		const models = getModels(this.config.provider as KnownProvider);
 		const model = models.find((m) => m.id === this.config.modelId);
 		if (!model) {
@@ -211,6 +221,32 @@ export class TravelSessionManager {
 		}
 		return model;
 	}
+}
+
+function resolveCustomModel(provider: string, modelId: string): Model<"openai-completions"> | undefined {
+	if (provider !== "ollama" || modelId !== "kimi-k2.6") return undefined;
+
+	return {
+		id: modelId,
+		name: "Ollama Cloud: kimi-k2.6",
+		api: "openai-completions",
+		provider: "ollama",
+		baseUrl: "https://ollama.com/v1",
+		reasoning: false,
+		input: ["text"],
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		contextWindow: 128_000,
+		maxTokens: 8_192,
+		compat: {
+			supportsStore: false,
+			supportsDeveloperRole: false,
+			supportsReasoningEffort: false,
+			supportsUsageInStreaming: true,
+			maxTokensField: "max_tokens",
+			supportsStrictMode: false,
+			supportsLongCacheRetention: false,
+		},
+	};
 }
 
 // =============================================================================
