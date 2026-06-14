@@ -17,7 +17,7 @@
 	"dependencies": {
 		"@mariozechner/pi-agent-core": "*",
 		"@mariozechner/pi-ai": "*",
-		"@mariozechner/pi-coding-agent": "*",
+		"@earendil-works/pi-coding-agent": "*",
 		"@mariozechner/pi-tui": "*",
 		"@sinclair/typebox": "^0.34.14",
 		"chalk": "^5.4.1"

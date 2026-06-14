@@ -127,6 +127,7 @@ function makeDestinationResearch(count: number) {
 			seasonNote: "September is warm, beach-friendly, and less crowded than August.",
 			tradeoff: "Adds ferry or transfer time, so it should be paired with nearby stops.",
 			imageQuery: `Greece Place ${i + 1} travel beaches ruins`,
+			imageLinks: [`https://example.com/images/greece-place-${i + 1}.jpg`],
 			reviews: {},
 			sources: ["https://example.com/place"],
 		})),

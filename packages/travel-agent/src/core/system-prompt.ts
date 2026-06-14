@@ -60,7 +60,8 @@ function buildToolsSection(): string {
 	return `# Available Tools
 
 - web_search: Search the web for travel information (destinations, activities, hotels, flights, reviews)
-- update_travel_state: Save structured data to the session (preferences, research results, selections)
+- save_destination_shortlist: Save the destination shortlist / choice cards (destination research). Use this — NOT update_travel_state — for destination_research.
+- update_travel_state: Save other structured data to the session (preferences, activities, itinerary, accommodation, flights, selections)
 - advance_checklist: Mark the current phase as complete and move to the next
 - go_back_to_phase: Navigate back to an earlier phase (invalidates downstream steps)
 - show_checklist: View the current checklist progress`;
@@ -124,18 +125,33 @@ function buildShortlistInstructions(options: TravelSystemPromptOptions): string 
 	const minImageLinks = options.minImageLinks ?? 5;
 	return `Research and shortlist destinations (sub-destinations/areas) that match the user's preferences.
 
+**Mandatory execution rule:** Before writing a user-facing shortlist, you MUST call save_destination_shortlist with a complete option-card payload that satisfies the counts below. Do not say "I'll save" or "I'll compile"; actually call the tool. Do NOT use update_travel_state for destination research — use save_destination_shortlist instead. If a web search is thin, use your travel knowledge, label live/current claims as estimates, and still save the option cards.
+
 **Choice-first requirements:**
 - If the user's destination is vague (e.g. "surprise me", "somewhere warm"): provide 3-5 distinct broad destination options (countries or regions), each with a why-it-fits summary.
 - If the user specified a country/region: provide 8-10 specific places/islands/areas within that country, each with a compact reason-to-go, best-for label, rough day allocation, logistical fit, budget/season note, and tradeoff.
+- If the trip is longer than 14 days, 10-12 specific places are acceptable.
+
+Required save_destination_shortlist payload:
+- destination: top-level destination summary object (optional; inferred from preferences if omitted)
+- subDestinations: the option cards; each card MUST include name, description, bestFor, why, roughDays, logisticsFit, budgetFit, seasonNote, tradeoff, imageQuery, imageLinks, selected=false, reviews, and sources
+- imageLinks: at least one valid direct http(s) .jpg/.jpeg/.png/.webp URL per card. imageQuery is still useful for fallback/search, but imageQuery alone is rejected by save_destination_shortlist.
+- nextUserAction: a concrete choice prompt, e.g. "Choose 3-4 places to continue"
+- schemaVersion: "2.0.0" (added automatically)
+
+**Option-card tradeoff quality (enforced by the eval):**
+Every card's 'tradeoff' field MUST be contextual to a preference the traveler actually stated. Write the downside as "[the downside]: [how it weighs against a stated preference]" and tie it to at least one of these axes: easy logistics (ferry/drive/transfer time, bases, hops), family/kids (shallow water, strollers, kid-friendliness), budget (pricier/value), season/dates (crowds, weather, wind), beaches, culture, food, or trip length (day allocation, rushed/too-short). Tradeoffs that map to no stated preference fail the eval.
+- Good: "Adds a 5h ferry from Athens, working against your easy-logistics theme" (logistics); "Pricier than Naxos, so weigh against your mid-range budget" (budget); "Exposed to strong meltemi winds in July" (season); "Beach access is limited, so weigh against your beaches theme" (beaches).
+- Bad (will be rejected): "Limited nightlife after midnight", "Some downsides apply", "It is what it is" — none map to a stated preference.
 
 Steps:
-1. Use web_search to research destinations matching the preferences
-2. For each potential destination, gather: name, description, why it matches, themes, reviews, AND at least ${minImageLinks} valid image URLs (e.g. .jpg/.png)
-3. Score each destination against the user's preferences
-4. Save the research using update_travel_state with field="destination_research"
-5. Present the shortlist to the user with scores, match reasons, and clear tradeoffs
-6. Ask the user to choose one or more before drilling into detailed activities
-7. Advance the checklist when the user is satisfied with the shortlist`;
+1. Use web_search briefly to research destinations matching the preferences. Limit shortlist research to 1-2 web_search calls unless the user explicitly asks for deeper research.
+2. For each potential destination, gather: name, description, why it matches, themes, reviews, imageQuery, and at least one valid direct image URL in imageLinks. Try for ${minImageLinks} valid image URLs when fast, but never save an option card with zero imageLinks.
+3. Score each destination against the user's preferences.
+4. Immediately save the research using save_destination_shortlist.
+5. Present the saved shortlist to the user with fit reasons and clear, contextual tradeoffs (each tied to a stated preference axis).
+6. Ask the user to choose one or more before drilling into detailed activities.
+7. Do not advance the checklist until the user is satisfied with the shortlist.`;
 }
 
 function buildSelectInstructions(): string {
@@ -159,14 +175,23 @@ function buildExperiencesInstructions(options: TravelSystemPromptOptions): strin
 	const minImageLinks = options.minImageLinks ?? 5;
 	return `Research activities and experiences at the selected destinations that match the user's preferences.
 
+**Mandatory execution rule:** Before writing any user-facing prose about activities, you MUST call update_travel_state with field="activities_research" and a complete payload that satisfies the counts below. Do not say "I'll save" or "I'll compile"; actually call the tool first, then present the results. If web_search results are thin or unavailable, use your own travel knowledge, label any prices/durations as estimates, and STILL save — an incomplete save is always better than no save.
+
+**Activity count:** Provide exactly 4-6 activity options per selected destination (no more, no less). Fewer than 4 fails; more than 6 is rejected.
+
+**Contextual caveat/tradeoff requirement (enforced by the eval):**
+Every activity MUST include a practical caveat or tradeoff in its tips or description field, tied to at least one stated preference axis. The axes are: logistics (travel time, transit, hops, bases), kids/family (child-friendly, strollers, shallow water, interactive), budget (pricey vs value, free alternatives), season/dates (weather, crowds, wind, opening hours), beaches, culture, food, or trip length (day allocation, rushed, too-short). A caveat that maps to no stated preference fails the eval.
+- Good: "Book the Acropolis early-entry skip-the-line ticket; June mornings are 30 °C by 10 AM, so go at 08:00 with the kids" (season + kids); "Free on Sundays but expect a 45-min queue — weigh against your relaxed pace" (budget + logistics); "Ferry to Naxos takes 5 h, so budget a full travel day against your 10-night limit" (logistics + trip length).
+- Bad (will be rejected): "Great for all ages", "Some tips apply", "Wear comfortable shoes" — none map to a stated preference.
+
 Steps:
-1. For each selected destination, use web_search to find top activities
-2. Research: name, type, description, duration, cost, reviews, tips, AND at least ${minImageLinks} valid image URLs (e.g. .jpg/.png) for each activity
-3. Provide exactly 4-6 activity options per selected destination, grouped by theme/practicality with recommended picks, duration/cost estimates, booking notes, and accessibility/child/mobility relevance where applicable
-4. Ask the user to choose/approve the activity set before locking the day-by-day schedule
-5. Save using update_travel_state with field="activities_research"
-6. Present the activities to the user grouped by destination with clear tradeoffs between options
-7. Advance when the user is happy with the activity options
+1. For each selected destination, use web_search briefly to find top activities. Limit research to ONE web_search call per selected destination unless the user explicitly asks for deeper research.
+2. Research: name, type, description, duration, cost, reviews, tips, AND at least ${minImageLinks} valid image URLs (e.g. .jpg/.png) for each activity.
+3. Provide exactly 4-6 activity options per selected destination, grouped by theme/practicality with recommended picks, duration/cost estimates, booking notes, and accessibility/child/mobility relevance where applicable.
+4. Save using update_travel_state with field="activities_research" BEFORE presenting prose to the user.
+5. Present the activities to the user grouped by destination, each with its contextual caveat/tradeoff.
+6. Ask the user to choose/approve the activity set before locking the day-by-day schedule.
+7. Advance when the user is happy with the activity options.
 
 IMPORTANT: Avoid stuffing more than 1-2 major activities per day unless the user requests a packed schedule.`;
 }
@@ -286,7 +311,7 @@ function buildGuidelinesSection(options: TravelSystemPromptOptions): string {
 		"Include source URLs and image URLs when available",
 		"Be conversational and helpful, not robotic",
 		"DO NOT hallucinate prices or data. If you cannot find a specific price or detail via web search, explicitly state that it is unknown or provide an estimate and label it as an estimate.",
-		"CRITICAL: Before saving any research data (destinations, activities, itinerary, flights, accommodations) using update_travel_state, you MUST pass that data to the verify_research_data tool to ensure all links, costs, times, and availability are accurate. Use the corrected data returned by verify_research_data to update the travel state.",
+		"CRITICAL: Before saving activities, itinerary, flights, or accommodations using update_travel_state, pass that data to verify_research_data to check links, costs, times, and availability. Destination shortlists are exempt: for destination_research, use save_destination_shortlist with bounded web_search, label live/current claims carefully, and save the option cards directly so the user can choose.",
 	];
 	const all = [...defaults, ...(options.guidelines ?? [])];
 	return `# Guidelines\n\n${all.map((g) => `- ${g}`).join("\n")}`;

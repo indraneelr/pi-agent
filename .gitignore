@@ -40,5 +40,13 @@ plans/
 .pi/hf-sessions-backup/
 collect.sh
 packages/travel-agent/travel-data/
+packages/travel-agent/.opencode-context/
+docs/fresh-travel-evals/
+docs/activity-research-evals/
+docs/itinerary-planning-evals/
+docs/debug-ollama-eval/
+
+# Local agent/tool state
+.serena/
 
 .understand-anything/

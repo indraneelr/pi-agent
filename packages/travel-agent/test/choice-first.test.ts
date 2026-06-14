@@ -49,6 +49,8 @@ function makeSubDestination(name: string, extra: Record<string, unknown> = {}) {
 		budgetFit: "Fits a mid-range budget comfortably with good value options",
 		seasonNote: "Good weather in July with occasional afternoon rain showers",
 		tradeoff: "Can be very crowded during peak tourist season months",
+		imageQuery: `${name} travel highlights`,
+		imageLinks: [`https://example.com/images/${encodeURIComponent(name)}.jpg`],
 		reviews: { rating: 4.5, reviewSummary: "Highly rated by visitors from around the world", sources: [] },
 		sources: [],
 		...extra,
@@ -58,12 +60,16 @@ function makeSubDestination(name: string, extra: Record<string, unknown> = {}) {
 function makeActivity(name: string, location: string) {
 	return {
 		name,
-		type: "landmark",
-		description: `Visit ${name}`,
+		type: "food culture landmark",
+		description: `Visit ${name} in ${location} for a cultural food experience with easy transit access and realistic timing for the 13-night Japan trip.`,
 		location,
 		estimatedDurationHours: 3,
 		estimatedCost: 25,
-		reviews: {},
+		reviews: { rating: 4.4, reviewSummary: "Well reviewed by visitors", sources: [] },
+		suitableForGroups: ["couple"],
+		themes: ["food", "culture", "history", "easy logistics"],
+		tips: "Book a morning slot in July because peak-season crowds and queues can eat into the trip pace and transit logistics.",
+		bestTimeToVisit: "Morning in July for lighter crowds and easier transit timing.",
 		sources: [],
 	};
 }
@@ -872,6 +878,28 @@ describe("Choice-first validations", () => {
 			expect(prompt).toContain("4-6 activity options per selected destination");
 		});
 
+		it("research_experiences prompt requires save before prose and contextual caveats", () => {
+			const state = createTravelState("prompt-test", SAMPLE_CONFIG);
+			state.checklist = advanceChecklist(state.checklist);
+			state.checklist = advanceChecklist(state.checklist);
+			state.checklist = advanceChecklist(state.checklist);
+			const prompt = buildTravelSystemPrompt(state);
+			// Must instruct to save via update_travel_state before user-facing prose
+			expect(prompt).toContain("MUST call update_travel_state");
+			expect(prompt).toContain("Before writing any user-facing prose");
+			// Must include contextual caveat/tradeoff guidance tied to stated preference axes
+			expect(prompt).toContain("Contextual caveat/tradeoff requirement");
+			expect(prompt).toContain("logistics");
+			expect(prompt).toContain("kids/family");
+			expect(prompt).toContain("budget");
+			expect(prompt).toContain("season/dates");
+			expect(prompt).toContain("trip length");
+			// Must include good/bad examples
+			expect(prompt).toContain("Bad (will be rejected)");
+			// Must handle thin search gracefully
+			expect(prompt).toMatch(/search.*thin.*save/i);
+		});
+
 		it("should mention 4-6 accommodation areas per city in accommodation prompt", () => {
 			const state = createTravelState("prompt-test", SAMPLE_CONFIG);
 			for (let i = 0; i < 5; i++) {
@@ -888,6 +916,23 @@ describe("Choice-first validations", () => {
 			}
 			const prompt = buildTravelSystemPrompt(state);
 			expect(prompt).toContain("4-6 flight options");
+		});
+	});
+
+	describe("Stage 2 shortlist dedicated-tool guidance", () => {
+		it("should instruct the model to call save_destination_shortlist in the shortlist phase", () => {
+			const state = createTravelState("prompt-test", SAMPLE_CONFIG);
+			state.checklist = advanceChecklist(state.checklist); // move to shortlist_destinations
+			const prompt = buildTravelSystemPrompt(state);
+			expect(prompt).toContain("save_destination_shortlist");
+			expect(prompt).toContain("MUST call save_destination_shortlist");
+			expect(prompt).toContain("Do NOT use update_travel_state for destination research");
+		});
+
+		it("should list save_destination_shortlist in the available tools section", () => {
+			const state = createTravelState("prompt-test", SAMPLE_CONFIG);
+			const prompt = buildTravelSystemPrompt(state);
+			expect(prompt).toContain("save_destination_shortlist: Save the destination shortlist");
 		});
 	});
 });

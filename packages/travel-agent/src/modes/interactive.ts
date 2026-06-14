@@ -241,25 +241,32 @@ export class InteractiveMode {
 
 	private handleAgentEvent(event: AgentEvent): void {
 		debugLog(`AgentEvent received: ${event.type}`);
-		switch (event.type) {
-			case "turn_start":
-				this.startLoading("Thinking...");
-				break;
-			case "message_start":
-				this.handleMessageStart(event.message);
-				break;
-			case "message_update":
-				this.handleMessageUpdate(event as AgentEvent & { type: "message_update" });
-				break;
-			case "message_end":
-				this.handleMessageEnd(event.message);
-				break;
-			case "tool_execution_start":
-				this.handleToolStart(event as AgentEvent & { type: "tool_execution_start" });
-				break;
-			case "tool_execution_end":
-				this.handleToolEnd(event as AgentEvent & { type: "tool_execution_end" });
-				break;
+		try {
+			switch (event.type) {
+				case "turn_start":
+					this.startLoading("Thinking...");
+					break;
+				case "message_start":
+					this.handleMessageStart(event.message);
+					break;
+				case "message_update":
+					this.handleMessageUpdate(event as AgentEvent & { type: "message_update" });
+					break;
+				case "message_end":
+					this.handleMessageEnd(event.message);
+					break;
+				case "tool_execution_start":
+					this.handleToolStart(event as AgentEvent & { type: "tool_execution_start" });
+					break;
+				case "tool_execution_end":
+					this.handleToolEnd(event as AgentEvent & { type: "tool_execution_end" });
+					break;
+			}
+		} finally {
+			// Agent events arrive outside the TUI keyboard-input path. Without an explicit
+			// render request, streamed text/tool rows can sit in component state until the
+			// next keypress happens to trigger a repaint.
+			this.ui.requestRender();
 		}
 	}
 

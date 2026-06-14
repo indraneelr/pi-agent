@@ -6,7 +6,9 @@
 
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
+import { getActivePhase } from "../checklist.js";
 import type { SearchProvider, SearchResult } from "../search/types.js";
+import type { TravelState } from "../state.js";
 
 const webSearchSchema = Type.Object({
 	query: Type.String({
@@ -23,9 +25,17 @@ export interface WebSearchDetails {
 	provider: string;
 }
 
+export interface WebSearchOptions {
+	getState?: () => TravelState;
+	/** Hard cap for shortlist_destinations research. Default: 2. */
+	shortlistSearchLimit?: number;
+}
+
 export function createWebSearchTool(
 	searchProvider: SearchProvider,
+	options: WebSearchOptions = {},
 ): AgentTool<typeof webSearchSchema, WebSearchDetails> {
+	const searchCountsByPhase = new Map<string, number>();
 	return {
 		name: "web_search",
 		label: "Web Search",
@@ -38,6 +48,31 @@ export function createWebSearchTool(
 			params: WebSearchInput,
 			signal?: AbortSignal,
 		): Promise<AgentToolResult<WebSearchDetails>> {
+			const state = options.getState?.();
+			const activePhase = state ? getActivePhase(state.checklist)?.id : undefined;
+			const phaseKey = state ? `${state.sessionId}:${activePhase ?? "unknown"}` : undefined;
+			const shortlistLimit = options.shortlistSearchLimit ?? 2;
+
+			if (activePhase === "shortlist_destinations" && phaseKey) {
+				const priorCount = searchCountsByPhase.get(phaseKey) ?? 0;
+				if (priorCount >= shortlistLimit) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: "Shortlist research search budget exhausted for this phase. Do not call web_search again now. Use the available search results plus stable travel knowledge, mark live/current claims as estimates, and immediately call save_destination_shortlist with complete option cards before writing prose.",
+							},
+						],
+						details: {
+							query: params.query,
+							resultCount: 0,
+							provider: `${searchProvider.name}:shortlist-budget`,
+						},
+					};
+				}
+				searchCountsByPhase.set(phaseKey, priorCount + 1);
+			}
+
 			const numResults = Math.min(params.num_results ?? 5, 10);
 			const results = await searchProvider.search(params.query, numResults, signal);
 			const formatted = formatSearchResults(results);

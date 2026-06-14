@@ -5,12 +5,13 @@
  *
  * Usage:
  *   travel-agent                           # auto-detect provider from env vars
- *   travel-agent --provider anthropic      # specify provider
+ *                                          # OLLAMA_API_KEY is preferred when set
+ *   travel-agent --provider ollama         # use Ollama Cloud
  *   travel-agent --session-id my-trip      # resume a session
  */
 
 import { randomUUID } from "node:crypto";
-import { getEnvApiKey, getModel } from "@mariozechner/pi-ai";
+import { getModel } from "@mariozechner/pi-ai";
 import { createTravelSession } from "./core/sdk.js";
 import { detectSearchProvider } from "./core/search/index.js";
 import { InteractiveMode } from "./modes/interactive.js";
@@ -70,25 +71,22 @@ Usage:
   travel-agent [options]
 
 Options:
-  --provider, -p <name>      LLM provider (anthropic, openai, google, etc.)
-  --model, -m <id>           Model ID (claude-sonnet-4-20250514, gpt-4o, etc.)
+  --provider, -p <name>      LLM provider (ollama only; Ollama Cloud via OpenAI-compatible API)
+  --model, -m <id>           Ollama Cloud model ID (kimi-k2.6, glm-5, minimax-m2.7, etc.)
   --session-id, -s <id>      Session ID for persistence (auto-generated if not set)
   --data-dir <path>          Directory for session data (default: ./travel-data)
   --checklist-config <path>  Path to checklist config JSON
   --help, -h                 Show this help
 
 Environment Variables:
-  ANTHROPIC_API_KEY          Anthropic
-  OPENAI_API_KEY             OpenAI
-  GEMINI_API_KEY             Google Gemini
-  GROQ_API_KEY               Groq
-  XAI_API_KEY                xAI
-  OPENROUTER_API_KEY         OpenRouter
+  OLLAMA_API_KEY             Required Ollama Cloud key. Used for the main travel
+                             agent LLM by default (kimi-k2.6 via
+                             https://ollama.com/v1) and for Stagehand search
+                             (ollama/minimax-m2.7:cloud via
+                             https://ollama.com/api). Create one at
+                             https://ollama.com/settings/keys
 
   Web search (Stagehand is the default — opt-out with USE_STAGEHAND=0):
-  OLLAMA_API_KEY             API key for the default Stagehand LLM
-                             (ollama/minimax-m2.7:cloud). Create one at
-                             https://ollama.com/settings/keys
   STAGEHAND_MODEL            Override Stagehand LLM, "provider/model" form
                              (default: ollama/minimax-m2.7:cloud)
   STAGEHAND_API_KEY          Override the Stagehand LLM API key (takes
@@ -110,8 +108,8 @@ Environment Variables:
   GEMINI_API_KEY             Google Gemini Search
   USE_OBSCURA                Set to 1 to use Obscura headless browser
 
-At least one LLM API key is required. Stagehand (default) needs OLLAMA_API_KEY
-unless STAGEHAND_MODEL is changed to a non-Ollama model.
+OLLAMA_API_KEY is required for the main travel agent LLM. By default, the
+Stagehand search path also uses OLLAMA_API_KEY unless STAGEHAND_API_KEY is set.
 `);
 }
 
@@ -119,15 +117,10 @@ unless STAGEHAND_MODEL is changed to a non-Ollama model.
 // Provider Detection
 // =============================================================================
 
-const PROVIDER_ALIASES: Record<string, string> = { gemini: "google" };
+const PROVIDER_ALIASES: Record<string, string> = {};
 
 const PROVIDER_DEFAULTS: Record<string, string> = {
-	anthropic: "claude-sonnet-4-20250514",
-	openai: "gpt-4o",
-	google: "gemini-2.5-flash",
-	groq: "llama-3.3-70b-versatile",
-	xai: "grok-3-mini",
-	openrouter: "anthropic/claude-sonnet-4",
+	ollama: "kimi-k2.6",
 };
 
 interface DetectedModel {
@@ -136,31 +129,43 @@ interface DetectedModel {
 	apiKey: string;
 }
 
+function createOllamaCloudModel(modelId = PROVIDER_DEFAULTS.ollama) {
+	return {
+		id: modelId,
+		name: `Ollama Cloud: ${modelId}`,
+		api: "openai-completions" as const,
+		provider: "ollama",
+		baseUrl: "https://ollama.com/v1",
+		reasoning: false,
+		input: ["text" as const],
+		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		contextWindow: 128_000,
+		maxTokens: 16_384,
+		compat: {
+			supportsStore: false,
+			supportsDeveloperRole: false,
+			supportsReasoningEffort: false,
+			supportsUsageInStreaming: true,
+			maxTokensField: "max_tokens" as const,
+			supportsStrictMode: false,
+			supportsLongCacheRetention: false,
+		},
+	};
+}
+
 function detectModel(preferredProvider?: string, preferredModel?: string): DetectedModel | null {
-	if (preferredProvider) {
-		const provider = PROVIDER_ALIASES[preferredProvider] ?? preferredProvider;
-		const apiKey = getEnvApiKey(provider);
-		if (!apiKey) {
-			console.error(`No API key found for provider "${provider}".`);
-			process.exit(1);
-		}
-		const modelId = preferredModel ?? PROVIDER_DEFAULTS[provider];
-		if (!modelId) {
-			console.error(`No default model for "${provider}". Use --model.`);
-			process.exit(1);
-		}
-		return { provider, modelId, apiKey };
+	const provider = preferredProvider ? (PROVIDER_ALIASES[preferredProvider] ?? preferredProvider) : "ollama";
+	if (provider !== "ollama") {
+		console.error(`Unsupported provider "${provider}". This travel-agent path is configured for Ollama Cloud only.`);
+		process.exit(1);
 	}
 
-	const searchOrder = ["anthropic", "openai", "google", "groq", "xai", "openrouter"];
-	for (const provider of searchOrder) {
-		const apiKey = getEnvApiKey(provider);
-		if (apiKey) {
-			const modelId = preferredModel ?? PROVIDER_DEFAULTS[provider];
-			if (modelId) return { provider, modelId, apiKey };
-		}
+	const apiKey = process.env.OLLAMA_API_KEY;
+	if (!apiKey) {
+		console.error('No API key found for provider "ollama". Set OLLAMA_API_KEY.');
+		process.exit(1);
 	}
-	return null;
+	return { provider: "ollama", modelId: preferredModel ?? PROVIDER_DEFAULTS.ollama, apiKey };
 }
 
 // =============================================================================
@@ -183,7 +188,10 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	const model = getModel(detected.provider as any, detected.modelId as any);
+	const model =
+		detected.provider === "ollama"
+			? createOllamaCloudModel(detected.modelId)
+			: getModel(detected.provider as any, detected.modelId as any);
 	if (!model) {
 		console.error(`Model "${detected.modelId}" not found for provider "${detected.provider}".`);
 		process.exit(1);

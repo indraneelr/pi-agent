@@ -8,11 +8,12 @@
 
 import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
+import { scoreActivityResearchQuality } from "../activity-fit.js";
 import { getActivePhase } from "../checklist.js";
 import type { PersistenceOptions } from "../persistence.js";
 import { saveTravelState } from "../persistence.js";
 import type { TravelState } from "../state.js";
-import type { DestinationResearch, SubDestination } from "../types.js";
+import { normalizeDestinationResearch } from "./destination-research.js";
 
 const VALID_FIELDS = [
 	"preferences",
@@ -49,9 +50,11 @@ export function createUpdateStateTool(deps: UpdateStateDeps): AgentTool<typeof u
 		name: "update_travel_state",
 		label: "Update Travel State",
 		description:
-			"Save structured travel data to the session state. " +
+			"Save structured travel data to the session state. Call this tool whenever you have completed a checklist phase artifact; do not merely say you will save it. " +
 			`Valid fields: ${VALID_FIELDS.join(", ")}. ` +
 			"For 'preferences', pass the full or partial preferences object (will be merged). " +
+			"Prefer the dedicated save_destination_shortlist tool for 'destination_research' option cards, but this field remains supported for backward compatibility. " +
+			"For 'activities_research', every activity is quality-validated against the selected destinations and current preferences: provide 4-6 activities per selected place, valid duration/cost/tips fields, and practical caveats tied to stated axes such as logistics, budget, season/dates, trip length, kids/family, beaches, culture, or food. If validation fails, fix the named activities and call this tool again. " +
 			"For other fields, pass the complete research output object.",
 		parameters: updateStateSchema,
 		async execute(_toolCallId: string, params: UpdateStateInput): Promise<AgentToolResult<UpdateStateDetails>> {
@@ -108,10 +111,12 @@ function applyUpdate(state: TravelState, field: UpdateField, data: unknown): Tra
 		case "selected_destinations":
 			updated.selectedDestinations = data as TravelState["selectedDestinations"];
 			break;
-		case "activities_research":
-			validateActivitiesResearch(data, state);
-			updated.activitiesResearch = data as TravelState["activitiesResearch"];
+		case "activities_research": {
+			const normalized = normalizeActivitiesResearch(data);
+			validateActivitiesResearch(normalized, state);
+			updated.activitiesResearch = normalized;
 			break;
+		}
 		case "itinerary_research":
 			updated.itineraryResearch = data as TravelState["itineraryResearch"];
 			break;
@@ -128,131 +133,114 @@ function applyUpdate(state: TravelState, field: UpdateField, data: unknown): Tra
 	return updated;
 }
 
-function normalizeDestinationResearch(data: unknown, state: TravelState): DestinationResearch {
-	if (!data || typeof data !== "object") {
-		throw new Error("destination_research must be an object.");
-	}
-	const raw = data as Record<string, any>;
-	const rawOptions = raw.subDestinations ?? raw.destinations ?? raw.destination_research;
-	if (!Array.isArray(rawOptions)) {
-		throw new Error(
-			"destination_research must include subDestinations, destinations, or destination_research as an array of option cards.",
-		);
+function normalizeActivitiesResearch(data: unknown): NonNullable<TravelState["activitiesResearch"]> {
+	if (data && typeof data === "object" && Array.isArray((data as Record<string, any>).activities)) {
+		return {
+			...(data as Record<string, any>),
+			activities: (data as Record<string, any>).activities.map((activity: any) => normalizeActivity(activity)),
+		} as NonNullable<TravelState["activitiesResearch"]>;
 	}
 
-	const options = rawOptions.map((item: Record<string, any>) => normalizeSubDestination(item));
-	validateDestinationOptionCards(options, state);
+	const activities: any[] = [];
+	collectActivities(data, undefined, activities);
+	if (activities.length > 0) {
+		return { activities } as NonNullable<TravelState["activitiesResearch"]>;
+	}
 
-	return {
-		destination: raw.destination ?? {
-			title: String(state.preferences.destination ?? "Destination options"),
-			name: String(state.preferences.destination ?? "Destination options"),
-			description: raw.overallSummary ?? raw.summary ?? "Curated destination options.",
-			bestTimeToVisit: raw.bestTimeToVisit ?? "Check current seasonal guidance for the travel dates.",
-			reviews: raw.reviews ?? {},
-			sources: raw.sources ?? [],
-		},
-		subDestinations: options,
-		overallSummary: raw.overallSummary ?? raw.summary ?? "Curated options matching the user's preferences.",
-		tripHighlights: Array.isArray(raw.tripHighlights) ? raw.tripHighlights : [],
-		travelTips: Array.isArray(raw.travelTips) ? raw.travelTips : [],
-		preferencesUsed: raw.preferencesUsed ?? {
-			themes: state.preferences.travel_themes ?? state.preferences.interests ?? [],
-			groupType: state.preferences.group_type ?? "unknown",
-			numNights: state.preferences.num_nights,
-			interests: state.preferences.interests,
-		},
-		nextUserAction:
-			raw.nextUserAction ??
-			`Choose the places you want to include${state.preferences.num_nights ? ` for the ${state.preferences.num_nights}-night trip` : ""}.`,
-		schemaVersion: "2.0.0",
+	const keys =
+		data && typeof data === "object" ? Object.keys(data as Record<string, unknown>).join(", ") : typeof data;
+	throw new Error(
+		`activities_research must include activities as a top-level array, or a grouped shape such as { destinations: [{ name, activities }] }, { byDestination: { Tokyo: [...] } }, or { Tokyo: { recommended, switchable } }. Received keys/type: ${keys || "none"}.`,
+	);
+}
+
+function collectActivities(value: unknown, locationHint: string | undefined, out: any[]): void {
+	if (!value || typeof value !== "object") return;
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			if (looksLikeActivity(item)) out.push(normalizeActivity(item, locationHint));
+			else collectActivities(item, locationHint, out);
+		}
+		return;
+	}
+
+	const record = value as Record<string, any>;
+	let collectedGrouped = false;
+
+	if (Array.isArray(record.activities)) {
+		const nestedLocation = stringValue(record.name) ?? stringValue(record.location) ?? locationHint;
+		for (const item of record.activities) out.push(normalizeActivity(item, nestedLocation));
+		collectedGrouped = true;
+	}
+	if (Array.isArray(record.recommended)) {
+		for (const item of record.recommended) out.push(normalizeActivity(item, locationHint, "recommended"));
+		collectedGrouped = true;
+	}
+	if (Array.isArray(record.switchable)) {
+		for (const item of record.switchable) out.push(normalizeActivity(item, locationHint, "switchable"));
+		collectedGrouped = true;
+	}
+	if (Array.isArray(record.alternatives)) {
+		for (const item of record.alternatives) out.push(normalizeActivity(item, locationHint, "switchable"));
+		collectedGrouped = true;
+	}
+	if (Array.isArray(record.destinations)) {
+		for (const destination of record.destinations) {
+			const nestedLocation = stringValue(destination?.name) ?? stringValue(destination?.location) ?? locationHint;
+			collectActivities(destination, nestedLocation, out);
+		}
+		collectedGrouped = true;
+	}
+	if (record.byDestination && typeof record.byDestination === "object") {
+		for (const [destinationName, grouped] of Object.entries(record.byDestination))
+			collectActivities(grouped, destinationName, out);
+		collectedGrouped = true;
+	}
+	if (collectedGrouped) return;
+
+	if (looksLikeActivity(record)) {
+		out.push(normalizeActivity(record, locationHint));
+		return;
+	}
+
+	for (const [key, nested] of Object.entries(record)) {
+		if (["activities", "recommended", "switchable", "alternatives", "destinations", "byDestination"].includes(key))
+			continue;
+		if (nested && typeof nested === "object" && !Array.isArray(nested)) collectActivities(nested, key, out);
+	}
+}
+
+function normalizeActivity(activity: any, locationHint?: string, priority?: "recommended" | "switchable"): any {
+	const normalized = {
+		...activity,
+		location: stringValue(activity?.location) ?? locationHint,
+		reviews: activity?.reviews ?? {},
+		sources: Array.isArray(activity?.sources) ? activity.sources : [],
 	};
-}
-
-function normalizeSubDestination(item: Record<string, any>): SubDestination {
-	const name = item.name ?? item.location ?? item.title;
-	const why = item.why ?? item.reason;
-	const bestFor = item.bestFor ?? item.best_for ?? inferBestFor(item);
-	const imageQuery =
-		item.imageQuery ?? item.imageKeywords ?? (name ? `${name} travel ${bestFor ?? "highlights"}` : undefined);
-	return {
-		...item,
-		name,
-		type: item.type ?? "place",
-		description: item.description,
-		bestFor,
-		why,
-		roughDays: item.roughDays ?? item.rough_days ?? item.dayAllocation ?? item.day_allocation,
-		logisticsFit: item.logisticsFit ?? item.logistics_fit ?? item.logistics,
-		budgetFit: item.budgetFit ?? item.budget_fit ?? item.budgetNote ?? item.budget_note,
-		seasonNote: item.seasonNote ?? item.season_note ?? item.weatherNote ?? item.weather_note,
-		tradeoff: item.tradeoff ?? item.tradeOff ?? item.downside,
-		imageQuery,
-		selected: item.selected ?? false,
-		reviews: item.reviews ?? {},
-		sources: Array.isArray(item.sources) ? item.sources : [],
-	};
-}
-
-function inferBestFor(item: Record<string, any>): string | undefined {
-	const text = JSON.stringify(item).toLowerCase();
-	if (text.includes("beach")) return "best for beaches";
-	if (text.includes("food")) return "best for food";
-	if (text.includes("history") || text.includes("archaeolog") || text.includes("myth")) return "best for history";
-	if (text.includes("family") || text.includes("kid")) return "best for families";
-	if (text.includes("value") || text.includes("budget")) return "best value";
-	return undefined;
-}
-
-function validateDestinationOptionCards(options: SubDestination[], state: TravelState): void {
-	const destination = String(state.preferences.destination ?? "").trim();
-	const numNights = Number(state.preferences.num_nights ?? 0);
-	const broadDestination = destination.length > 0;
-	if (broadDestination) {
-		const isSurprise = /surprise|anywhere|options|not sure|undecided/i.test(destination);
-		const min = isSurprise ? 3 : 8;
-		const max = isSurprise ? 5 : numNights > 14 ? 12 : 10;
-		if (options.length < min || options.length > max) {
-			throw new Error(`destination_research must include ${min}-${max} option cards; received ${options.length}.`);
-		}
+	if (priority && normalized.priority == null) normalized.priority = priority;
+	const duration = normalized.estimatedDurationHours ?? normalized.durationHours ?? normalized.duration_hours;
+	if (typeof duration === "string") {
+		const match = duration.match(/\d+(?:\.\d+)?/);
+		if (match) normalized.estimatedDurationHours = Number(match[0]);
+	} else if (typeof duration === "number") {
+		normalized.estimatedDurationHours = duration;
 	}
-
-	const seen = new Set<string>();
-	for (const option of options) {
-		const name = String(option.name ?? "").trim();
-		if (!name) throw new Error("Each destination option must include a non-empty name.");
-		const key = name.toLowerCase();
-		if (seen.has(key)) throw new Error(`Duplicate destination option: ${name}`);
-		seen.add(key);
-		for (const field of [
-			"description",
-			"bestFor",
-			"why",
-			"roughDays",
-			"logisticsFit",
-			"budgetFit",
-			"seasonNote",
-			"tradeoff",
-		] as const) {
-			const value = option[field];
-			if (typeof value !== "string" || value.trim().length < 6) {
-				throw new Error(`Destination option "${name}" is missing a useful ${field} field.`);
-			}
-		}
-		if (looksLikeCopiedDescription(option, options)) {
-			throw new Error(`Destination option "${name}" appears to reuse another option's description.`);
-		}
+	const cost = normalized.estimatedCost ?? normalized.cost ?? normalized.price;
+	if (typeof cost === "string") {
+		const match = cost.match(/\d+(?:\.\d+)?/);
+		if (match) normalized.estimatedCost = Number(match[0]);
+	} else if (typeof cost === "number") {
+		normalized.estimatedCost = cost;
 	}
+	return normalized;
 }
 
-function looksLikeCopiedDescription(option: SubDestination, options: SubDestination[]): boolean {
-	const own = normalizeText(option.description);
-	if (own.length < 40) return false;
-	return options.some((other) => other !== option && normalizeText(other.description) === own);
+function looksLikeActivity(value: unknown): boolean {
+	return !!value && typeof value === "object" && typeof (value as Record<string, any>).name === "string";
 }
 
-function normalizeText(text: string): string {
-	return text.toLowerCase().replace(/\s+/g, " ").trim();
+function stringValue(value: unknown): string | undefined {
+	return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function validateActivitiesResearch(data: unknown, state: TravelState): void {
@@ -271,6 +259,18 @@ function validateActivitiesResearch(data: unknown, state: TravelState): void {
 		if (count < 4 || count > 6) {
 			throw new Error(`Expected 4-6 activity options for ${selected.name}; received ${count}.`);
 		}
+	}
+
+	const quality = scoreActivityResearchQuality(
+		research.activities,
+		state.preferences,
+		state.selectedDestinations.map((destination) => ({ name: destination.name })),
+	);
+	if (!quality.pass) {
+		throw new Error(
+			"activities_research failed quality validation. Fix and call update_travel_state again. " +
+				quality.issues.map((issue) => `activity-quality: ${issue}`).join(" "),
+		);
 	}
 }
 

@@ -10,6 +10,7 @@ import type { TravelState } from "../src/core/state.js";
 import { createTravelState } from "../src/core/state.js";
 import { createAdvanceChecklistTool } from "../src/core/tools/advance-checklist.js";
 import { createGoBackTool } from "../src/core/tools/go-back.js";
+import { createSaveDestinationShortlistTool } from "../src/core/tools/save-destination-shortlist.js";
 import { createShowChecklistTool } from "../src/core/tools/show-checklist.js";
 import { createUpdateStateTool } from "../src/core/tools/update-state.js";
 
@@ -120,6 +121,197 @@ describe("Travel Tools", () => {
 			const loaded = loadTravelState("tool-test", persistOpts);
 			expect(loaded).not.toBeNull();
 			expect(loaded!.preferences.destination).toBe("Paris");
+		});
+
+		it("should reject activities_research when activity caveats do not map to stated preferences", async () => {
+			fillMandatoryPreferences();
+			state.preferences.travel_themes = ["food", "culture", "history"];
+			state.selectedDestinations = [
+				{ name: "Tokyo", type: "place", description: "Selected", reviews: {}, sources: [] },
+			];
+			const tool = createUpdateStateTool(makeDeps());
+			const activities = [
+				makeActivity("Tokyo Food Market", "Tokyo", {
+					tips: "Bring a blue hat because photos look nicer.",
+				}),
+				makeActivity("Tokyo Museum Walk", "Tokyo"),
+				makeActivity("Tokyo Izakaya Evening", "Tokyo"),
+				makeActivity("Tokyo Temple Morning", "Tokyo"),
+			];
+
+			await expect(tool.execute("t6", { field: "activities_research", data: { activities } })).rejects.toThrow(
+				/activity-quality.*does not map to a relevant preference axis/,
+			);
+		});
+
+		it("should accept activities_research when all activities meet selected-place quality gates", async () => {
+			fillMandatoryPreferences();
+			state.preferences.travel_themes = ["food", "culture", "history"];
+			state.selectedDestinations = [
+				{ name: "Tokyo", type: "place", description: "Selected", reviews: {}, sources: [] },
+			];
+			const tool = createUpdateStateTool(makeDeps());
+			const activities = [
+				makeActivity("Tokyo Food Market", "Tokyo"),
+				makeActivity("Tokyo Museum Walk", "Tokyo"),
+				makeActivity("Tokyo Izakaya Evening", "Tokyo"),
+				makeActivity("Tokyo Temple Morning", "Tokyo"),
+			];
+
+			await tool.execute("t7", { field: "activities_research", data: { activities } });
+
+			expect(state.activitiesResearch!.activities).toHaveLength(4);
+		});
+
+		it("should normalize grouped recommended/switchable activities into the persisted activities array", async () => {
+			fillMandatoryPreferences();
+			state.preferences.travel_themes = ["food", "culture", "history"];
+			state.selectedDestinations = [
+				{ name: "Tokyo", type: "place", description: "Selected", reviews: {}, sources: [] },
+			];
+			const tool = createUpdateStateTool(makeDeps());
+
+			await tool.execute("t8", {
+				field: "activities_research",
+				data: {
+					Tokyo: {
+						recommended: [makeActivity("Tokyo Food Market", "", { location: undefined })],
+						switchable: [
+							makeActivity("Tokyo Museum Walk", "", { location: undefined }),
+							makeActivity("Tokyo Izakaya Evening", "", { location: undefined }),
+							makeActivity("Tokyo Temple Morning", "", { location: undefined }),
+						],
+					},
+				},
+			});
+
+			expect(state.activitiesResearch!.activities).toHaveLength(4);
+			expect(state.activitiesResearch!.activities.map((activity) => activity.location)).toEqual([
+				"Tokyo",
+				"Tokyo",
+				"Tokyo",
+				"Tokyo",
+			]);
+			expect((state.activitiesResearch!.activities[0] as any).priority).toBe("recommended");
+			expect((state.activitiesResearch!.activities[1] as any).priority).toBe("switchable");
+		});
+
+		it("should normalize destinations array activities without saving the destination wrapper as an activity", async () => {
+			fillMandatoryPreferences();
+			state.preferences.travel_themes = ["food", "culture", "history"];
+			state.selectedDestinations = [
+				{ name: "Tokyo", type: "place", description: "Selected", reviews: {}, sources: [] },
+			];
+			const tool = createUpdateStateTool(makeDeps());
+
+			await tool.execute("t9", {
+				field: "activities_research",
+				data: {
+					destinations: [
+						{
+							name: "Tokyo",
+							activities: [
+								makeActivity("Tokyo Food Market", "", { location: undefined }),
+								makeActivity("Tokyo Museum Walk", "", { location: undefined }),
+								makeActivity("Tokyo Izakaya Evening", "", { location: undefined }),
+								makeActivity("Tokyo Temple Morning", "", { location: undefined }),
+							],
+						},
+					],
+				},
+			});
+
+			expect(state.activitiesResearch!.activities).toHaveLength(4);
+			expect(state.activitiesResearch!.activities.map((activity) => activity.name)).toEqual([
+				"Tokyo Food Market",
+				"Tokyo Museum Walk",
+				"Tokyo Izakaya Evening",
+				"Tokyo Temple Morning",
+			]);
+			expect(state.activitiesResearch!.activities.map((activity) => activity.location)).toEqual([
+				"Tokyo",
+				"Tokyo",
+				"Tokyo",
+				"Tokyo",
+			]);
+		});
+	});
+
+	describe("save_destination_shortlist", () => {
+		beforeEach(() => {
+			fillMandatoryPreferences();
+		});
+
+		it("should save destinationResearch from a narrow schema", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			const result = await tool.execute("t1", {
+				subDestinations: Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`)),
+			});
+
+			expect(state.destinationResearch).not.toBeNull();
+			expect(state.destinationResearch!.subDestinations).toHaveLength(8);
+			expect(state.destinationResearch!.subDestinations[0].name).toBe("Place 0");
+			expect((result.content[0] as any).text).toContain("8 option card");
+			expect(result.details.optionCount).toBe(8);
+		});
+
+		it("should persist to disk after save", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			await tool.execute("t2", {
+				subDestinations: Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`)),
+			});
+
+			const loaded = loadTravelState("tool-test", persistOpts);
+			expect(loaded).not.toBeNull();
+			expect(loaded!.destinationResearch).not.toBeNull();
+			expect(loaded!.destinationResearch!.subDestinations).toHaveLength(8);
+		});
+
+		it("should normalize option cards and infer nextUserAction", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			await tool.execute("t3", {
+				subDestinations: Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`)),
+				overallSummary: "A curated Japan menu.",
+			});
+
+			expect(state.destinationResearch!.overallSummary).toBe("A curated Japan menu.");
+			expect(state.destinationResearch!.nextUserAction).toContain("Choose");
+			expect(state.destinationResearch!.schemaVersion).toBe("2.0.0");
+		});
+
+		it("should reject too few option cards (reuses validation)", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			await expect(
+				tool.execute("t4", {
+					subDestinations: [makeSubDestination("Only One")],
+				}),
+			).rejects.toThrow(/8-10 option cards.*received 1/);
+		});
+
+		it("should accept concise numeric roughDays values", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			const cards = Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`));
+			cards[0].roughDays = "2";
+			cards[1].roughDays = "3–4";
+
+			await tool.execute("t5", { subDestinations: cards });
+
+			expect(state.destinationResearch!.subDestinations[0].roughDays).toBe("2");
+		});
+
+		it("should reject thin option cards missing required fields", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			const cards = Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`));
+			delete (cards[3] as any).tradeoff;
+			await expect(tool.execute("t5", { subDestinations: cards })).rejects.toThrow(/missing.*tradeoff/);
+		});
+
+		it("should reject destination option cards without image links", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			const cards = Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`));
+			delete (cards[2] as any).imageLinks;
+
+			await expect(tool.execute("t6", { subDestinations: cards })).rejects.toThrow(/imageLinks/);
 		});
 	});
 
@@ -234,6 +426,43 @@ describe("Travel Tools", () => {
 			tripHighlights: ["a"],
 			travelTips: ["b"],
 			preferencesUsed: { themes: ["cultural"], groupType: "couple" },
+		};
+	}
+
+	function makeSubDestination(name: string) {
+		return {
+			name,
+			type: "place",
+			description: `Description of ${name} for trip planning purposes.`,
+			bestFor: "best for cultural exploration and local cuisine experiences",
+			why: `${name} is an excellent choice for travelers seeking authentic cultural experiences`,
+			roughDays: "2 to 3 days recommended for a thorough visit",
+			logisticsFit: "Well connected by train and bus routes from major hubs",
+			budgetFit: "Fits a mid-range budget comfortably with good value options",
+			seasonNote: "Good weather with occasional afternoon rain showers",
+			tradeoff: "Can be very crowded during peak tourist season months",
+			imageQuery: `${name} travel highlights`,
+			imageLinks: [`https://example.com/images/${encodeURIComponent(name)}.jpg`],
+			reviews: { rating: 4.5, reviewSummary: "Highly rated by visitors", sources: [] },
+			sources: [],
+		};
+	}
+
+	function makeActivity(name: string, location: string, overrides: Record<string, unknown> = {}) {
+		return {
+			name,
+			type: "food culture history experience",
+			description: `${name} is a Tokyo cultural food experience with historic neighborhoods, local cuisine, easy transit access, and a realistic pace for the trip.`,
+			location,
+			estimatedDurationHours: 3,
+			estimatedCost: 45,
+			reviews: { rating: 4.6, reviewSummary: "Well reviewed by travelers", sources: [] },
+			suitableForGroups: ["couple"],
+			themes: ["food", "culture", "history"],
+			tips: "Book an early morning slot in April because peak-season crowds and queues can eat into the 9-night trip pace.",
+			bestTimeToVisit: "Morning in April for lighter crowds and manageable queues.",
+			sources: ["https://example.com/activity"],
+			...overrides,
 		};
 	}
 });
