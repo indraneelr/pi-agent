@@ -96,46 +96,46 @@ These are the highest-priority tasks. Do these first. The goal is one working br
 
 ### 6. Create the web app package
 
-- [ ] Create `packages/travel-agent-web`.
-  - [ ] React + Vite.
-  - [ ] TypeScript strict mode.
+- [x] Create `packages/travel-agent-web`.
+  - [x] React + Vite.
+  - [x] TypeScript strict mode.
   - [ ] Tailwind or existing design system.
-  - [ ] Scripts: `dev`, `build`, `check`, `test`.
-- [ ] Build the base app shell.
-  - [ ] Header.
-  - [ ] Main chat column.
-  - [ ] Right sidebar.
-  - [ ] Responsive mobile layout.
-  - [ ] Loading/error states.
-- [ ] Implement API client.
-  - [ ] Create session.
-  - [ ] Get session state.
-  - [ ] Send message.
-  - [ ] Surface server errors clearly.
+  - [x] Scripts: `dev`, `build`, `check`, `test`.
+- [x] Build the base app shell.
+  - [x] Header.
+  - [x] Main chat column.
+  - [x] Right sidebar.
+  - [x] Responsive mobile layout.
+  - [x] Loading/error states.
+- [x] Implement API client.
+  - [x] Create session.
+  - [x] Get session state.
+  - [x] Send message.
+  - [x] Surface server errors clearly.
 
 ### 7. Build the first non-streaming browser flow
 
-- [ ] Implement session lifecycle.
-  - [ ] Create new session.
-  - [ ] Resume session from URL/local storage.
-  - [ ] Reset session.
-  - [ ] Show session/run status.
-- [ ] Build `TravelChat` MVP.
-  - [ ] Message list.
-  - [ ] Message composer.
-  - [ ] Send message to non-streaming REST endpoint.
-  - [ ] Render assistant response.
-- [ ] Build `TravelSidebar` MVP.
-  - [ ] Checklist progress.
-  - [ ] Current phase.
-  - [ ] Preferences summary.
-  - [ ] Selected destinations.
+- [x] Implement session lifecycle.
+  - [x] Create new session.
+  - [x] Resume session from URL/local storage.
+  - [x] Reset session.
+  - [x] Show session/run status.
+- [x] Build `TravelChat` MVP.
+  - [x] Message list.
+  - [x] Message composer.
+  - [x] Send message to non-streaming REST endpoint.
+  - [x] Render assistant response.
+- [x] Build `TravelSidebar` MVP.
+  - [x] Checklist progress.
+  - [x] Current phase.
+  - [x] Preferences summary.
+  - [x] Selected destinations.
 - [ ] Verify in browser.
-  - [ ] App renders actual UI inside `#root`.
-  - [ ] Create session from browser.
+  - [x] App renders actual UI inside `#root`.
+  - [x] Create session from browser.
   - [ ] Send one real trip prompt.
   - [ ] Assistant response appears.
-  - [ ] Sidebar updates from returned state snapshot.
+  - [x] Sidebar updates from returned state snapshot.
 
 ## P1 — Make it feel like an agent product
 

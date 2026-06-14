@@ -1,0 +1,241 @@
+:root {
+	font-family:
+		Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+	color: #f7f2ea;
+	background: #11100f;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	min-width: 320px;
+	min-height: 100vh;
+	background:
+		radial-gradient(circle at 20% 10%, rgba(245, 158, 11, 0.16), transparent 30rem),
+		linear-gradient(135deg, #171412 0%, #101827 100%);
+}
+
+button,
+input {
+	font: inherit;
+}
+
+.app-shell {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 380px;
+	gap: 1rem;
+	min-height: 100vh;
+	padding: 1rem;
+}
+
+.chat-column,
+.sidebar {
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(13, 13, 14, 0.72);
+	backdrop-filter: blur(18px);
+	border-radius: 24px;
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
+}
+
+.chat-column {
+	display: flex;
+	flex-direction: column;
+	min-height: calc(100vh - 2rem);
+	overflow: hidden;
+}
+
+.app-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 1rem;
+	padding: 1.25rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+h1,
+h2,
+p {
+	margin: 0;
+}
+
+h1 {
+	font-size: clamp(1.5rem, 3vw, 2.5rem);
+	letter-spacing: -0.04em;
+}
+
+.eyebrow {
+	margin-bottom: 0.4rem;
+	color: #fbbf24;
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+}
+
+.secondary-button,
+.composer button {
+	border: 0;
+	border-radius: 999px;
+	padding: 0.75rem 1rem;
+	color: #11100f;
+	background: #fbbf24;
+	font-weight: 800;
+	cursor: pointer;
+}
+
+.secondary-button {
+	background: rgba(255, 255, 255, 0.12);
+	color: #f7f2ea;
+}
+
+button:disabled,
+input:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.error-banner {
+	margin: 1rem 1.25rem 0;
+	padding: 0.9rem 1rem;
+	border: 1px solid rgba(248, 113, 113, 0.4);
+	border-radius: 16px;
+	background: rgba(127, 29, 29, 0.38);
+	color: #fecaca;
+}
+
+.messages {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	padding: 1.25rem;
+	overflow: auto;
+}
+
+.empty-state {
+	margin: auto;
+	max-width: 560px;
+	text-align: center;
+	color: #d6d3d1;
+}
+
+.empty-state h2 {
+	margin-bottom: 0.5rem;
+	color: #fff7ed;
+	font-size: 2rem;
+}
+
+.message {
+	max-width: 760px;
+	padding: 1rem;
+	border-radius: 18px;
+	line-height: 1.55;
+}
+
+.message.user {
+	align-self: flex-end;
+	background: #fbbf24;
+	color: #18130a;
+}
+
+.message.assistant {
+	align-self: flex-start;
+	background: rgba(255, 255, 255, 0.1);
+	color: #f7f2ea;
+}
+
+.composer {
+	display: grid;
+	grid-template-columns: 1fr auto;
+	gap: 0.75rem;
+	padding: 1.25rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.composer input {
+	width: 100%;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 999px;
+	padding: 0.85rem 1rem;
+	background: rgba(255, 255, 255, 0.08);
+	color: #fff7ed;
+	outline: none;
+}
+
+.sidebar {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+	max-height: calc(100vh - 2rem);
+	padding: 1rem;
+	overflow: auto;
+}
+
+.session-card,
+.state-card {
+	padding: 1rem;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	border-radius: 20px;
+	background: rgba(255, 255, 255, 0.06);
+}
+
+.session-card code {
+	word-break: break-all;
+	color: #bfdbfe;
+}
+
+.state-card p {
+	color: #d6d3d1;
+	line-height: 1.5;
+}
+
+.checklist {
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	padding: 0;
+	margin: 0;
+	list-style: none;
+}
+
+.checklist li {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.65rem 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checklist li.active span {
+	color: #fbbf24;
+	font-weight: 800;
+}
+
+.checklist small {
+	color: #a8a29e;
+}
+
+pre {
+	overflow: auto;
+	margin: 0;
+	color: #d6d3d1;
+	font-size: 0.8rem;
+}
+
+@media (max-width: 900px) {
+	.app-shell {
+		grid-template-columns: 1fr;
+	}
+
+	.sidebar {
+		max-height: none;
+	}
+
+	.composer {
+		grid-template-columns: 1fr;
+	}
+}
