@@ -1,0 +1,173 @@
+/**
+ * Tests for the travel agent server.
+ *
+ * Uses Fastify's inject() to test routes without binding a port.
+ * No real LLM calls are made — the happy-path tests use a mock
+ * TravelSessionManager.
+ */
+
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type { FastifyInstance } from "fastify";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
+import { loadConfig } from "../src/config.js";
+import { createServer } from "../src/server.js";
+import type { TravelSessionManager } from "../src/session-manager.js";
+
+// =============================================================================
+// No-LLM tests (default config, no model configured)
+// =============================================================================
+
+describe("server without LLM configured", () => {
+	let app: FastifyInstance;
+	let tmpDataDir: string;
+
+	beforeAll(async () => {
+		tmpDataDir = await mkdtemp(join(tmpdir(), "travel-agent-server-test-"));
+		app = createServer(loadConfig({ TRAVEL_AGENT_DATA_DIR: tmpDataDir }));
+		await app.ready();
+	});
+
+	afterAll(async () => {
+		await app.close();
+		await rm(tmpDataDir, { recursive: true, force: true });
+	});
+
+	test("GET /health returns 200", async () => {
+		const res = await app.inject({ method: "GET", url: "/health" });
+		expect(res.statusCode).toBe(200);
+		expect(res.json()).toEqual({ status: "ok" });
+	});
+
+	test("POST /api/travel/sessions creates inert session without configured model", async () => {
+		const res = await app.inject({ method: "POST", url: "/api/travel/sessions" });
+		expect(res.statusCode).toBe(201);
+		const body = res.json();
+		expect(body.sessionId).toEqual(expect.any(String));
+		expect(body.status).toBe("idle");
+		expect(body.state.sessionId).toBe(body.sessionId);
+		expect(body.state.preferences).toEqual({});
+		expect(body.state.selectedDestinations).toEqual([]);
+
+		const persisted = JSON.parse(await readFile(join(tmpDataDir, `${body.sessionId}.json`), "utf-8"));
+		expect(persisted.sessionId).toBe(body.sessionId);
+	});
+
+	test("POST message returns 503 when inert session cannot initialize agent", async () => {
+		const createRes = await app.inject({ method: "POST", url: "/api/travel/sessions" });
+		const { sessionId } = createRes.json();
+		const res = await app.inject({
+			method: "POST",
+			url: `/api/travel/sessions/${sessionId}/messages`,
+			payload: { message: "Plan a trip to Japan" },
+		});
+		expect(res.statusCode).toBe(503);
+		const body = res.json();
+		expect(body.error).toContain("Unknown model");
+	});
+
+	test("GET unknown session returns 404", async () => {
+		const res = await app.inject({ method: "GET", url: "/api/travel/sessions/nonexistent" });
+		expect(res.statusCode).toBe(404);
+		const body = res.json();
+		expect(body.error).toContain("not found");
+	});
+
+	test("POST message with empty body returns 400", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/travel/sessions/any-id/messages",
+			payload: { message: "" },
+		});
+		expect(res.statusCode).toBe(400);
+		const body = res.json();
+		expect(body.error).toContain("empty");
+	});
+
+	test("POST message with missing message field returns 400", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/travel/sessions/any-id/messages",
+			payload: {},
+		});
+		expect(res.statusCode).toBe(400);
+	});
+
+	test("POST message to unknown session returns 404", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/travel/sessions/nonexistent/messages",
+			payload: { message: "Plan a trip to Japan" },
+		});
+		expect(res.statusCode).toBe(404);
+	});
+});
+
+// =============================================================================
+// Happy-path tests with mock manager
+// =============================================================================
+
+describe("server with mock manager", () => {
+	let app: FastifyInstance;
+
+	const mockState = { sessionId: "mock-session" };
+	const mockManager = {
+		createSession: vi.fn().mockResolvedValue({
+			sessionId: "mock-session",
+			state: mockState,
+			status: "idle" as const,
+		}),
+		getSession: vi.fn().mockReturnValue({
+			sessionId: "mock-session",
+			state: mockState,
+			status: "idle" as const,
+		}),
+		sendMessage: vi.fn().mockResolvedValue({
+			sessionId: "mock-session",
+			assistantMessage: "I can help you plan a trip!",
+			state: mockState,
+			status: "idle" as const,
+		}),
+	} as unknown as TravelSessionManager;
+
+	beforeAll(async () => {
+		app = createServer(loadConfig({}), mockManager);
+		await app.ready();
+	});
+
+	afterAll(async () => {
+		await app.close();
+	});
+
+	test("POST /api/travel/sessions creates and returns 201", async () => {
+		const res = await app.inject({ method: "POST", url: "/api/travel/sessions" });
+		expect(res.statusCode).toBe(201);
+		const body = res.json();
+		expect(body.sessionId).toBe("mock-session");
+		expect(body.status).toBe("idle");
+		expect(body.state).toEqual(mockState);
+	});
+
+	test("GET /api/travel/sessions/:id returns session", async () => {
+		const res = await app.inject({ method: "GET", url: "/api/travel/sessions/mock-session" });
+		expect(res.statusCode).toBe(200);
+		const body = res.json();
+		expect(body.sessionId).toBe("mock-session");
+		expect(body.status).toBe("idle");
+		expect(body.state).toEqual(mockState);
+	});
+
+	test("POST message returns assistant response", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/travel/sessions/mock-session/messages",
+			payload: { message: "Plan a weekend in Paris" },
+		});
+		expect(res.statusCode).toBe(200);
+		const body = res.json();
+		expect(body.sessionId).toBe("mock-session");
+		expect(body.assistantMessage).toBe("I can help you plan a trip!");
+		expect(body.status).toBe("idle");
+	});
+});

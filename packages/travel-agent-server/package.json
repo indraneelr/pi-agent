@@ -1,0 +1,37 @@
+{
+	"name": "@mariozechner/pi-travel-agent-server",
+	"version": "0.0.1",
+	"description": "Backend server for the travel agent web/app interface",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsx watch src/index.ts",
+		"check": "tsc --noEmit",
+		"test": "npx tsx ../../node_modules/vitest/dist/cli.js --run",
+		"clean": "rimraf dist",
+		"start": "node dist/index.js"
+	},
+	"bin": {
+		"travel-agent-server": "dist/index.js"
+	},
+	"dependencies": {
+		"@mariozechner/pi-agent-core": "*",
+		"@mariozechner/pi-travel-agent": "*",
+		"@mariozechner/pi-ai": "*",
+		"fastify": "^5.6.1",
+		"@fastify/cors": "^11.1.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"rimraf": "^6.1.2",
+		"tsx": "^4.21.2",
+		"typescript": "^5.9.2",
+		"vitest": "^3.2.6"
+	},
+	"engines": {
+		"node": ">=22.0.0"
+	},
+	"license": "MIT"
+}
