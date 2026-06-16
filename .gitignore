@@ -45,6 +45,7 @@ docs/fresh-travel-evals/
 docs/activity-research-evals/
 docs/itinerary-planning-evals/
 docs/debug-ollama-eval/
+docs/promptfoo-stage1-intake/
 
 # Local agent/tool state
 .serena/

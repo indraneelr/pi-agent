@@ -17,6 +17,7 @@ export {
 	SessionBusyError,
 	SessionConfigurationError,
 	SessionNotFoundError,
+	SessionTimeoutError,
 	TravelSessionManager,
 } from "./session-manager.js";
 

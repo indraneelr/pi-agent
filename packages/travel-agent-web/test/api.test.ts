@@ -8,7 +8,7 @@ afterEach(() => {
 describe("travel API client", () => {
 	test("creates a session and returns state", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(
-			jsonResponse({ sessionId: "s1", state: { sessionId: "s1" }, status: "idle" }),
+			jsonResponse({ sessionId: "s1", state: { sessionId: "s1" }, uiBlocks: [], conversation: [], status: "idle" }),
 		);
 
 		const session = await createTravelSession();
@@ -19,18 +19,32 @@ describe("travel API client", () => {
 
 	test("loads an existing session", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(
-			jsonResponse({ sessionId: "s1", state: { sessionId: "s1" }, status: "idle" }),
+			jsonResponse({
+				sessionId: "s1",
+				state: { sessionId: "s1" },
+				uiBlocks: [],
+				conversation: [{ role: "user", content: "Hi" }],
+				status: "idle",
+			}),
 		);
 
 		const session = await getTravelSession("s1");
 
 		expect(fetch).toHaveBeenCalledWith("/api/travel/sessions/s1");
 		expect(session.state.sessionId).toBe("s1");
+		expect(session.conversation[0].content).toBe("Hi");
 	});
 
 	test("sends a message and returns assistant response", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(
-			jsonResponse({ sessionId: "s1", assistantMessage: "Bonjour", state: { sessionId: "s1" }, status: "idle" }),
+			jsonResponse({
+				sessionId: "s1",
+				assistantMessage: "Bonjour",
+				state: { sessionId: "s1" },
+				uiBlocks: [],
+				conversation: [{ role: "assistant", content: "Bonjour" }],
+				status: "idle",
+			}),
 		);
 
 		const response = await sendTravelMessage("s1", "Plan Paris");
@@ -41,6 +55,7 @@ describe("travel API client", () => {
 			body: JSON.stringify({ message: "Plan Paris" }),
 		});
 		expect(response.assistantMessage).toBe("Bonjour");
+		expect(response.conversation[0].content).toBe("Bonjour");
 	});
 
 	test("throws server error messages", async () => {

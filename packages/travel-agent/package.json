@@ -9,13 +9,14 @@
 		"build": "tsc",
 		"dev": "tsc --watch",
 		"clean": "rimraf dist",
-		"test": "npx tsx ../../node_modules/vitest/dist/cli.js --run"
+		"test": "npx tsx ../../node_modules/vitest/dist/cli.js --run",
+		"eval:stage1": "promptfoo eval -c promptfooconfig.stage1.yaml -j 1"
 	},
 	"bin": {
 		"travel-agent": "dist/cli.js"
 	},
 	"dependencies": {
-		"@browserbasehq/stagehand": "^3.3.0",
+		"@browserbasehq/stagehand": "3.0.8",
 		"@mariozechner/pi-agent-core": "*",
 		"@mariozechner/pi-ai": "*",
 		"@mariozechner/pi-tui": "*",
@@ -27,9 +28,9 @@
 	"devDependencies": {
 		"@types/node": "^22.10.5",
 		"rimraf": "^6.1.2",
-		"tsx": "^4.20.3",
+		"tsx": "^4.21.2",
 		"typescript": "^5.9.2",
-		"vitest": "^3.2.1"
+		"vitest": "^3.2.6"
 	},
 	"engines": {
 		"node": ">=20.0.0"

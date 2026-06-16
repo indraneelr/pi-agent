@@ -1,0 +1,63 @@
+description: "Pi travel agent — Stage 1 intake promptfoo evals"
+
+prompts:
+  - "{{user_input}}"
+
+providers:
+  - id: "file://promptfoo/stage1-intake-provider.cjs"
+    label: "pi-travel-agent-stage1-intake"
+    config:
+      timeoutMs: 120000
+
+defaultTest:
+  assert:
+    - type: javascript
+      value: |
+        const result = JSON.parse(output);
+        if (!result.pass) {
+          return {
+            pass: false,
+            score: 0,
+            reason: result.failures.join("; "),
+          };
+        }
+        return true;
+
+tests:
+  - description: "complete family Greece intake saves mandatory preferences and advances only to shortlist"
+    vars:
+      id: "stage1-complete-greece-family"
+      expectComplete: true
+      user_input: >-
+        We are a family of 4 traveling from Berlin to Greece from 2026-06-20 to 2026-06-30.
+        Budget is 6500 EUR mid-range. We want beaches, culture, food, and easy logistics.
+        These preferences are confirmed; save them and move to the next checklist phase. Do not research or save destination options yet.
+
+  - description: "complete surprise-me intake treats vague destination as valid destination intent"
+    vars:
+      id: "stage1-complete-surprise-couple"
+      expectComplete: true
+      user_input: >-
+        Plan us a surprise-me trip from Berlin for two adults, September 1 to September 8 2026,
+        7 nights, budget 3500 EUR mid-range. We like food, beaches, culture, and easy logistics.
+        These preferences are confirmed; save them and move to the next checklist phase. Do not research or save destination options yet.
+
+  - description: "missing budget stays in intake and asks for budget before shortlisting"
+    vars:
+      id: "stage1-missing-budget"
+      expectComplete: false
+      expectedMissing:
+        - budget
+      user_input: >-
+        I want to go to Japan from New York with my partner from 2026-10-03 to 2026-10-12.
+        We like temples, food, trains, and a relaxed pace. Use update_travel_state to save what you can, but ask me for any missing mandatory details before moving on.
+
+  - description: "missing dates stays in intake and asks for date fields before shortlisting"
+    vars:
+      id: "stage1-missing-dates"
+      expectComplete: false
+      expectedMissing: "from_date,to_date"
+      user_input: >-
+        I want a 10 night Italy trip from London for my family of 3 with a 5000 GBP mid-range budget.
+        We like history, food, beaches, and easy train logistics, but I do not know the dates yet.
+        Use update_travel_state to save what you can, but ask me for any missing mandatory details before moving on.

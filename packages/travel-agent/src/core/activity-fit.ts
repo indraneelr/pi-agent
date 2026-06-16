@@ -49,7 +49,7 @@ const ACTIVITY_PATTERNS: Record<PreferenceAxis, RegExp> = {
 	beaches:
 		/\b(beaches?|coasts?|coastal|swim(ming)?|snorkel(ing)?|boat|sailing|kayak(ing)?|lagoon|cove|waterfront|shore|island|sand(y)?|sea|marine)\b/i,
 	culture:
-		/\b(cultures?|cultural|history|historical?|historic|ruins?|archaeology|archaeological|museum|museums|temple|ancient|heritage|unesco|castle|monument|architecture|old town|walking tour)\b/i,
+		/\b(cultures?|cultural|history|historical?|historic|ruins?|archaeology|archaeological|museum|museums|temple|shrine|shrines|garden|gardens|ancient|heritage|unesco|castle|monument|architecture|old town|walking tour)\b/i,
 	food: /\b(food|foods|cuisine|culinary|gastronomy|taverna|restaurant|market|cooking|wine|winery|seafood|dining|tasting|farm|olive|cheese|street food)\b/i,
 	logistics:
 		/\b(transfer|transfers|drive|driving|walk|walking|ferry|bus|taxi|metro|train|pickup|drop[- ]?off|distance|nearby|central|route|access|accessible|logistics|book ahead|reservation|queue|parking)\b/i,
@@ -57,9 +57,9 @@ const ACTIVITY_PATTERNS: Record<PreferenceAxis, RegExp> = {
 	budget:
 		/\b(cost|costs|price|prices|pricing|fee|fees|ticket|tickets|entry|free|affordable|expensive|cheap|value|budget|mid[- ]?range|included|extra|cash|euro|€)\b/i,
 	season:
-		/\b(season|seasonal|weather|summer|winter|spring|autumn|fall|june|july|august|heat|hot|sun|shade|wind|windy|rain|crowd|crowded|peak|morning|afternoon|evening|sunset)\b/i,
+		/\b(season|seasonal|weather|summer|winter|spring|autumn|fall|june|july|august|april|sakura|hanami|cherry[- ]?blossom|blossoms?|heat|hot|sun|shade|wind|windy|rain|crowd|crowds|crowded|peak|morning|afternoon|evening|sunset|early)\b/i,
 	tripLength:
-		/\b(day|days|night|nights|half[- ]?day|full[- ]?day|hours?|duration|time|pace|rushed|rest day|downtime|short|long)\b/i,
+		/\b(day|days|night|nights|half[- ]?day|full[- ]?day|hours?|duration|time|pace|pacing|rushed|rest day|downtime|short|long|early start|sleep|fatigue|tiring|backtrack|backtracking)\b/i,
 };
 
 export interface ActivityQualityScore {
@@ -219,14 +219,16 @@ export function matchActivityPreferenceAxes(text: string): PreferenceAxis[] {
 function extractTradeoffText(activity: Activity): string {
 	const tips = fieldText(activity.tips);
 	const description = fieldText(activity.description);
-	const caveatSentence = [...tips.split(/[.!?;]/), ...description.split(/[.!?;]/)]
+	const caveatSentences = [...tips.split(/[.!?;]/), ...description.split(/[.!?;]/)]
 		.map((s) => s.trim())
-		.find((s) =>
+		.filter((s) =>
 			/\b(but|however|tradeoff|downside|avoid|book|crowd|heat|cost|expensive|transfer|ferry|queue|limited|early|morning|peak|busy|not ideal|requires?)\b/i.test(
 				s,
 			),
 		);
-	return caveatSentence ?? tips;
+	return (
+		caveatSentences.find((sentence) => matchActivityPreferenceAxes(sentence).length > 0) ?? caveatSentences[0] ?? tips
+	);
 }
 
 function activityText(activity: Activity): string {

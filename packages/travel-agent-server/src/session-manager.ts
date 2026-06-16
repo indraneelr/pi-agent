@@ -15,13 +15,18 @@ import {
 	createTravelSession,
 	createTravelState,
 	detectSearchProvider,
+	extractTravelConversation,
 	loadChecklistConfig,
+	loadTravelConversation,
+	loadTravelState,
 	type SearchProvider,
 	saveTravelState,
+	type TravelConversationMessage,
 	type TravelSession,
 	type TravelState,
 } from "@mariozechner/pi-travel-agent";
 import type { ServerConfig } from "./config.js";
+import { composeTravelUiBlocks, type TravelUiBlock } from "./ui-blocks.js";
 
 const DEFAULT_CHECKLIST_CONFIG = join(
 	dirname(fileURLToPath(import.meta.url)),
@@ -40,12 +45,16 @@ export type SessionStatus = "idle" | "busy";
 export interface CreateSessionResult {
 	sessionId: string;
 	state: TravelState;
+	uiBlocks: TravelUiBlock[];
+	conversation: TravelConversationMessage[];
 	status: "idle";
 }
 
 export interface GetSessionResult {
 	sessionId: string;
 	state: TravelState;
+	uiBlocks: TravelUiBlock[];
+	conversation: TravelConversationMessage[];
 	status: SessionStatus;
 }
 
@@ -53,6 +62,8 @@ export interface SendMessageResult {
 	sessionId: string;
 	assistantMessage: string;
 	state: TravelState;
+	uiBlocks: TravelUiBlock[];
+	conversation: TravelConversationMessage[];
 	status: "idle";
 }
 
@@ -81,6 +92,16 @@ export class SessionConfigurationError extends Error {
 	}
 }
 
+export class SessionTimeoutError extends Error {
+	constructor(
+		public readonly sessionId: string,
+		public readonly timeoutMs: number,
+	) {
+		super(`Travel agent request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+		this.name = "SessionTimeoutError";
+	}
+}
+
 // =============================================================================
 // Manager
 // =============================================================================
@@ -90,12 +111,27 @@ interface SessionRecord {
 	status: SessionStatus;
 }
 
+interface SessionLogger {
+	info(obj: Record<string, unknown>, msg?: string): void;
+	warn(obj: Record<string, unknown>, msg?: string): void;
+	error(obj: unknown, msg?: string): void;
+}
+
+const noopLogger: SessionLogger = {
+	info: () => undefined,
+	warn: () => undefined,
+	error: () => undefined,
+};
+
 export class TravelSessionManager {
 	private readonly sessions = new Map<string, SessionRecord>();
 	private readonly activeSessions = new Map<string, TravelSession>();
 	private readonly checklistConfig = loadChecklistConfig(DEFAULT_CHECKLIST_CONFIG);
 
-	constructor(private readonly config: ServerConfig) {}
+	constructor(
+		private readonly config: ServerConfig,
+		private readonly logger: SessionLogger = noopLogger,
+	) {}
 
 	/**
 	 * Create a new inert travel session.
@@ -106,10 +142,12 @@ export class TravelSessionManager {
 	 */
 	async createSession(): Promise<CreateSessionResult> {
 		const sessionId = randomUUID();
+		this.logger.info({ sessionId }, "Creating travel session");
 		const state = createTravelState(sessionId, this.checklistConfig);
 		this.sessions.set(sessionId, { state, status: "idle" });
 		saveTravelState(state, { dataDir: this.config.dataDir });
-		return { sessionId, state, status: "idle" };
+		this.logger.info({ sessionId, dataDir: this.config.dataDir }, "Travel session created and persisted");
+		return { sessionId, state, uiBlocks: composeTravelUiBlocks(state), conversation: [], status: "idle" };
 	}
 
 	/**
@@ -118,15 +156,25 @@ export class TravelSessionManager {
 	 * Returns session info if the ID is known (created via createSession).
 	 * Throws SessionNotFoundError if the ID was never created.
 	 */
-	getSession(sessionId: string): GetSessionResult {
-		const record = this.sessions.get(sessionId);
+	async getSession(sessionId: string): Promise<GetSessionResult> {
+		this.logger.info({ sessionId }, "Loading travel session");
+		let record = this.sessions.get(sessionId);
 		if (!record) {
-			throw new SessionNotFoundError(sessionId);
+			const persistedState = loadTravelState(sessionId, { dataDir: this.config.dataDir });
+			if (!persistedState) throw new SessionNotFoundError(sessionId);
+			record = { state: persistedState, status: "idle" };
+			this.sessions.set(sessionId, record);
 		}
 		const activeSession = this.activeSessions.get(sessionId);
+		const state = activeSession?.state ?? record.state;
+		const conversation = activeSession
+			? extractTravelConversation(activeSession.agent.state.messages)
+			: await loadTravelConversation(sessionId, this.config.dataDir);
 		return {
 			sessionId,
-			state: activeSession?.state ?? record.state,
+			state,
+			uiBlocks: composeTravelUiBlocks(state),
+			conversation,
 			status: record.status,
 		};
 	}
@@ -151,24 +199,44 @@ export class TravelSessionManager {
 		}
 
 		record.status = "busy";
+		const startedAt = Date.now();
+		this.logger.info({ sessionId, messageLength: message.length }, "Received travel message");
 		try {
 			let session = this.activeSessions.get(sessionId);
 			if (!session) {
+				this.logger.info({ sessionId }, "Initializing travel agent session");
 				session = await this.buildSession(sessionId);
 				this.activeSessions.set(sessionId, session);
+				this.logger.info({ sessionId }, "Travel agent session initialized");
 			}
-			await session.agent.prompt(message);
+			this.logger.info({ sessionId, timeoutMs: this.config.messageTimeoutMs }, "Starting agent prompt/research");
+			await withTimeout(
+				session.agent.prompt(message),
+				this.config.messageTimeoutMs,
+				() => new SessionTimeoutError(sessionId, this.config.messageTimeoutMs),
+			);
+			this.logger.info({ sessionId, durationMs: Date.now() - startedAt }, "Agent prompt/research finished");
 			const assistantMessage = extractAssistantText(session.agent.state.messages);
 			record.state = session.state;
 			saveTravelState(record.state, { dataDir: this.config.dataDir });
+			this.logger.info(
+				{ sessionId, uiBlockCount: composeTravelUiBlocks(record.state).length },
+				"Travel state persisted after message",
+			);
 			return {
 				sessionId,
 				assistantMessage,
 				state: record.state,
+				uiBlocks: composeTravelUiBlocks(record.state),
+				conversation: extractTravelConversation(session.agent.state.messages),
 				status: "idle",
 			};
+		} catch (e) {
+			this.logger.error({ err: e, sessionId, durationMs: Date.now() - startedAt }, "Travel message failed");
+			throw e;
 		} finally {
 			record.status = "idle";
+			this.logger.info({ sessionId, durationMs: Date.now() - startedAt }, "Travel session returned to idle");
 		}
 	}
 
@@ -177,6 +245,14 @@ export class TravelSessionManager {
 	 * Wraps all setup failures in SessionConfigurationError with a safe message.
 	 */
 	private async buildSession(sessionId: string): Promise<TravelSession> {
+		if (!this.config.apiKey) {
+			throw new SessionConfigurationError(formatMissingApiKeyMessage(this.config.provider));
+		}
+
+		this.logger.info(
+			{ sessionId, provider: this.config.provider, modelId: this.config.modelId },
+			"Resolving travel model",
+		);
 		const model = this.resolveModel();
 		let searchProvider: SearchProvider | null | undefined;
 		try {
@@ -192,6 +268,7 @@ export class TravelSessionManager {
 				"No search provider detected. Set BRAVE_API_KEY, LINKUP_API_KEY, or GEMINI_API_KEY.",
 			);
 		}
+		this.logger.info({ sessionId }, "Detected search provider");
 		try {
 			return await createTravelSession({
 				model,
@@ -221,6 +298,25 @@ export class TravelSessionManager {
 		}
 		return model;
 	}
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorFactory: () => Error): Promise<T> {
+	let timeout: NodeJS.Timeout | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<T>((_, reject) => {
+				timeout = setTimeout(() => reject(errorFactory()), timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timeout) clearTimeout(timeout);
+	}
+}
+
+function formatMissingApiKeyMessage(provider: string): string {
+	if (provider === "ollama") return "Ollama Cloud API key is not configured. Set OLLAMA_API_KEY.";
+	return `API key is not configured for provider: ${provider}.`;
 }
 
 function resolveCustomModel(provider: string, modelId: string): Model<"openai-completions"> | undefined {

@@ -6,6 +6,10 @@
 
 // System Prompt
 export {
+	type AccommodationFlightQuality,
+	scoreAccommodationFlightResearchQuality,
+} from "./core/accommodation-flight-fit.js";
+export {
 	type ActivityQualityAxis,
 	type ActivityQualityScore,
 	type ActivityResearchQuality,
@@ -30,9 +34,36 @@ export {
 	loadChecklistConfig,
 	type TravelChecklist,
 } from "./core/checklist.js";
+export {
+	createSearxngImageSearchProvider,
+	parseSearxngCandidates,
+	type SearxngImageSearchOptions,
+} from "./core/image-search/searxng.js";
+export {
+	createStagehandImageSearchProvider,
+	type StagehandImageClient,
+	type StagehandImageSearchOptions,
+} from "./core/image-search/stagehand-images.js";
+export type {
+	ImageCandidate,
+	ImageSearchProvider,
+	ImageSearchProviderName,
+	ImageSearchQuery,
+	ImageSearchResult,
+	ValidImageResult,
+} from "./core/image-search/types.js";
+export { type ImageDimensions, parseImageDimensions, validateImageCandidates } from "./core/image-search/validate.js";
+// Image link validation
+export {
+	cleanDestinationImageLinks,
+	fetchImageUrlsFromQuery,
+	filterValidImageUrls,
+	type ImageCleanReport,
+	type ImageLinkValidation,
+	validateImageUrls,
+} from "./core/image-validation.js";
 // Persistence
 export { deleteTravelState, loadTravelState, type PersistenceOptions, saveTravelState } from "./core/persistence.js";
-// Preference Fit
 export {
 	AXIS_LABEL,
 	type AxisEvidence,
@@ -50,7 +81,14 @@ export {
 	type TradeoffSeverity,
 } from "./core/preference-fit.js";
 // SDK
-export { type CreateTravelSessionOptions, createTravelSession, type TravelSession } from "./core/sdk.js";
+export {
+	type CreateTravelSessionOptions,
+	createTravelSession,
+	extractTravelConversation,
+	loadTravelConversation,
+	type TravelConversationMessage,
+	type TravelSession,
+} from "./core/sdk.js";
 export { createBraveSearchProvider } from "./core/search/brave.js";
 export { createGoogleGeminiSearchProvider } from "./core/search/google-gemini.js";
 export { type DetectSearchProviderOptions, detectSearchProvider } from "./core/search/index.js";
@@ -74,6 +112,7 @@ export { buildTravelSystemPrompt, type TravelSystemPromptOptions } from "./core/
 export {
 	type AdvanceChecklistDetails,
 	createTravelTools,
+	type GetImagesDetails,
 	type GoBackDetails,
 	type SaveDestinationShortlistDetails,
 	type ShowChecklistDetails,

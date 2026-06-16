@@ -49,6 +49,8 @@ describe("server without LLM configured", () => {
 		expect(body.state.sessionId).toBe(body.sessionId);
 		expect(body.state.preferences).toEqual({});
 		expect(body.state.selectedDestinations).toEqual([]);
+		expect(body.uiBlocks.map((block: { kind: string }) => block.kind)).toContain("checklist_progress");
+		expect(body.uiBlocks.map((block: { kind: string }) => block.kind)).toContain("trip_preferences_summary");
 
 		const persisted = JSON.parse(await readFile(join(tmpDataDir, `${body.sessionId}.json`), "utf-8"));
 		expect(persisted.sessionId).toBe(body.sessionId);
@@ -136,21 +138,29 @@ describe("server with mock manager", () => {
 	let app: FastifyInstance;
 
 	const mockState = { sessionId: "mock-session" };
+	const mockUiBlocks = [{ id: "mock-block", kind: "checklist_progress" }];
+	const mockConversation = [{ role: "user", content: "Plan a trip" }];
 	const mockManager = {
 		createSession: vi.fn().mockResolvedValue({
 			sessionId: "mock-session",
 			state: mockState,
+			uiBlocks: mockUiBlocks,
+			conversation: mockConversation,
 			status: "idle" as const,
 		}),
 		getSession: vi.fn().mockReturnValue({
 			sessionId: "mock-session",
 			state: mockState,
+			uiBlocks: mockUiBlocks,
+			conversation: mockConversation,
 			status: "idle" as const,
 		}),
 		sendMessage: vi.fn().mockResolvedValue({
 			sessionId: "mock-session",
 			assistantMessage: "I can help you plan a trip!",
 			state: mockState,
+			uiBlocks: mockUiBlocks,
+			conversation: mockConversation,
 			status: "idle" as const,
 		}),
 	} as unknown as TravelSessionManagerType;

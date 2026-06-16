@@ -1,0 +1,627 @@
+{
+  "sessionId": "af-portugal-friends-1781528439814",
+  "checklist": {
+    "phases": [
+      {
+        "id": "gather_preferences",
+        "label": "Gather Preferences",
+        "description": "Collect mandatory trip requirements: dates/window, origin, group, budget/currency, destination intent, plus useful constraints/defaults",
+        "status": "done"
+      },
+      {
+        "id": "shortlist_destinations",
+        "label": "Shortlist Destination/Place Options",
+        "description": "Present choice-first option cards: 3-5 broad destinations or 8-10 places inside a chosen country/region, each with fit, days, logistics, budget, season, and tradeoff",
+        "status": "done"
+      },
+      {
+        "id": "select_destinations",
+        "label": "Select Places",
+        "description": "Let the user choose places from the option menu before researching detailed activities",
+        "status": "done"
+      },
+      {
+        "id": "research_experiences",
+        "label": "Research Activity Options",
+        "description": "For selected places, present 4-6 real activity/experience options per place, grouped by practicality, and ask the user to choose/approve",
+        "status": "done"
+      },
+      {
+        "id": "plan_itinerary",
+        "label": "Plan Itinerary",
+        "description": "Build a day-by-day itinerary from approved places and activities with transit, meals, check-in/out, and downtime",
+        "status": "done"
+      },
+      {
+        "id": "research_accommodation_flights",
+        "label": "Research Accommodation & Flights",
+        "description": "Present 4-6 flight options and 4-6 lodging options per overnight location when available, with live-data caveats and tradeoffs",
+        "status": "active"
+      },
+      {
+        "id": "final_plan",
+        "label": "Final Plan",
+        "description": "Reconcile selected choices into the complete itinerary, transport plan, budget, map-ready stops, and essential information",
+        "status": "pending"
+      }
+    ],
+    "activePhaseIndex": 5
+  },
+  "preferences": {
+    "destination": "Portugal",
+    "origin": "London",
+    "from_date": "2026-09-10",
+    "to_date": "2026-09-17",
+    "num_nights": 7,
+    "group_size": 3,
+    "group_type": "friends",
+    "budget": {
+      "amount": 3000,
+      "currency": "EUR",
+      "category": "budget"
+    },
+    "travel_themes": [
+      "food",
+      "beaches",
+      "nightlife"
+    ],
+    "pace_of_travel": "moderate"
+  },
+  "destinationResearch": {
+    "destination": {
+      "title": "Portugal",
+      "name": "Portugal",
+      "description": "Portugal selected route.",
+      "bestTimeToVisit": "Check dates.",
+      "reviews": {},
+      "sources": []
+    },
+    "subDestinations": [
+      {
+        "name": "Lisbon",
+        "type": "place",
+        "description": "Lisbon selected by user.",
+        "selected": true,
+        "reviews": {},
+        "sources": []
+      },
+      {
+        "name": "Porto",
+        "type": "place",
+        "description": "Porto selected by user.",
+        "selected": true,
+        "reviews": {},
+        "sources": []
+      }
+    ],
+    "overallSummary": "Portugal selected route for 7 nights.",
+    "tripHighlights": [],
+    "travelTips": [],
+    "preferencesUsed": {
+      "themes": [],
+      "groupType": "friends",
+      "numNights": 7
+    },
+    "nextUserAction": "Itinerary approved. Research accommodation and flights.",
+    "schemaVersion": "2.0.0"
+  },
+  "selectedDestinations": [
+    {
+      "name": "Lisbon",
+      "type": "place",
+      "description": "Lisbon selected by user.",
+      "selected": true,
+      "reviews": {},
+      "sources": []
+    },
+    {
+      "name": "Porto",
+      "type": "place",
+      "description": "Porto selected by user.",
+      "selected": true,
+      "reviews": {},
+      "sources": []
+    }
+  ],
+  "activitiesResearch": {
+    "activities": [
+      {
+        "name": "Alfama Food Crawl",
+        "type": "seed",
+        "description": "Alfama Food Crawl in Lisbon.",
+        "location": "Lisbon",
+        "estimatedDurationHours": 3,
+        "estimatedCost": 40,
+        "tips": "Seed approved activity.",
+        "reviews": {},
+        "sources": [
+          "https://example.com/activities"
+        ]
+      },
+      {
+        "name": "Matosinhos Beach Seafood Afternoon",
+        "type": "seed",
+        "description": "Matosinhos Beach Seafood Afternoon in Porto.",
+        "location": "Porto",
+        "estimatedDurationHours": 3,
+        "estimatedCost": 40,
+        "tips": "Seed approved activity.",
+        "reviews": {},
+        "sources": [
+          "https://example.com/activities"
+        ]
+      }
+    ]
+  },
+  "itineraryResearch": {
+    "itinerary": [
+      {
+        "date": "2026-09-10",
+        "place": "Lisbon",
+        "dayNumber": 1,
+        "activities": [
+          {
+            "name": "Lisbon logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Lisbon with transit/rest buffers.",
+            "location": "Lisbon",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-09-11",
+        "place": "Lisbon",
+        "dayNumber": 2,
+        "activities": [
+          {
+            "name": "Lisbon logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Lisbon with transit/rest buffers.",
+            "location": "Lisbon",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-09-12",
+        "place": "Lisbon",
+        "dayNumber": 3,
+        "activities": [
+          {
+            "name": "Lisbon logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Lisbon with transit/rest buffers.",
+            "location": "Lisbon",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-09-13",
+        "place": "Lisbon → Porto",
+        "dayNumber": 4,
+        "activities": [
+          {
+            "name": "Lisbon → Porto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Lisbon → Porto with transit/rest buffers.",
+            "location": "Lisbon → Porto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-09-14",
+        "place": "Porto",
+        "dayNumber": 5,
+        "activities": [
+          {
+            "name": "Porto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Porto with transit/rest buffers.",
+            "location": "Porto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-09-15",
+        "place": "Porto",
+        "dayNumber": 6,
+        "activities": [
+          {
+            "name": "Porto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Porto with transit/rest buffers.",
+            "location": "Porto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-09-16",
+        "place": "Porto",
+        "dayNumber": 7,
+        "activities": [
+          {
+            "name": "Porto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Porto with transit/rest buffers.",
+            "location": "Porto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-09-17",
+        "place": "Porto → London",
+        "dayNumber": 8,
+        "activities": [
+          {
+            "name": "Porto → London logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Porto → London with transit/rest buffers.",
+            "location": "Porto → London",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      }
+    ]
+  },
+  "accommodationResearch": {
+    "areasToStay": [
+      {
+        "areaToStay": "Baixa & Chiado",
+        "bookingTips": "Search Booking.com for 'Baixa' or 'Chiado' filters; apartments on Airbnb often sleep 3 more cheaply than hotels. Book early for September weekends.",
+        "city": "Lisbon",
+        "description": "Flat, walkable grid between Rossio Square and the river. Ideal for first-time visitors and groups who want central transit, shopping streets, and quick access to Bairro Alto nightlife without sleeping in the noise zone.",
+        "nearbyTransport": "Metro: Baixa-Chiado (blue/green interchange); Rossio train station (Sintra line); tram 15 to Belém; airport bus 1.",
+        "reviews": "Highly rated for convenience; some travelers note traffic noise on lower floors facing main avenues—request upper floors.",
+        "safetyTips": "Very safe by day; watch for pickpockets on tram 15 and crowded elevators (Santa Justa). At night stick to main illuminated streets (Rua Augusta, Rua da Prata).",
+        "sources": [
+          "https://www.booking.com/city/pt/lisbon.en.html",
+          "https://www.lonelyplanet.com/portugal/lisbon"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€70–100 (twin/triple guesthouse, shared bath)",
+          "luxury": "€250–400 (boutique design hotels with river/Tejo views)",
+          "midRange": "€130–190 (3-star hotel or private apartment for 3)"
+        }
+      },
+      {
+        "areaToStay": "Alfama",
+        "bookingTips": "Many Alfama rentals are walk-up (no elevator); confirm floor level if luggage is heavy. Look for 'Sé' or 'Alfama' tags on Booking.com.",
+        "city": "Lisbon",
+        "description": "The oldest Moorish quarter with maze-like alleyways, fado houses, and miradouros. A strong match for the food theme and moderate pace—expect hills and stairs.",
+        "nearbyTransport": "Tram 28E runs through the heart; Santa Apolónia train/metro station at the base; limited bus penetration into narrow streets.",
+        "reviews": "Praised for authentic atmosphere; frequent complaint is difficulty hailing rideshare/taxi directly in the core alleys.",
+        "safetyTips": "Steep cobbled lanes can be slippery after rain; carry a phone flashlight at night because street lighting is patchy. Tourist-targeted pickpocketing near São Jorge Castle and Miradouro das Portas do Sol.",
+        "sources": [
+          "https://www.tripadvisor.com/Tourism-g189158-Lisbon_Lisbon_District_Central_Portugal-Vacations.html",
+          "https://www.booking.com/neighborhood/pt/lisbon/alfama.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€60–90 (basic pension with shared facilities)",
+          "luxury": "€220–350 (boutique guesthouses with terraces and Alfama views)",
+          "midRange": "€120–170 (renovated apartments in traditional buildings)"
+        }
+      },
+      {
+        "areaToStay": "Bairro Alto",
+        "bookingTips": "Essential to read 'quiet'/'soundproof' reviews or book a room facing a courtyard. Many properties require steep stairs.",
+        "city": "Lisbon",
+        "description": "Dense grid of bars, fado clubs, and late-night eateries. Top choice for a friends group prioritizing nightlife. Expect noise until 2–3 AM on weekends.",
+        "nearbyTransport": "Metro: Baixa-Chiado (short walk downhill); famous Elevador da Glória funicular connects to Restauradores; trams nearby.",
+        "reviews": "Nightlife seekers love the location; light sleepers advise against street-facing rooms. Good value for groups splitting apartments.",
+        "safetyTips": "Stick to populated bar strips (Rua da Atalaia, Rua do Diário de Notícias). Avoid unlit side alleys after closing time. Keep phones/wallets secure—crowded bars are pickpocket hotspots.",
+        "sources": [
+          "https://www.nomadicmatt.com/travel-guides/portugal/lisbon/",
+          "https://www.booking.com/city/pt/lisbon.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€65–95 (hostel private rooms or basic guesthouses)",
+          "luxury": "€240–380 (design hotels with rooftop bars and insulated windows)",
+          "midRange": "€125–180 (small boutique hotels; some with soundproofing)"
+        }
+      },
+      {
+        "areaToStay": "Príncipe Real",
+        "bookingTips": "Ideal for groups who want nightlife access without sleeping in it. Apartments here often have kitchens—good for budget breakfasts.",
+        "city": "Lisbon",
+        "description": "Leafy, upscale neighborhood north of Bairro Alto with antique shops, concept stores, and a renowned food scene (Michelin-casual dining). Quieter at night but close enough to walk to Bairro Alto bars.",
+        "nearbyTransport": "Metro: Rato (yellow line) or walk to Baixa-Chiado; buses 758/773; 15-minute downhill stroll to the river.",
+        "reviews": "Travelers highlight the sophisticated local vibe and excellent restaurants. Some note uphill walks back from Baixa can be tiring.",
+        "safetyTips": "One of Lisbon’s safer residential districts; standard urban awareness applies. Jardim do Príncipe Real park is pleasant after dark due to foot traffic.",
+        "sources": [
+          "https://www.cntraveller.com/article/lisbon-neighbourhood-guide",
+          "https://www.booking.com/city/pt/lisbon.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€75–105 (private rooms in stylish hostels)",
+          "luxury": "€260–420 (high-design hotels with courtyard pools)",
+          "midRange": "€140–200 (boutique guesthouses and garden apartments)"
+        }
+      },
+      {
+        "areaToStay": "Avenidas Novas",
+        "bookingTips": "Check for 'Saldanha', 'Campo Pequeno', or 'Gulbenkian' locations. Often includes parking if renting a car (not needed for this itinerary).",
+        "city": "Lisbon",
+        "description": "Broad Parisian-style avenues (Avenida da República, Saldanha) with a local-business feel. Strong budget play: lower nightly rates, fast metro to the old center, and plenty of Portuguese brunch spots.",
+        "nearbyTransport": "Metro: Saldanha, Campo Pequeno, or São Sebastião (red/blue/yellow); airport metro direct (red line); quick taxi/Uber to Alfama/Bairro.",
+        "reviews": "Appreciated for value and metro speed; downside is less 'old city' charm and longer walk home after late nightlife.",
+        "safetyTips": "Generally safe and well-lit; a few peripheral streets east of Alameda can feel quiet late at night—stick to main avenues.",
+        "sources": [
+          "https://www.tripadvisor.com/Hotels-g189158-Lisbon_Lisbon_District_Central_Portugal-Hotels.html",
+          "https://www.booking.com/city/pt/lisbon.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€55–85 (business-branded budget hotels and aparthotels)",
+          "luxury": "€190–300 (tower-view executive suites)",
+          "midRange": "€110–160 (4-star chain hotels with triple rooms)"
+        }
+      },
+      {
+        "areaToStay": "Belém",
+        "bookingTips": "Good if you want a calm base and don't mind a 15–20 minute tram/train ride to Bairro Alto nightlife. Check last tram times if staying out late.",
+        "city": "Lisbon",
+        "description": "Riverside district 6 km west of the center, home to the Tower of Belém, Jerónimos Monastery, and the original Pastéis de Belém bakery. Best for a relaxed, monument-focused slice of Lisbon with Atlantic breezes.",
+        "nearbyTransport": "Tram 15E to Praça do Comércio; suburban train to Cais do Sodré; buses 728/714; Uber/taxi ~€10–14 to Baixa.",
+        "reviews": "Popular with families and culture travelers; nightlife-oriented groups caution that late-night trips back add cost/time.",
+        "safetyTips": "Safe and spacious; fewer crowds after museums close. Tram 15E to/from central Lisbon has occasional pickpocket reports—keep bags zipped.",
+        "sources": [
+          "https://www.lonelyplanet.com/portugal/lisbon",
+          "https://www.booking.com/city/pt/lisbon.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€60–90 (riverside hostels and B&Bs)",
+          "luxury": "€210–340 (heritage palace-hotel conversions)",
+          "midRange": "€115–165 (modern aparthotels with river views)"
+        }
+      },
+      {
+        "areaToStay": "Ribeira & Sé",
+        "bookingTips": "Many buildings are heritage-protected with no elevators—verify stair access. Riverside units often face early-morning garbage-collection noise.",
+        "city": "Porto",
+        "description": "UNESCO-listed riverfront labyrinth directly below Dom Luís I Bridge. Atmospheric taverns, steep colored houses, and immediate access to port-wine lodges across the river in Gaia.",
+        "nearbyTransport": "São Bento train station (5 min uphill); metro Trindade/Bolhão nearby; buses 500/900; Guindais funicular.",
+        "reviews": "Unbeatable for postcard views; common criticism is hill climbs and tourist crowding. Request mid-floor rooms to reduce stair fatigue.",
+        "safetyTips": "Slim cobblestone lanes can be dimly lit after midnight; avoid isolated riverside stretches late. Pickpockets operate near Ponte Luís I bridge footpaths.",
+        "sources": [
+          "https://www.tripadvisor.com/Tourism-g189180-Porto_Porto_District_Northern_Portugal-Vacations.html",
+          "https://www.booking.com/city/pt/porto.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€55–85 (small pensions and shared-apartment rooms)",
+          "luxury": "€230–380 (boutique hotels inside 18th-century palácios)",
+          "midRange": "€120–170 (converted townhouses with river balconies)"
+        }
+      },
+      {
+        "areaToStay": "Baixa do Porto (São Bento / Aliados)",
+        "bookingTips": "Look for 'Centro / Baixa' on Booking.com. Good compromise between Ribeira scenery and Boavista value. Several properties offer triple rooms.",
+        "city": "Porto",
+        "description": "Formal downtown anchored by Avenida dos Aliados and São Bento station. Grand cafés, azulejo-tiled interiors, and a flatter grid compared to riverside quarters. Strong all-rounder for first-time Porto visitors.",
+        "nearbyTransport": "Metro: Trindade (all lines) and Bolhão; São Bento railway station; airport metro line E direct to Trindade; trams 1 and 22 nearby.",
+        "reviews": "Loved for convenience and architecture; some road noise on Aliados-facing rooms—request interior courtyard or higher floors.",
+        "safetyTips": "Busy and well-policed during the day; nighttime is generally safe around Aliados, though side streets toward Santo Ildefonso empty out after shops close.",
+        "sources": [
+          "https://www.lonelyplanet.com/portugal/porto",
+          "https://www.booking.com/city/pt/porto.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€60–90 (basic hotels and student-oriented residences)",
+          "luxury": "€240–400 (landmark 5-star properties with spa)",
+          "midRange": "€125–185 (refurbished Art Deco hotels)"
+        }
+      },
+      {
+        "areaToStay": "Boavista",
+        "bookingTips": "Excellent for groups needing reliable elevators and modern bathrooms at lower cost. Less romantic than Ribeira but far more practical for late arrivals.",
+        "city": "Porto",
+        "description": "Modern avenue district northwest of the center, known for Casa da Música and wide boulevards. A budget-friendly, local-feel base with quick metro hops to Ribeira and direct airport bus links.",
+        "nearbyTransport": "Metro: Casa da Música (direct airport line); buses 201/204/304; 25-minute downhill walk to Ribeira or €6–10 Uber.",
+        "reviews": "Recommended by repeat visitors for comfort and value; tradeoff is losing the 'old Porto' ambiance and walking-distance late-night spontaneity.",
+        "safetyTips": "Very safe commercial zone; late-night options are concentrated around Casa da Música plaza rather than scattered streets.",
+        "sources": [
+          "https://www.nomadicmatt.com/travel-guides/portugal/porto/",
+          "https://www.booking.com/city/pt/porto.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€50–80 (chain aparthotels and budget brands)",
+          "luxury": "€180–280 (upscale business hotels with suites)",
+          "midRange": "€100–150 (contemporary 3-to-4-star hotels)"
+        }
+      },
+      {
+        "areaToStay": "Foz do Douro",
+        "bookingTips": "Perfect for groups who want beach mornings and city afternoons. Verify tram 1 or bus schedules if you plan late dinners downtown.",
+        "city": "Porto",
+        "description": "Affluent seaside enclave where the river meets the Atlantic. Mansions, promenade cafés, and Matosinhos Beach (linked to your seafood activity) are nearby. Upscale relaxation with a coastal breeze.",
+        "nearbyTransport": "Historic tram 1 along the coast to Infante; bus 500 scenic riverside route to Ribeira; 15-min drive/taxi to center.",
+        "reviews": "Praised for tranquility and Atlantic views; nightlife-oriented travelers warn about taxi costs and transit time after dark.",
+        "safetyTips": "Extremely safe, family-oriented area; standard beach precautions apply. Late-night public transport back from Porto center becomes infrequent after midnight.",
+        "sources": [
+          "https://www.cntraveller.com/article/porto-travel-guide",
+          "https://www.booking.com/city/pt/porto.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€70–100 (surprisingly affordable B&Bs inland from the front)",
+          "luxury": "€260–450 (grand oceanfront properties)",
+          "midRange": "€140–200 (sea-view boutique hotels)"
+        }
+      },
+      {
+        "areaToStay": "Cedofeita",
+        "bookingTips": "Great for food and nightlife themes without the tourist density of Ribeira. Look for 'Cedofeita' or 'Bonfim' neighborhood tags.",
+        "city": "Porto",
+        "description": "Trendy arts quarter between Baixa and Boavista, packed with vintage shops, street-art murals, craft breweries, and indie galleries. A youthful, local alternative still within 10 minutes' walk of Aliados.",
+        "nearbyTransport": "Metro: 24 de Agosto or Bolhão; bus 207/303; flat/grade walk to downtown; easy cycling using Porto bike-share.",
+        "reviews": "Highlighted for creative energy and local restaurant prices; some cobblestoned side streets are poorly lit at night.",
+        "safetyTips": "Generally safe; side streets around the hospital zone (Hospital de Santo António) are fine but quiet after dark. Stick to Miguel Bombarda gallery strip for evening foot traffic.",
+        "sources": [
+          "https://www.tripadvisor.com/Attractions-g189180-Activities-c26-Porto_Porto_District_Northern_Portugal.html",
+          "https://www.booking.com/city/pt/porto.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€55–85 (artist-run guesthouses and hostel privates)",
+          "luxury": "€200–320 (gallery-concept boutique stays)",
+          "midRange": "€115–165 (design apartments in renovated workshops)"
+        }
+      },
+      {
+        "areaToStay": "Vila Nova de Gaia (Riverside)",
+        "bookingTips": "Request 'Gaia riverside' rather than deep Gaia suburbs. Several lodges include complimentary cellar tours—factor into activity budget.",
+        "city": "Porto",
+        "description": "Directly across the Douro from Porto's Ribeira, dominated by port-wine cellars (Taylor's, Graham's) and panoramic viewpoints. Technically a separate city, but a 5-minute metro/bridge walk to Porto center.",
+        "nearbyTransport": "Metro: Jardim do Morro (yellow line) or General Torres; cable car (Teleférico de Gaia); 5-min walk across Ponte Luís I lower deck to Ribeira.",
+        "reviews": "Adored for sunset views and relative quiet after wine tourists leave; early-rising groups may find breakfast spots slower to open than Porto side.",
+        "safetyTips": "Tourist-heavy waterfront is patrolled and safe; uphill residential zones behind the cellars are steeper and darker. Keep belongings secure on the upper deck of Ponte Luís I (tourist foot traffic).",
+        "sources": [
+          "https://www.lonelyplanet.com/portugal/the-north/vila-nova-de-gaia",
+          "https://www.booking.com/city/pt/vila-nova-de-gaia.en.html"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€60–90 (riverside hostels and simple lodges)",
+          "luxury": "€220–360 (wine-themed 5-stars with tasting rooms and spas)",
+          "midRange": "€110–160 (cellar-adjacent apartments with Douro views)"
+        }
+      }
+    ],
+    "bookingCaveat": "Rates shown are indicative estimates for September 2026 based on seasonal patterns and search context. Live prices on Booking.com, Airbnb, or equivalent platforms will vary by exact property, cancellation policy, and availability. For a group of 3, apartments or triple rooms often yield better value than two separate hotel rooms.",
+    "sources": [
+      "https://www.booking.com/city/pt/lisbon.en.html",
+      "https://www.booking.com/city/pt/porto.en.html",
+      "https://www.lonelyplanet.com/portugal",
+      "https://www.tripadvisor.com",
+      "https://www.nomadicmatt.com/travel-guides/portugal/"
+    ]
+  },
+  "flightResearch": {
+    "baggage_notes": "For a 7-night trip, a group of 3 will likely need at least one checked bag or large cabin bags. Budget that €90–180 in extra fees on top of headline fares for options 1, 3, and 6.",
+    "confidence": "medium",
+    "live_data_caveat": "All fares, schedules, and availability are estimates inferred from search context and historical carrier patterns for September travel. Actual live prices on Skyscanner, Google Flights, or airline sites will differ. Always verify current timings and rules before booking.",
+    "meta_provider_type": "web_search",
+    "origin": "London",
+    "outbound_date": "2026-09-10",
+    "return_date": "2026-09-17",
+    "route_outbound": "London → Lisbon",
+    "route_return": "Porto → London",
+    "sample_options": [
+      {
+        "baggage_included": "Small personal item only; checked bags and 10kg cabin bag incur extra fees (~€30–60pp each way)",
+        "booking_link": "https://www.ryanair.com/gb/en/trip/flights/select?adt=3&chd=0&inf=0&triptype=oneway&origin=STN&destination=LIS&dateout=2026-09-10 (outbound); reverse for return)",
+        "carriers": [
+          "Ryanair"
+        ],
+        "caveat": "Strict change policies; early/late-hour rotations common; add €15pp airport transfers from central London.",
+        "dates": "Outbound 2026-09-10 / Return 2026-09-17",
+        "fare_estimate_per_person_eur": 95,
+        "layovers": "Direct both ways",
+        "option_label": "1. Cheapest Split-Budget",
+        "recommendation": "Only if the group packs light and accepts rigid terms.",
+        "route": "London Stansted (STN) → Lisbon (LIS); Porto (OPO) → London Stansted (STN)",
+        "total_group_estimate_eur": 285,
+        "tradeoff": "Lowest absolute fare but nickel-and-dime fees erode savings."
+      },
+      {
+        "baggage_included": "Carry-on + 23kg checked bag included on standard economy",
+        "booking_link": "https://www.google.com/travel/flights/search?tfs=CBwQAhooagwIAxIIL20vMDQ5bGwsKgwIAhIIL20vMDRzMHFAAUgBcAGYAQE&curr=EUR (estimate link pattern)",
+        "carriers": [
+          "TAP Air Portugal"
+        ],
+        "caveat": "Premium over bare-bones carriers but fewer hidden fees.",
+        "dates": "Outbound 2026-09-10 / Return 2026-09-17",
+        "fare_estimate_per_person_eur": 235,
+        "layovers": "Nonstop both legs",
+        "option_label": "2. Best Timing (Morning Out / Evening Back)",
+        "recommendation": "Strong balanced choice for this group: direct, decent bags, and easy Tube/Piccadilly access.",
+        "route": "London Heathrow (LHR) → Lisbon (LIS); Porto (OPO) → London Heathrow (LHR)",
+        "total_group_estimate_eur": 705,
+        "tradeoff": "Convenient LHR terminal, sensible hours, included luggage, and Star Alliance reliability at a moderate premium."
+      },
+      {
+        "baggage_included": "Small cabin bag included; larger cabin bags + checked bags extra (~€25–45pp per flight).",
+        "booking_link": "https://www.skyscanner.net/transport/flights/lgw/lis/260910/?adults=3&adultsv2=3&cabinclass=economy&children=0&childrenv2=&inboundaltsen=False&outboundaltsen=False&preferdirects=True&ref=home&rtn=0&oym=2609 (outbound pattern)",
+        "carriers": [
+          "easyJet"
+        ],
+        "caveat": "Bag fees apply but total still below legacy carriers.",
+        "dates": "Outbound 2026-09-10 / Return 2026-09-17",
+        "fare_estimate_per_person_eur": 155,
+        "layovers": "Direct both ways",
+        "option_label": "3. Balanced Value",
+        "recommendation": "Good compromise if you want direct flights without paying TAP/BA premiums.",
+        "route": "London Gatwick (LGW) → Lisbon (LIS); Porto (OPO) → London Gatwick (LGW)",
+        "total_group_estimate_eur": 465,
+        "tradeoff": "Mid-price point with direct scheduling; Gatwick is farther from central London than Heathrow."
+      },
+      {
+        "baggage_included": "Carry-on + 23kg checked bag included; frequent-flyer Avios earn; flexible fare upgrades available",
+        "booking_link": "https://www.britishairways.com/travel/home/public/en_gb (use multi-city search LHR-LIS / OPO-LHR)",
+        "carriers": [
+          "British Airways"
+        ],
+        "caveat": "Highest fare but better schedule protection and loyalty earnings.",
+        "dates": "Outbound 2026-09-10 / Return 2026-09-17",
+        "fare_estimate_per_person_eur": 295,
+        "layovers": "Nonstop both legs",
+        "option_label": "4. Premium Comfort & Flexibility",
+        "recommendation": "Choose if budget allows splurge or if work/business considerations demand flexibility.",
+        "route": "London Heathrow (LHR) → Lisbon (LIS); Porto (OPO) → London Heathrow (LHR)",
+        "total_group_estimate_eur": 885,
+        "tradeoff": "Highest fare but includes better customer service, seat selection, and flexible rebooking."
+      },
+      {
+        "baggage_included": "Varies by carrier; TAP includes bags, easyJet does not.",
+        "booking_link": "https://www.skyscanner.net/transport/flights/lon/opo/260910/?adults=3&adultsv2=3 (search pattern); return LIS-LON 260917",
+        "carriers": [
+          "TAP / easyJet mix or BA"
+        ],
+        "caveat": "May require rethinking the Day 4 inter-city transfer direction.",
+        "dates": "Outbound 2026-09-10 / Return 2026-09-17",
+        "fare_estimate_per_person_eur": 225,
+        "layovers": "Nonstop",
+        "option_label": "5. Flexible Alternative (Reverse Open-Jaw)",
+        "recommendation": "Consider if you want to ease into the trip or if outbound Porto fares happen to be cheaper on your exact dates.",
+        "route": "London (LGW/LHR) → Porto (OPO); Lisbon (LIS) → London (LGW/LHR)",
+        "total_group_estimate_eur": 675,
+        "tradeoff": "Useful if you prefer starting with Porto's compact scale and ending with Lisbon's bigger nightlife. Note this swaps your approved itinerary direction."
+      },
+      {
+        "baggage_included": "Wizz: personal item only; priority+cabin bag ~€40pp. Iberia: 23kg bag included if on full fare.",
+        "booking_link": "https://wizzair.com/en-gb/flights/timetable#/ (LTN-LIS); https://www.iberia.com (OPO-MAD-LHR)",
+        "carriers": [
+          "Wizz Air / Iberia"
+        ],
+        "caveat": "Luton is less convenient from central London; connection adds 3–4 hours versus nonstop.",
+        "dates": "Outbound 2026-09-10 / Return 2026-09-17",
+        "fare_estimate_per_person_eur": 130,
+        "layovers": "Direct outbound; possible 1-stop return via MAD (~2.5hr layover) or direct if available",
+        "option_label": "6. Nearby-Airport / Connect-for-Savings",
+        "recommendation": "Only if budget is tight and the group accepts longer travel days.",
+        "route": "London Luton (LTN) → Lisbon (LIS) direct (Wizz Air); Porto (OPO) → London Luton (LTN) or Iberia via Madrid",
+        "total_group_estimate_eur": 390,
+        "tradeoff": "Luton is less convenient from central London; Wizz charges aggressively for bags and seats; Iberia connection adds time."
+      }
+    ],
+    "schema_version": "1.0.0",
+    "sources": [
+      "https://www.skyscanner.net",
+      "https://www.google.com/travel/flights",
+      "https://www.ryanair.com",
+      "https://www.easyjet.com/en",
+      "https://www.flytap.com",
+      "https://www.britishairways.com"
+    ],
+    "trip_type": "multi-city open-jaw"
+  }
+}

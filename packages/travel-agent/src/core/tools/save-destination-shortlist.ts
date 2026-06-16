@@ -51,12 +51,17 @@ type SaveDestinationShortlistInput = Static<typeof saveDestinationShortlistSchem
 export interface SaveDestinationShortlistDetails {
 	phase: string | null;
 	optionCount: number;
+	imageReport?: { totalChecked: number; valid: number; broken: number; refetched: number };
 }
 
 export interface SaveDestinationShortlistDeps {
 	getState: () => TravelState;
 	setState: (state: TravelState) => void;
 	persistOpts: PersistenceOptions;
+	/** Optional: validate + clean destination image links (in place). Undefined = no-op. */
+	cleanImageLinks?: (
+		cards: Array<{ name?: string; imageQuery?: string; imageLinks?: string[] }>,
+	) => Promise<{ totalChecked: number; valid: number; broken: number; refetched: number }>;
 }
 
 export function createSaveDestinationShortlistTool(
@@ -79,6 +84,11 @@ export function createSaveDestinationShortlistTool(
 			const active = getActivePhase(state.checklist);
 			const research = normalizeDestinationResearch(params, state);
 
+			let imageReport: SaveDestinationShortlistDetails["imageReport"];
+			if (deps.cleanImageLinks) {
+				imageReport = await deps.cleanImageLinks(research.subDestinations);
+			}
+
 			const updated = { ...state, destinationResearch: research };
 			deps.setState(updated);
 			saveTravelState(updated, deps.persistOpts);
@@ -87,12 +97,16 @@ export function createSaveDestinationShortlistTool(
 				content: [
 					{
 						type: "text",
-						text: `Saved destination shortlist with ${research.subDestinations.length} option card(s) successfully.`,
+						text:
+							imageReport && imageReport.broken > 0
+								? `Saved destination shortlist with ${research.subDestinations.length} option card(s). Image links verified: ${imageReport.valid} ok, ${imageReport.broken} broken (removed), ${imageReport.refetched} refetched from Wikimedia.`
+								: `Saved destination shortlist with ${research.subDestinations.length} option card(s) successfully.`,
 					},
 				],
 				details: {
 					phase: active?.id ?? null,
 					optionCount: research.subDestinations.length,
+					imageReport,
 				},
 			};
 		},

@@ -10,6 +10,7 @@ export {
 	type AdvanceChecklistDetails,
 	createAdvanceChecklistTool,
 } from "./advance-checklist.js";
+export { createGetImagesTool, type GetImagesDeps, type GetImagesDetails } from "./get-images.js";
 export { createGoBackTool, type GoBackDeps, type GoBackDetails } from "./go-back.js";
 export {
 	createSaveDestinationShortlistTool,
@@ -27,6 +28,7 @@ import type { PersistenceOptions } from "../persistence.js";
 import type { SearchProvider } from "../search/types.js";
 import type { TravelState } from "../state.js";
 import { createAdvanceChecklistTool } from "./advance-checklist.js";
+import { createGetImagesTool } from "./get-images.js";
 import { createGoBackTool } from "./go-back.js";
 import { createSaveDestinationShortlistTool } from "./save-destination-shortlist.js";
 import { createShowChecklistTool } from "./show-checklist.js";
@@ -41,15 +43,20 @@ export interface CreateTravelToolsOptions {
 	persistOpts: PersistenceOptions;
 	model: Model<any>;
 	getApiKey?: () => string;
+	/** Optional: validate + clean destination image links (in place). Undefined = no-op. */
+	cleanImageLinks?: (
+		cards: Array<{ name?: string; imageQuery?: string; imageLinks?: string[] }>,
+	) => Promise<{ totalChecked: number; valid: number; broken: number; refetched: number }>;
 }
 
 /** Create all travel agent tools. */
 export function createTravelTools(options: CreateTravelToolsOptions): AgentTool<any>[] {
-	const { getState, setState, searchProvider, persistOpts, model, getApiKey } = options;
-	const stateDeps = { getState, setState, persistOpts };
+	const { getState, setState, searchProvider, persistOpts, model, getApiKey, cleanImageLinks } = options;
+	const stateDeps = { getState, setState, persistOpts, cleanImageLinks };
 
 	return [
 		createWebSearchTool(searchProvider, { getState }),
+		createGetImagesTool(stateDeps),
 		createUpdateStateTool(stateDeps),
 		createSaveDestinationShortlistTool(stateDeps),
 		createAdvanceChecklistTool(stateDeps),

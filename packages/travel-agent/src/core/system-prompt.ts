@@ -60,6 +60,7 @@ function buildToolsSection(): string {
 	return `# Available Tools
 
 - web_search: Search the web for travel information (destinations, activities, hotels, flights, reviews)
+- get_images: Search for real, validated image URLs with width/height. Use this whenever the user asks to see images or before saving imageLinks. Never invent image URLs.
 - save_destination_shortlist: Save the destination shortlist / choice cards (destination research). Use this — NOT update_travel_state — for destination_research.
 - update_travel_state: Save other structured data to the session (preferences, activities, itinerary, accommodation, flights, selections)
 - advance_checklist: Mark the current phase as complete and move to the next
@@ -135,7 +136,7 @@ function buildShortlistInstructions(options: TravelSystemPromptOptions): string 
 Required save_destination_shortlist payload:
 - destination: top-level destination summary object (optional; inferred from preferences if omitted)
 - subDestinations: the option cards; each card MUST include name, description, bestFor, why, roughDays, logisticsFit, budgetFit, seasonNote, tradeoff, imageQuery, imageLinks, selected=false, reviews, and sources
-- imageLinks: at least one valid direct http(s) .jpg/.jpeg/.png/.webp URL per card. imageQuery is still useful for fallback/search, but imageQuery alone is rejected by save_destination_shortlist.
+- imageLinks: at least one valid direct http(s) image URL per card from get_images. imageQuery is still useful for fallback/search, but imageQuery alone is rejected by save_destination_shortlist.
 - nextUserAction: a concrete choice prompt, e.g. "Choose 3-4 places to continue"
 - schemaVersion: "2.0.0" (added automatically)
 
@@ -146,7 +147,7 @@ Every card's 'tradeoff' field MUST be contextual to a preference the traveler ac
 
 Steps:
 1. Use web_search briefly to research destinations matching the preferences. Limit shortlist research to 1-2 web_search calls unless the user explicitly asks for deeper research.
-2. For each potential destination, gather: name, description, why it matches, themes, reviews, imageQuery, and at least one valid direct image URL in imageLinks. Try for ${minImageLinks} valid image URLs when fast, but never save an option card with zero imageLinks.
+2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. Use get_images with min_height 720 to fetch imageLinks. Try for ${minImageLinks} valid image URLs when fast, but never save an option card with zero imageLinks.
 3. Score each destination against the user's preferences.
 4. Immediately save the research using save_destination_shortlist.
 5. Present the saved shortlist to the user with fit reasons and clear, contextual tradeoffs (each tied to a stated preference axis).
@@ -186,7 +187,7 @@ Every activity MUST include a practical caveat or tradeoff in its tips or descri
 
 Steps:
 1. For each selected destination, use web_search briefly to find top activities. Limit research to ONE web_search call per selected destination unless the user explicitly asks for deeper research.
-2. Research: name, type, description, duration, cost, reviews, tips, AND at least ${minImageLinks} valid image URLs (e.g. .jpg/.png) for each activity.
+2. Research: name, type, description, duration, cost, reviews, tips, AND at least ${minImageLinks} valid image URLs from get_images for each activity.
 3. Provide exactly 4-6 activity options per selected destination, grouped by theme/practicality with recommended picks, duration/cost estimates, booking notes, and accessibility/child/mobility relevance where applicable.
 4. Save using update_travel_state with field="activities_research" BEFORE presenting prose to the user.
 5. Present the activities to the user grouped by destination, each with its contextual caveat/tradeoff.
@@ -204,7 +205,7 @@ Steps:
 1. Organize activities into days considering: travel time, opening hours, logical grouping
 2. Account for the user's pace preference and daily travel time limit
 3. Include transport, dining, and rest time between activities
-4. Provide at least ${minImageLinks} valid image URLs (e.g. .jpg/.png) representing each day's locations
+4. Provide at least ${minImageLinks} valid image URLs from get_images representing each day's locations
 5. Save using update_travel_state with field="itinerary_research"
 6. Present the itinerary day by day with times and activities
 7. Advance when the user approves the itinerary`;
@@ -219,7 +220,7 @@ function buildAccommodationFlightsInstructions(options: TravelSystemPromptOption
 
 **Accommodation (4-6 areas per overnight city):**
 1. For each overnight city in the itinerary, use web_search to research the best areas to stay. You MUST use ${accomSites.join(" and ")} for accommodation research.
-2. Provide 4-6 accommodation areas per overnight city when possible, each with: area name, neighborhood fit, proximity to planned activities/transit, typical nightly rates (budget/mid-range/luxury), safety tips, booking URLs, AND at least ${minImageLinks} image URLs.
+2. Provide 4-6 accommodation areas per overnight city when possible, each with: area name, neighborhood fit, proximity to planned activities/transit, typical nightly rates (budget/mid-range/luxury), safety tips, booking URLs, AND at least ${minImageLinks} image URLs from get_images.
 3. Include smart save/splurge alternatives so the user has real tradeoffs.
 4. Present the options grouped by city and ask the user to choose before locking.
 5. Save accommodation research using update_travel_state with field="accommodation_research"

@@ -37,12 +37,13 @@
 		"@biomejs/biome": "2.3.5",
 		"@types/node": "^22.10.5",
 		"@typescript/native-preview": "7.0.0-dev.20260120.1",
-		"concurrently": "^9.2.1",
+		"concurrently": "^10.0.3",
 		"husky": "^9.1.7",
 		"jiti": "^2.7.0",
-		"tsx": "^4.20.3",
-		"typescript": "^5.9.2",
-		"shx": "^0.4.0"
+		"promptfoo": "^0.121.15",
+		"shx": "^0.4.0",
+		"tsx": "^4.21.2",
+		"typescript": "^5.9.2"
 	},
 	"engines": {
 		"node": ">=22.19.0"
@@ -55,6 +56,11 @@
 		"rimraf": "6.1.2",
 		"gaxios": {
 			"rimraf": "6.1.2"
-		}
+		},
+		"esbuild": "^0.28.1",
+		"fast-uri": "^3.1.2",
+		"protobufjs": "^7.5.8",
+		"shell-quote": "^1.8.4",
+		"langsmith": "^0.6.0"
 	}
 }

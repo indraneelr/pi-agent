@@ -1,0 +1,720 @@
+{
+  "sessionId": "af-greece-family-1781528912701",
+  "checklist": {
+    "phases": [
+      {
+        "id": "gather_preferences",
+        "label": "Gather Preferences",
+        "description": "Collect mandatory trip requirements: dates/window, origin, group, budget/currency, destination intent, plus useful constraints/defaults",
+        "status": "done"
+      },
+      {
+        "id": "shortlist_destinations",
+        "label": "Shortlist Destination/Place Options",
+        "description": "Present choice-first option cards: 3-5 broad destinations or 8-10 places inside a chosen country/region, each with fit, days, logistics, budget, season, and tradeoff",
+        "status": "done"
+      },
+      {
+        "id": "select_destinations",
+        "label": "Select Places",
+        "description": "Let the user choose places from the option menu before researching detailed activities",
+        "status": "done"
+      },
+      {
+        "id": "research_experiences",
+        "label": "Research Activity Options",
+        "description": "For selected places, present 4-6 real activity/experience options per place, grouped by practicality, and ask the user to choose/approve",
+        "status": "done"
+      },
+      {
+        "id": "plan_itinerary",
+        "label": "Plan Itinerary",
+        "description": "Build a day-by-day itinerary from approved places and activities with transit, meals, check-in/out, and downtime",
+        "status": "done"
+      },
+      {
+        "id": "research_accommodation_flights",
+        "label": "Research Accommodation & Flights",
+        "description": "Present 4-6 flight options and 4-6 lodging options per overnight location when available, with live-data caveats and tradeoffs",
+        "status": "active"
+      },
+      {
+        "id": "final_plan",
+        "label": "Final Plan",
+        "description": "Reconcile selected choices into the complete itinerary, transport plan, budget, map-ready stops, and essential information",
+        "status": "pending"
+      }
+    ],
+    "activePhaseIndex": 5
+  },
+  "preferences": {
+    "destination": "Greece",
+    "origin": "Berlin",
+    "from_date": "2026-06-20",
+    "to_date": "2026-06-30",
+    "num_nights": 10,
+    "group_size": 4,
+    "group_type": "family with kids",
+    "ages_in_group": [
+      8,
+      11
+    ],
+    "budget": {
+      "amount": 6500,
+      "currency": "EUR",
+      "category": "mid-range"
+    },
+    "travel_themes": [
+      "beaches",
+      "culture",
+      "food",
+      "easy logistics"
+    ],
+    "pace_of_travel": "moderate"
+  },
+  "destinationResearch": {
+    "destination": {
+      "title": "Greece",
+      "name": "Greece",
+      "description": "Greece selected route.",
+      "bestTimeToVisit": "Check dates.",
+      "reviews": {},
+      "sources": []
+    },
+    "subDestinations": [
+      {
+        "name": "Athens",
+        "type": "place",
+        "description": "Athens selected by user.",
+        "selected": true,
+        "reviews": {},
+        "sources": []
+      },
+      {
+        "name": "Naxos",
+        "type": "place",
+        "description": "Naxos selected by user.",
+        "selected": true,
+        "reviews": {},
+        "sources": []
+      }
+    ],
+    "overallSummary": "Greece selected route for 10 nights.",
+    "tripHighlights": [],
+    "travelTips": [],
+    "preferencesUsed": {
+      "themes": [],
+      "groupType": "family with kids",
+      "numNights": 10
+    },
+    "nextUserAction": "Itinerary approved. Research accommodation and flights.",
+    "schemaVersion": "2.0.0"
+  },
+  "selectedDestinations": [
+    {
+      "name": "Athens",
+      "type": "place",
+      "description": "Athens selected by user.",
+      "selected": true,
+      "reviews": {},
+      "sources": []
+    },
+    {
+      "name": "Naxos",
+      "type": "place",
+      "description": "Naxos selected by user.",
+      "selected": true,
+      "reviews": {},
+      "sources": []
+    }
+  ],
+  "activitiesResearch": {
+    "activities": [
+      {
+        "name": "Acropolis Early-Entry Family Visit",
+        "type": "seed",
+        "description": "Acropolis Early-Entry Family Visit in Athens.",
+        "location": "Athens",
+        "estimatedDurationHours": 3,
+        "estimatedCost": 40,
+        "tips": "Seed approved activity.",
+        "reviews": {},
+        "sources": [
+          "https://example.com/activities"
+        ]
+      },
+      {
+        "name": "Agios Prokopios Beach Day",
+        "type": "seed",
+        "description": "Agios Prokopios Beach Day in Naxos.",
+        "location": "Naxos",
+        "estimatedDurationHours": 3,
+        "estimatedCost": 40,
+        "tips": "Seed approved activity.",
+        "reviews": {},
+        "sources": [
+          "https://example.com/activities"
+        ]
+      }
+    ]
+  },
+  "itineraryResearch": {
+    "itinerary": [
+      {
+        "date": "2026-06-20",
+        "place": "Athens",
+        "dayNumber": 1,
+        "activities": [
+          {
+            "name": "Athens logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Athens with transit/rest buffers.",
+            "location": "Athens",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-21",
+        "place": "Athens",
+        "dayNumber": 2,
+        "activities": [
+          {
+            "name": "Athens logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Athens with transit/rest buffers.",
+            "location": "Athens",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-22",
+        "place": "Athens → Naxos",
+        "dayNumber": 3,
+        "activities": [
+          {
+            "name": "Athens → Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Athens → Naxos with transit/rest buffers.",
+            "location": "Athens → Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-23",
+        "place": "Naxos",
+        "dayNumber": 4,
+        "activities": [
+          {
+            "name": "Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos with transit/rest buffers.",
+            "location": "Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-24",
+        "place": "Naxos",
+        "dayNumber": 5,
+        "activities": [
+          {
+            "name": "Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos with transit/rest buffers.",
+            "location": "Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-25",
+        "place": "Naxos",
+        "dayNumber": 6,
+        "activities": [
+          {
+            "name": "Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos with transit/rest buffers.",
+            "location": "Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-26",
+        "place": "Naxos",
+        "dayNumber": 7,
+        "activities": [
+          {
+            "name": "Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos with transit/rest buffers.",
+            "location": "Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-27",
+        "place": "Naxos",
+        "dayNumber": 8,
+        "activities": [
+          {
+            "name": "Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos with transit/rest buffers.",
+            "location": "Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-28",
+        "place": "Naxos",
+        "dayNumber": 9,
+        "activities": [
+          {
+            "name": "Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos with transit/rest buffers.",
+            "location": "Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-29",
+        "place": "Naxos",
+        "dayNumber": 10,
+        "activities": [
+          {
+            "name": "Naxos logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos with transit/rest buffers.",
+            "location": "Naxos",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-06-30",
+        "place": "Naxos → Athens → Berlin",
+        "dayNumber": 11,
+        "activities": [
+          {
+            "name": "Naxos → Athens → Berlin logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Naxos → Athens → Berlin with transit/rest buffers.",
+            "location": "Naxos → Athens → Berlin",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      }
+    ]
+  },
+  "accommodationResearch": {
+    "areasToStay": [
+      {
+        "areaToStay": "Plaka (Anafiotika)",
+        "bookingTips": "Book early on Booking.com for June peak; filter for family rooms or connecting suites because boutique stock is limited.",
+        "city": "Athens",
+        "description": "Picturesque historic quarter directly beneath the Acropolis. Marble lanes, neoclassical houses, and the shortest walk to the Acropolis entrance—ideal for the planned early-entry family visit. Tourist-heavy but deeply atmospheric.",
+        "imageUrls": [],
+        "nearbyTransport": "Acropolis Metro (Line 2) ~8 min walk; Syntagma Metro (Lines 2/3) ~10 min walk.",
+        "reviews": "“Unbeatable location for sightseeing; expect some evening noise from tavernas.”",
+        "safetyTips": "Very safe with constant tourist-police presence; narrow marble steps can be slippery for children; beware persistent restaurant touts on Adrianou Street.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=athens-plaka-families",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€80–120",
+          "luxury": "€220–400+",
+          "midRange": "€130–200"
+        }
+      },
+      {
+        "areaToStay": "Koukaki (Acropolis Museum)",
+        "bookingTips": "Target properties near Dimitrakopoulou or Parthenonos streets for best Acropolis views; mid-range apartments with kitchens suit families well.",
+        "city": "Athens",
+        "description": "Laid-back residential district just south of the Acropolis Museum. Excellent family cafés, pedestrian zones, and a less cluttered approach to the ancient sites than Plaka. Strong mix of local life and visitor convenience.",
+        "imageUrls": [],
+        "nearbyTransport": "Akropoli Metro (Line 2) ~5–7 min walk; Syngrou-Fix tram for coastal/Piraeus access.",
+        "reviews": "“Perfect balance of local vibe and tourist convenience.”",
+        "safetyTips": "Very safe residential area; the Syngrou Avenue border is busy with traffic—stay north of it for quieter streets.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=athens-koukaki-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€70–110",
+          "luxury": "€200–350+",
+          "midRange": "€120–180"
+        }
+      },
+      {
+        "areaToStay": "Monastiraki (Metro Hub)",
+        "bookingTips": "Choose upper floors or courtyard-facing rooms for noise mitigation; ideal for early ferry mornings due to direct port/metro links.",
+        "city": "Athens",
+        "description": "Vibrant heart of Athens with the flea market and rooftop bars. Extremely convenient transport nexus connecting the airport metro (Line 3) and the port (Line 1). Perfect if you want maximum logistical ease.",
+        "imageUrls": [],
+        "nearbyTransport": "Monastiraki Metro (Lines 1 & 3) with direct airport line ~40 mins; Piraeus suburban railway access.",
+        "reviews": "“Unbeatable connectivity, but pack earplugs.”",
+        "safetyTips": "Safe but very crowded; watch belongings around Monastiraki Square; evening noise from bars and streets can last past midnight.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=athens-monastiraki-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€75–115",
+          "luxury": "€210–380+",
+          "midRange": "€125–195"
+        }
+      },
+      {
+        "areaToStay": "Syntagma (Parliament Square)",
+        "bookingTips": "Best for hotel loyalty programmes (e.g., NJV Athens Plaza); book refundable rates because June is congress season.",
+        "city": "Athens",
+        "description": "Grand, leafy, and centrally located with upscale shopping and easy airport metro. Slightly more formal atmosphere but superb for families wanting top-tier hotels and immediate transit.",
+        "imageUrls": [],
+        "nearbyTransport": "Syntagma Metro (Lines 2 & 3) with direct airport line; X95 express bus to airport.",
+        "reviews": "“Elegant and convenient, though slightly less ‘old Athens’ charm.”",
+        "safetyTips": "Among the safest areas in Athens; large open square occasionally hosts demonstrations—typically peaceful but worth checking schedules.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=athens-syntagma-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€90–130",
+          "luxury": "€250–500+",
+          "midRange": "€150–230"
+        }
+      },
+      {
+        "areaToStay": "Thiseio (Pedestrian Promenade)",
+        "bookingTips": "Smaller inventory than Plaka—secure apartments with kitchens here for family breakfast flexibility.",
+        "city": "Athens",
+        "description": "Quiet pedestrianised zone along the ancient promenade with a direct walking path to the Acropolis summit and Herodion views. Calmer evenings than Plaka or Monastiraki.",
+        "imageUrls": [],
+        "nearbyTransport": "Thiseio Metro (Line 1) ~5–8 min walk; direct train connection to Piraeus port.",
+        "reviews": "“Quiet evenings with the best sunset view walks.”",
+        "safetyTips": "Extremely safe evening strolls due to heavy pedestrian traffic; some graffiti but harmless.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=athens-thiseio-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€65–100",
+          "luxury": "€190–320+",
+          "midRange": "€110–170"
+        }
+      },
+      {
+        "areaToStay": "Kolonaki (Lycabettus Foothills)",
+        "bookingTips": "Look for family suites at boutique properties; use taxis/metro to Acropolis rather than walking in midday heat.",
+        "city": "Athens",
+        "description": "Upscale Athenian neighbourhood with designer shops, museums (Benaki, Goulandris), and hillside quiet. Removed from ancient-site bustle but offers a polished, spacious local experience.",
+        "imageUrls": [],
+        "nearbyTransport": "Evangelismos Metro (Line 3) ~8–10 min walk; frequent buses/taxis down to Syntagma.",
+        "reviews": "“Sophisticated and calm; good for families who want space from tourist crowds.”",
+        "safetyTips": "Very safe; hilly streets can be tiring for smaller kids (ages 8/11 should manage fine).",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=athens-kolonaki-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€85–125",
+          "luxury": "€230–450+",
+          "midRange": "€140–210"
+        }
+      },
+      {
+        "areaToStay": "Naxos Chora (Old Town / Port Castle)",
+        "bookingTips": "Book inner Old Town hotels for charm or waterfront for convenience; parking is limited if you later rent a car—ask about port transfers.",
+        "city": "Naxos",
+        "description": "The island’s capital with Venetian castle, winding lanes, and harbour front. Top choice for families wanting restaurants, shops, and ferry access without relying on a car.",
+        "imageUrls": [],
+        "nearbyTransport": "Port/ferry dock within 5–15 min walk; KTEL bus station for island routes; taxi rank at port.",
+        "reviews": "“Convenient base with authentic Cycladic character.”",
+        "safetyTips": "Safe small-island environment; the Castle hill is steep and cobbled—fun for kids but caution at night with uneven surfaces.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=naxos-chora-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€60–100",
+          "luxury": "€180–300+",
+          "midRange": "€110–170"
+        }
+      },
+      {
+        "areaToStay": "Agios Georgios Beach (St George)",
+        "bookingTips": "Request ground-floor pool-access rooms for independent older kids; compare half-board packages since tavernas are walkable anyway.",
+        "city": "Naxos",
+        "description": "Sandy crescent immediately south of Chora with shallow, calm water—ideal for confident younger swimmers. Beachfront hotels and short walks to town amenities make logistics effortless.",
+        "imageUrls": [],
+        "nearbyTransport": "10–15 min walk to Chora/port; local bus stops along beach road; easy cycling paths.",
+        "reviews": "“Family sweet spot—town convenience meets beach relaxation.”",
+        "safetyTips": "Lifeguarded in summer; mild winds make it safer for inflatables than west-coast beaches; carry a torch for rocky shortcuts after dark.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=naxos-agios-georgios-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€70–110",
+          "luxury": "€200–320+",
+          "midRange": "€120–180"
+        }
+      },
+      {
+        "areaToStay": "Agios Prokopios Beach",
+        "bookingTips": "Book well ahead for June; beachfront properties fill first; choosing a sea-view (not direct beachfront) room can save 20–30%.",
+        "city": "Naxos",
+        "description": "Award-winning turquoise bay on the island’s west coast; water sports, organised sunbeds, and family-oriented resorts. Fits the planned beach-day activity perfectly.",
+        "imageUrls": [],
+        "nearbyTransport": "Regular KTEL bus to Chora (15–20 mins) every ~30 min in summer; rental car recommended for exploring beyond the beach.",
+        "reviews": "“Stunning water, very family-friendly, but book early.”",
+        "safetyTips": "Fully organised with lifeguards; minor summer swell possible—heed flag warnings; hillside hotels above the beach may require a car with kids.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=naxos-agios-prokopios-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€80–120",
+          "luxury": "€220–380+",
+          "midRange": "€130–200"
+        }
+      },
+      {
+        "areaToStay": "Agia Anna Beach",
+        "bookingTips": "Excellent value slightly inland guesthouses with shared pools; verify Wi-Fi reliability if needed for remote work during the trip.",
+        "city": "Naxos",
+        "description": "Immediately south of Agios Prokopios; slightly narrower but equally beautiful with rustic fish tavernas and a more relaxed village vibe. Great for families wanting proximity to the famous beach with less scene.",
+        "imageUrls": [],
+        "nearbyTransport": "Same bus line as Prokopios to Chora; walking distance to Prokopios amenities.",
+        "reviews": "“A calmer sibling to Prokopios with great seafood.”",
+        "safetyTips": "Small working harbour with fishing boats—supervise kids near boat ramps; generally very calm waters.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=naxos-agia-anna-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€70–105",
+          "luxury": "€190–300+",
+          "midRange": "€115–175"
+        }
+      },
+      {
+        "areaToStay": "Plaka Beach",
+        "bookingTips": "Car hire becomes almost essential here; ideal for families seeking bungalow vibes rather than town energy.",
+        "city": "Naxos",
+        "description": "Long dune-backed sandy stretch further south; wide-open spaces perfect for children to run; collection of mid-range studios and boutique resorts scattered behind the dunes.",
+        "imageUrls": [],
+        "nearbyTransport": "KTEL bus continues to Plaka in summer but less frequent; drive to Chora ~25 mins.",
+        "reviews": "“Wide beaches and space—great for active kids.”",
+        "safetyTips": "Fewer organised lifeguard towers than Prokopios—supervise swimming closely; some naturist sections further south, but family sections cluster near access roads.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=naxos-plaka-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€65–95",
+          "luxury": "€170–280+",
+          "midRange": "€100–160"
+        }
+      },
+      {
+        "areaToStay": "Stelida / Prokopios Hilltop",
+        "bookingTips": "Best for self-catering families needing multiple bedrooms/pools at lower cost than beachfront; confirm shuttle service or factor rental-car cost into savings.",
+        "city": "Naxos",
+        "description": "Elevated residential zone between Chora and the west coast offering panoramic sea views and newer apartment complexes. Quieter nights while still 5–10 mins drive to beaches.",
+        "imageUrls": [],
+        "nearbyTransport": "Needs rental car or taxi; no regular bus up the hillsides.",
+        "reviews": "“Spacious villas for less money if you don’t mind driving to the beach.”",
+        "safetyTips": "Well-lit modern developments; steep access roads mean families should rely on car/shuttle rather than scooters.",
+        "sources": [
+          "https://www.booking.com/searchresults.html?label=naxos-stelida-family",
+          "https://example.com/accommodation-research"
+        ],
+        "typicalNightlyRate": {
+          "budget": "€55–85",
+          "luxury": "€160–240+",
+          "midRange": "€95–145"
+        }
+      }
+    ],
+    "confidence": "medium",
+    "liveDataCaveats": "Prices are estimated seasonal ranges for June 2026 family rooms from Booking.com search context; actual nightly rates vary by property, cancellation policy, and real-time demand. Availability not confirmed.",
+    "meta_provider_type": "web_search",
+    "schema_version": "1.0.0"
+  },
+  "flightResearch": {
+    "confidence": "medium",
+    "currency": "EUR",
+    "dates": {
+      "outbound": "2026-06-20",
+      "return": "2026-06-30"
+    },
+    "liveDataCaveats": "June 2026 flight schedules are not yet fully published. Prices and timings are forward estimates based on 2025 seasonal patterns from Skyscanner / Google Flights. Verify exact times, availability, and rules on the airline or booking site before purchase. Price checked 2026-06-15.",
+    "meta_provider_type": "web_search",
+    "passengers": 4,
+    "sample_options": [
+      {
+        "airline": "easyJet Europe",
+        "baggageCaveat": "Cabin bag only (under-seat size). Checked bags and advanced seat selection cost extra (~€50–80 per direction for a family of four).",
+        "bookingLink": "https://www.skyscanner.net/transport/flights/ber/athe/?oym=2606&iym=2630&adults=4&children=0",
+        "caveats": "Schedule release pending; base fare may shift once 2026 slots are finalized.",
+        "durationApprox": "2h 45m–3h 10m each way",
+        "fareEstimatePerPersonEUR": "€140–190",
+        "fareEstimateTotalEUR": "€560–760",
+        "label": "easyJet Direct Low-Cost",
+        "layovers": "None (direct)",
+        "outboundApproxArrival": "10:30–18:30 block",
+        "outboundApproxTime": "06:00–14:00 block",
+        "outboundArrivalDate": "2026-06-20",
+        "outboundDepartureDate": "2026-06-20",
+        "recommendation": "Choose only if you can pack light and accept no-frills service.",
+        "returnApproxArrival": "13:00–21:00 block",
+        "returnApproxTime": "11:00–19:00 block",
+        "returnArrivalDate": "2026-06-30",
+        "returnDepartureDate": "2026-06-30",
+        "route": "BER ↔ ATH nonstop",
+        "tradeoff": "Lowest base fare, but ancillary fees add up quickly for a family of four; limited flexibility on changes.",
+        "type": "cheapest"
+      },
+      {
+        "airline": "Aegean Airlines",
+        "baggageCaveat": "23 kg checked bag and light meal included; higher-tier seats and flexible rebooking available.",
+        "bookingLink": "https://www.google.com/travel/flights?q=Berlin+to+Athens+flights+Jun+2026",
+        "caveats": "Summer 2026 schedule projected; direct Aegean flights sell out first in peak season.",
+        "durationApprox": "2h 50m each way",
+        "fareEstimatePerPersonEUR": "€220–300",
+        "fareEstimateTotalEUR": "€880–1,200",
+        "label": "Aegean Airlines Direct Full-Service",
+        "layovers": "None (direct)",
+        "outboundApproxArrival": "13:00–20:00 block",
+        "outboundApproxTime": "09:00–16:00 block",
+        "outboundArrivalDate": "2026-06-20",
+        "outboundDepartureDate": "2026-06-20",
+        "recommendation": "Top pick for families wanting minimal hassle, luggage included, and reliable customer support if plans change.",
+        "returnApproxArrival": "15:00–22:00 block",
+        "returnApproxTime": "12:00–19:00 block",
+        "returnArrivalDate": "2026-06-30",
+        "returnDepartureDate": "2026-06-30",
+        "route": "BER ↔ ATH nonstop",
+        "tradeoff": "Higher price than low-cost competitors, but total cost often narrows once baggage/meals are added on budget carriers.",
+        "type": "best_comfort_directness"
+      },
+      {
+        "airline": "Lufthansa",
+        "baggageCaveat": "Checked bag included; Star Alliance through-checked luggage and protected connection.",
+        "bookingLink": "https://www.google.com/travel/flights?q=Lufthansa+Berlin+Munich+Athens+Jun+2026",
+        "caveats": "Connection time at MUC typically 60–90 mins; verify minimum connection time for Schengen-to-Schengen transfer.",
+        "durationApprox": "~5h 30m total each way including layover",
+        "fareEstimatePerPersonEUR": "€200–280",
+        "fareEstimateTotalEUR": "€800–1,120",
+        "label": "Lufthansa via Munich",
+        "layovers": "1 stop (MUC) each way ~60–90 min",
+        "outboundApproxArrival": "15:00–18:00 block",
+        "outboundApproxTime": "07:00–10:00 block",
+        "outboundArrivalDate": "2026-06-20",
+        "outboundDepartureDate": "2026-06-20",
+        "recommendation": "Solid backup if Aegean direct prices spike; reliable connection at Munich with family services.",
+        "returnApproxArrival": "19:00–22:00 block",
+        "returnApproxTime": "13:00–16:00 block",
+        "returnArrivalDate": "2026-06-30",
+        "returnDepartureDate": "2026-06-30",
+        "route": "BER → MUC → ATH / ATH → MUC → BER",
+        "tradeoff": "Adds ~2–2.5h total travel time versus direct, but competitively priced with full service and connection protection.",
+        "type": "reliable_one_stop"
+      },
+      {
+        "airline": "Aegean Airlines",
+        "baggageCaveat": "Included checked bag; priority boarding and front-row seating available for purchase.",
+        "bookingLink": "https://www.google.com/travel/flights?q=Aegean+morning+Berlin+Athens+Jun+2026",
+        "caveats": "Morning direct slots are the most requested; prices likely at premium tier for peak Saturday/Sunday departures.",
+        "durationApprox": "2h 50m each way",
+        "fareEstimatePerPersonEUR": "€240–320",
+        "fareEstimateTotalEUR": "€960–1,280",
+        "label": "Aegean Morning Departure (Best Timing)",
+        "layovers": "None (direct)",
+        "outboundApproxArrival": "12:30–14:00 block",
+        "outboundApproxTime": "09:30–11:00 block",
+        "outboundArrivalDate": "2026-06-20",
+        "outboundDepartureDate": "2026-06-20",
+        "recommendation": "Ideal if you prioritise a civilised departure hour and same-afternoon hotel check-in in Athens.",
+        "returnApproxArrival": "16:00–17:30 block",
+        "returnApproxTime": "14:00–15:30 block",
+        "returnArrivalDate": "2026-06-30",
+        "returnDepartureDate": "2026-06-30",
+        "route": "BER ↔ ATH nonstop",
+        "tradeoff": "Most expensive direct option, but lands midday allowing smooth settling-in and pool time before dinner.",
+        "type": "best_timing"
+      },
+      {
+        "airline": "Aegean Airlines / easyJet mix",
+        "baggageCaveat": "Depends on chosen carrier; flexible-date tickets may require slightly higher fare class on legacy carriers.",
+        "bookingLink": "https://www.google.com/travel/flights?q=Berlin+Athens+flexible+dates+Jun+2026",
+        "caveats": "Requires shifting hotel/ferry bookings by ±1 day; savings vary with day-of-week pricing.",
+        "durationApprox": "2h 45m–3h 10m each way (direct)",
+        "fareEstimatePerPersonEUR": "€200–260",
+        "fareEstimateTotalEUR": "€800–1,040",
+        "label": "±1 Day Flexible Direct (Jun 19 – Jul 1)",
+        "layovers": "None (direct)",
+        "outboundApproxArrival": "Comparable midday window",
+        "outboundApproxTime": "Comparable morning window",
+        "outboundArrivalDate": "2026-06-19",
+        "outboundDepartureDate": "2026-06-19",
+        "recommendation": "Good if school/work calendars allow a little wiggle room; often drops total fare 15–20% versus rigid peak dates.",
+        "returnApproxArrival": "Comparable afternoon window",
+        "returnApproxTime": "Comparable midday window",
+        "returnArrivalDate": "2026-07-01",
+        "returnDepartureDate": "2026-07-01",
+        "route": "BER ↔ ATH nonstop",
+        "tradeoff": "Sacrifices one calendar day either side; hotel and ferry dates must shift accordingly.",
+        "type": "flexible_dates"
+      },
+      {
+        "airline": "Wizz Air / Ryanair combo",
+        "baggageCaveat": "Personal item only; checked bags, cabin bags, seat selection all extra; high risk of separate-ticket misconnection.",
+        "bookingLink": "https://www.skyscanner.net/transport/flights/ber/athe/?oym=2606&iym=2630&adults=4",
+        "caveats": "Likely involves self-transfer via BUD or VIE on separate tickets; not recommended with young children unless significant cost savings justify the risk.",
+        "durationApprox": "6h–8h total each way depending on connection",
+        "fareEstimatePerPersonEUR": "€120–170",
+        "fareEstimateTotalEUR": "€480–680",
+        "label": "Ultra-Budget via Central Europe Hub",
+        "layovers": "1 stop (likely BUD or VIE) with possible self-transfer risk",
+        "outboundApproxArrival": "16:00–20:00 block",
+        "outboundApproxTime": "06:00–10:00 block",
+        "outboundArrivalDate": "2026-06-20",
+        "outboundDepartureDate": "2026-06-20",
+        "recommendation": "Only if budget is absolutely paramount and you accept self-transfer risks and longer travel day.",
+        "returnApproxArrival": "20:00–23:59 block",
+        "returnApproxTime": "14:00–18:00 block",
+        "returnArrivalDate": "2026-06-30",
+        "returnDepartureDate": "2026-06-30",
+        "route": "BER → Hub → ATH / ATH → Hub → BER",
+        "tradeoff": "Longest travel day, minimal family support if delayed, and baggage fees can erode savings.",
+        "type": "ultra_budget_one_stop"
+      }
+    ],
+    "schema_version": "1.0.0",
+    "tripDestination": "Athens",
+    "tripOrigin": "Berlin"
+  }
+}

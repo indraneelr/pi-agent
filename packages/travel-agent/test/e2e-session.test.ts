@@ -5,7 +5,7 @@
  * verifying the full agent loop: prompt -> tool calls -> state updates -> response.
  */
 
-import { rmSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fauxAssistantMessage, fauxText, fauxToolCall, registerFauxProvider } from "@mariozechner/pi-ai";
@@ -109,6 +109,14 @@ describe("Travel Session E2E", () => {
 		expect(events).toContain("tool_execution_start");
 		expect(events).toContain("tool_execution_end");
 		expect(events).toContain("agent_end");
+
+		// Verify AgentHarness persisted the full transcript as JSONL under dataDir/sessions.
+		const sessionDirs = readdirSync(join(TEST_DIR, "sessions"), { recursive: true, withFileTypes: true });
+		const sessionFile = sessionDirs.find((entry) => entry.isFile() && entry.name.endsWith("e2e-test-1.jsonl"));
+		expect(sessionFile).toBeDefined();
+		const persistedTranscript = readFileSync(join(sessionFile!.parentPath, sessionFile!.name), "utf-8");
+		expect(persistedTranscript).toContain('"type":"message"');
+		expect(persistedTranscript).toContain("I want to go to Tokyo");
 
 		faux.unregister();
 	});

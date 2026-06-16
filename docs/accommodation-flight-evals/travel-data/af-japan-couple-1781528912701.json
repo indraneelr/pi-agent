@@ -1,0 +1,672 @@
+{
+  "sessionId": "af-japan-couple-1781528912701",
+  "checklist": {
+    "phases": [
+      {
+        "id": "gather_preferences",
+        "label": "Gather Preferences",
+        "description": "Collect mandatory trip requirements: dates/window, origin, group, budget/currency, destination intent, plus useful constraints/defaults",
+        "status": "done"
+      },
+      {
+        "id": "shortlist_destinations",
+        "label": "Shortlist Destination/Place Options",
+        "description": "Present choice-first option cards: 3-5 broad destinations or 8-10 places inside a chosen country/region, each with fit, days, logistics, budget, season, and tradeoff",
+        "status": "done"
+      },
+      {
+        "id": "select_destinations",
+        "label": "Select Places",
+        "description": "Let the user choose places from the option menu before researching detailed activities",
+        "status": "done"
+      },
+      {
+        "id": "research_experiences",
+        "label": "Research Activity Options",
+        "description": "For selected places, present 4-6 real activity/experience options per place, grouped by practicality, and ask the user to choose/approve",
+        "status": "done"
+      },
+      {
+        "id": "plan_itinerary",
+        "label": "Plan Itinerary",
+        "description": "Build a day-by-day itinerary from approved places and activities with transit, meals, check-in/out, and downtime",
+        "status": "done"
+      },
+      {
+        "id": "research_accommodation_flights",
+        "label": "Research Accommodation & Flights",
+        "description": "Present 4-6 flight options and 4-6 lodging options per overnight location when available, with live-data caveats and tradeoffs",
+        "status": "active"
+      },
+      {
+        "id": "final_plan",
+        "label": "Final Plan",
+        "description": "Reconcile selected choices into the complete itinerary, transport plan, budget, map-ready stops, and essential information",
+        "status": "pending"
+      }
+    ],
+    "activePhaseIndex": 5
+  },
+  "preferences": {
+    "destination": "Japan",
+    "origin": "San Francisco",
+    "from_date": "2026-04-05",
+    "to_date": "2026-04-14",
+    "num_nights": 9,
+    "group_size": 2,
+    "group_type": "couple",
+    "budget": {
+      "amount": 6000,
+      "currency": "USD",
+      "category": "mid-range"
+    },
+    "travel_themes": [
+      "food",
+      "culture",
+      "history"
+    ],
+    "pace_of_travel": "moderate"
+  },
+  "destinationResearch": {
+    "destination": {
+      "title": "Japan",
+      "name": "Japan",
+      "description": "Japan selected route.",
+      "bestTimeToVisit": "Check dates.",
+      "reviews": {},
+      "sources": []
+    },
+    "subDestinations": [
+      {
+        "name": "Tokyo",
+        "type": "place",
+        "description": "Tokyo selected by user.",
+        "selected": true,
+        "reviews": {},
+        "sources": []
+      },
+      {
+        "name": "Kyoto",
+        "type": "place",
+        "description": "Kyoto selected by user.",
+        "selected": true,
+        "reviews": {},
+        "sources": []
+      }
+    ],
+    "overallSummary": "Japan selected route for 9 nights.",
+    "tripHighlights": [],
+    "travelTips": [],
+    "preferencesUsed": {
+      "themes": [],
+      "groupType": "couple",
+      "numNights": 9
+    },
+    "nextUserAction": "Itinerary approved. Research accommodation and flights.",
+    "schemaVersion": "2.0.0"
+  },
+  "selectedDestinations": [
+    {
+      "name": "Tokyo",
+      "type": "place",
+      "description": "Tokyo selected by user.",
+      "selected": true,
+      "reviews": {},
+      "sources": []
+    },
+    {
+      "name": "Kyoto",
+      "type": "place",
+      "description": "Kyoto selected by user.",
+      "selected": true,
+      "reviews": {},
+      "sources": []
+    }
+  ],
+  "activitiesResearch": {
+    "activities": [
+      {
+        "name": "Tsukiji Food Walk",
+        "type": "seed",
+        "description": "Tsukiji Food Walk in Tokyo.",
+        "location": "Tokyo",
+        "estimatedDurationHours": 3,
+        "estimatedCost": 40,
+        "tips": "Seed approved activity.",
+        "reviews": {},
+        "sources": [
+          "https://example.com/activities"
+        ]
+      },
+      {
+        "name": "Fushimi Inari Dawn Hike",
+        "type": "seed",
+        "description": "Fushimi Inari Dawn Hike in Kyoto.",
+        "location": "Kyoto",
+        "estimatedDurationHours": 3,
+        "estimatedCost": 40,
+        "tips": "Seed approved activity.",
+        "reviews": {},
+        "sources": [
+          "https://example.com/activities"
+        ]
+      }
+    ]
+  },
+  "itineraryResearch": {
+    "itinerary": [
+      {
+        "date": "2026-04-05",
+        "place": "Tokyo",
+        "dayNumber": 1,
+        "activities": [
+          {
+            "name": "Tokyo logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Tokyo with transit/rest buffers.",
+            "location": "Tokyo",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-06",
+        "place": "Tokyo",
+        "dayNumber": 2,
+        "activities": [
+          {
+            "name": "Tokyo logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Tokyo with transit/rest buffers.",
+            "location": "Tokyo",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-07",
+        "place": "Tokyo",
+        "dayNumber": 3,
+        "activities": [
+          {
+            "name": "Tokyo logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Tokyo with transit/rest buffers.",
+            "location": "Tokyo",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-08",
+        "place": "Tokyo",
+        "dayNumber": 4,
+        "activities": [
+          {
+            "name": "Tokyo logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Tokyo with transit/rest buffers.",
+            "location": "Tokyo",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-09",
+        "place": "Tokyo → Kyoto",
+        "dayNumber": 5,
+        "activities": [
+          {
+            "name": "Tokyo → Kyoto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Tokyo → Kyoto with transit/rest buffers.",
+            "location": "Tokyo → Kyoto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-10",
+        "place": "Kyoto",
+        "dayNumber": 6,
+        "activities": [
+          {
+            "name": "Kyoto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Kyoto with transit/rest buffers.",
+            "location": "Kyoto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-11",
+        "place": "Kyoto",
+        "dayNumber": 7,
+        "activities": [
+          {
+            "name": "Kyoto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Kyoto with transit/rest buffers.",
+            "location": "Kyoto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-12",
+        "place": "Kyoto",
+        "dayNumber": 8,
+        "activities": [
+          {
+            "name": "Kyoto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Kyoto with transit/rest buffers.",
+            "location": "Kyoto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-13",
+        "place": "Kyoto",
+        "dayNumber": 9,
+        "activities": [
+          {
+            "name": "Kyoto logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Kyoto with transit/rest buffers.",
+            "location": "Kyoto",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      },
+      {
+        "date": "2026-04-14",
+        "place": "Kyoto → San Francisco",
+        "dayNumber": 10,
+        "activities": [
+          {
+            "name": "Kyoto → San Francisco logistics block",
+            "type": "logistics",
+            "description": "Approved itinerary day in Kyoto → San Francisco with transit/rest buffers.",
+            "location": "Kyoto → San Francisco",
+            "estimatedDurationHours": 2,
+            "estimatedCost": 20
+          }
+        ]
+      }
+    ]
+  },
+  "accommodationResearch": {
+    "areasToStay": [
+      {
+        "areaToStay": "Shibuya",
+        "bookingTips": "Book early for cherry-blossom season via Booking.com; mid-range business hotels offer great value.",
+        "city": "Tokyo",
+        "description": "Vibrant youth-culture hub with excellent JR and metro connectivity. Ideal for food, shopping, and nightlife with moderate pace.",
+        "imageLinks": [
+          "https://cf.bstatic.com/xdata/images/city/1024x576/619546.jpg"
+        ],
+        "nearbyTransport": "JR Yamanote Line, Tokyo Metro Ginza/Hanzomon/Fukutoshin lines; direct airport bus and Narita Express nearby.",
+        "reviews": "Highly rated by couples for walkability and dining density; noise can vary by street.",
+        "safetyTips": "Very safe; main crossings are crowded late—stay aware of belongings in dense areas.",
+        "sources": [
+          {
+            "name": "Booking.com Tokyo stays",
+            "url": "https://www.booking.com/city/jp/tokyo.html"
+          },
+          {
+            "name": "TripAdvisor Shibuya guide",
+            "url": "https://www.tripadvisor.com/Tourism-g14134352-Shibuya_Tokyo_Tokyo_Prefecture_Kanto-Vacations.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$130–190 USD",
+          "luxury": "~$460–750 USD",
+          "midRange": "~$210–360 USD"
+        }
+      },
+      {
+        "areaToStay": "Shinjuku",
+        "bookingTips": "West/East Shinjuku hotels differ in vibe—west is calmer, east is livelier. Compare on Booking.com.",
+        "city": "Tokyo",
+        "description": "Major transit and entertainment nucleus with endless dining alleys and department stores. Strong mid-range hotel cluster.",
+        "imageLinks": [
+          "https://cf.bstatic.com/xdata/images/city/1024x576/620051.jpg"
+        ],
+        "nearbyTransport": "JR Yamanote, Chuo, Sobu lines; Keio and Odakyu terminals; Tokyo Metro; Narita Express and airport limousine bus.",
+        "reviews": "Praised for convenience; some blocks are busy and slightly gritty but safe.",
+        "safetyTips": "Kabukicho area is generally safe but stick to main streets late at night; avoid touts.",
+        "sources": [
+          {
+            "name": "Booking.com Shinjuku hotels",
+            "url": "https://www.booking.com/neighborhood/jp/tokyo/shinjuku.html"
+          },
+          {
+            "name": "Japan-guide Shinjuku",
+            "url": "https://www.japan-guide.com/e/e3019.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$120–180 USD",
+          "luxury": "~$440–720 USD",
+          "midRange": "~$200–340 USD"
+        }
+      },
+      {
+        "areaToStay": "Ginza / Tsukiji Outer Market",
+        "bookingTips": "Splurge options abound; mid-range business hotels are tucked side-street. Book via Booking.com.",
+        "city": "Tokyo",
+        "description": "Upscale district near theaters, galleries, and world-famous food markets. Fits food + culture themes.",
+        "imageLinks": [
+          "https://cf.bstatic.com/xdata/images/city/1024x576/619517.jpg"
+        ],
+        "nearbyTransport": "Tokyo Metro Ginza/Marunouchi/Hibiya lines; Tsukiji Station; short taxi/subway to Tsukiji Outer Market.",
+        "reviews": "Ideal for culinary travelers; less nightlife than Shibuya/Shinjuku but refined atmosphere.",
+        "safetyTips": "Among Tokyo’s safest and cleanest districts; very pedestrian-friendly.",
+        "sources": [
+          {
+            "name": "Booking.com Ginza area",
+            "url": "https://www.booking.com/neighborhood/jp/tokyo/ginza.html"
+          },
+          {
+            "name": "Lonely Planet Ginza guide",
+            "url": "https://www.lonelyplanet.com/japan/tokyo/ginza"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$170–240 USD",
+          "luxury": "~$500–950 USD",
+          "midRange": "~$260–420 USD"
+        }
+      },
+      {
+        "areaToStay": "Asakusa",
+        "bookingTips": "Ryokan and guesthouses mix with modern hotels; great value for culture-focused travelers on Booking.com.",
+        "city": "Tokyo",
+        "description": "Historic downtown with traditional temples, old-school eateries, and a slower neighborhood feel. Budget-friendly.",
+        "imageLinks": [
+          "https://cf.bstatic.com/xdata/images/city/1024x576/619564.jpg"
+        ],
+        "nearbyTransport": "Tokyo Metro Ginza Line (Asakusa Station); Tobu Skytree line; water bus to Odaiba/Hamamatsucho.",
+        "reviews": "Beloved by cultural travelers; fewer late-night options but deeply atmospheric.",
+        "safetyTips": "Safe and family-friendly; narrow lanes are well-lit; daytime crowds near Sensoji thin out early evening.",
+        "sources": [
+          {
+            "name": "Booking.com Asakusa stays",
+            "url": "https://www.booking.com/neighborhood/jp/tokyo/asakusa.html"
+          },
+          {
+            "name": "Japan-guide Asakusa",
+            "url": "https://www.japan-guide.com/e/e3005.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$90–150 USD",
+          "luxury": "~$350–580 USD",
+          "midRange": "~$160–290 USD"
+        }
+      },
+      {
+        "areaToStay": "Ueno / Akihabara",
+        "bookingTips": "Strong selection of mid-range chain hotels near Ueno Station on Booking.com.",
+        "city": "Tokyo",
+        "description": "Museum-dense park district plus electronics/otaku culture north. Good transit and moderate prices.",
+        "imageLinks": [],
+        "nearbyTransport": "JR Yamanote, Keisei Skyliner (Narita access), Tokyo Metro Hibiya/Ginza lines; Shinkansen not direct but easy transfers.",
+        "reviews": "Great for museum lovers and first-timers wanting direct Narita access; slightly less chic than Shibuya/Ginza.",
+        "safetyTips": "Standard urban awareness; Akihabara is lively and safe, though some side-street solicitations occur.",
+        "sources": [
+          {
+            "name": "Booking.com Ueno hotels",
+            "url": "https://www.booking.com/neighborhood/jp/tokyo/ueno.html"
+          },
+          {
+            "name": "TripAdvisor Ueno",
+            "url": "https://www.tripadvisor.com/Tourism-g14134652-Ueno_Taito_Tokyo_Prefecture_Kanto-Vacations.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$100–160 USD",
+          "luxury": "~$380–620 USD",
+          "midRange": "~$180–310 USD"
+        }
+      },
+      {
+        "areaToStay": "Gion / Southern Higashiyama",
+        "bookingTips": "Traditional ryokan fill fast in April—book months ahead via Booking.com; hotels near Gion-Shijo are a good compromise.",
+        "city": "Kyoto",
+        "description": "Classic geisha quarter and temple corridor. Peak culture immersion; excellent for moderate-paced walking itineraries.",
+        "imageLinks": [
+          "https://cf.bstatic.com/xdata/images/city/1024x576/614956.jpg"
+        ],
+        "nearbyTransport": "Keihan Line (Gion-Shijo/Kiyomizu-Gojo); city buses; 20–30 min taxi/train from Kyoto Station.",
+        "reviews": "Top-rated for atmosphere and proximity to Yasaka Shrine, Kiyomizudera, and preserved streets.",
+        "safetyTips": "Extremely safe; respect quiet rules in residential temple zones early morning and evening.",
+        "sources": [
+          {
+            "name": "Booking.com Kyoto stays",
+            "url": "https://www.booking.com/city/jp/kyoto.html"
+          },
+          {
+            "name": "Japan-guide Gion",
+            "url": "https://www.japan-guide.com/e/e3902.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$140–200 USD",
+          "luxury": "~$480–900 USD",
+          "midRange": "~$230–400 USD"
+        }
+      },
+      {
+        "areaToStay": "Downtown / Karasuma-Shijo",
+        "bookingTips": "Mid-range properties offer excellent value near Shijo-Kawaramachi; compare on Booking.com.",
+        "city": "Kyoto",
+        "description": "Central shopping and dining grid with strong subway/bus links. Great food access and modern hotels.",
+        "imageLinks": [
+          "https://cf.bstatic.com/xdata/images/city/1024x576/615012.jpg"
+        ],
+        "nearbyTransport": "Hankyu/Kawaramachi; Subway Shijo/Karasuma; extensive city bus network.",
+        "reviews": "Convenient base for restaurant hopping and day trips; less traditional charm than Gion but highly practical.",
+        "safetyTips": "Very safe; standard city-center caution in busy covered arcades.",
+        "sources": [
+          {
+            "name": "Booking.com Downtown Kyoto",
+            "url": "https://www.booking.com/neighborhood/jp/kyoto/downtown-kyoto.html"
+          },
+          {
+            "name": "Lonely Planet Kyoto",
+            "url": "https://www.lonelyplanet.com/japan/kyoto"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$110–170 USD",
+          "luxury": "~$400–680 USD",
+          "midRange": "~$190–330 USD"
+        }
+      },
+      {
+        "areaToStay": "Kyoto Station Area",
+        "bookingTips": "Towers like Hotel Granvia sit atop the station; surrounding blocks have newer mid-range chains on Booking.com.",
+        "city": "Kyoto",
+        "description": "Modern, ultra-connected zone with Japan’s second-largest station complex. Best for arrivals/departures and Shinkansen day trips.",
+        "imageLinks": [],
+        "nearbyTransport": "Shinkansen to Tokyo/Osaka; JR Kyoto Line; Kintetsu; city buses; Haruka express to Kansai Airport (KIX).",
+        "reviews": "Praised for luggage ease and transit; slightly less “Kyoto ambiance” than eastern districts.",
+        "safetyTips": "Very safe and well-policed; expansive station can be confusing—follow signage to hotel exits.",
+        "sources": [
+          {
+            "name": "Booking.com Kyoto Station",
+            "url": "https://www.booking.com/neighborhood/jp/kyoto/kyoto-station-area.html"
+          },
+          {
+            "name": "Japan-guide Kyoto Station",
+            "url": "https://www.japan-guide.com/e/e2158.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$100–160 USD",
+          "luxury": "~$380–650 USD",
+          "midRange": "~$180–320 USD"
+        }
+      },
+      {
+        "areaToStay": "Arashiyama",
+        "bookingTips": "Boutique ryokan and resorts dominate; book early for April foliage season via Booking.com.",
+        "city": "Kyoto",
+        "description": "Scenic western district along the river and bamboo grove. Resort-like, nature-leaning stay with strong cultural sites.",
+        "imageLinks": [
+          "https://cf.bstatic.com/xdata/images/city/1024x576/615024.jpg"
+        ],
+        "nearbyTransport": "JR Sagano Line (Saga-Arashiyama); Randen tram; 25–35 min from Kyoto Station.",
+        "reviews": "Romantic and photogenic; requires more transit time to eastern temples but rewards with tranquility.",
+        "safetyTips": "Quiet and safe; rural edges are dark at night—stick to main lodging streets after evening.",
+        "sources": [
+          {
+            "name": "Booking.com Arashiyama area",
+            "url": "https://www.booking.com/searchresults.html?label=kyoto-arashiyama"
+          },
+          {
+            "name": "Japan-guide Arashiyama",
+            "url": "https://www.japan-guide.com/e/e3912.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$130–200 USD",
+          "luxury": "~$450–820 USD",
+          "midRange": "~$220–410 USD"
+        }
+      },
+      {
+        "areaToStay": "Northern Higashiyama (Near Ginkakuji)",
+        "bookingTips": "Small inns and guesthouses available; limited big-brand hotels—check Booking.com early.",
+        "city": "Kyoto",
+        "description": "Calm temple path district with Philosophers’ Path and fewer crowds. Ideal for culture lovers seeking a slower pace.",
+        "imageLinks": [],
+        "nearbyTransport": "City bus from Kyoto Station (~30 min); Eizan Electric Railway for Kurama/Kibune day trips.",
+        "reviews": "Loved by repeat visitors for authenticity; fewer restaurants open late than downtown.",
+        "safetyTips": "Very safe residential area; some paths are dimly lit after dark—plan dinner near lodging or transit.",
+        "sources": [
+          {
+            "name": "Booking.com Kyoto search",
+            "url": "https://www.booking.com/city/jp/kyoto.html"
+          },
+          {
+            "name": "Japan-guide Northern Higashiyama",
+            "url": "https://www.japan-guide.com/e/e3959.html"
+          }
+        ],
+        "typicalNightlyRate": {
+          "budget": "~$110–170 USD",
+          "luxury": "~$360–600 USD",
+          "midRange": "~$180–310 USD"
+        }
+      }
+    ],
+    "liveDataCaveat": "Rates are typical ranges for early-April 2026 based on historical pricing and seasonal demand patterns. Actual availability and prices require live confirmation on Booking.com closer to travel. Cherry blossom season increases demand and prices.",
+    "sources": [
+      {
+        "name": "Booking.com",
+        "url": "https://www.booking.com"
+      },
+      {
+        "name": "Japan-guide.com",
+        "url": "https://www.japan-guide.com"
+      },
+      {
+        "name": "TripAdvisor",
+        "url": "https://www.tripadvisor.com"
+      }
+    ]
+  },
+  "flightResearch": {
+    "confidence": "estimate",
+    "liveDataCaveat": "Fares shown are approximate ranges for travel in early April 2026 derived from historical pricing and carrier schedules. Airlines typically release seats ~330 days in advance; live prices on Google Flights and Skyscanner may vary significantly. Baggage allowances, change fees, and fuel surcharges apply and differ by fare class.",
+    "meta_provider_type": "web_search",
+    "sample_options": [
+      {
+        "airline": "JAL / ANA",
+        "baggageCaveat": "Typically includes 2 free checked bags (23 kg each) in base international economy; premium classes higher.",
+        "bookingLink": "https://www.google.com/travel/flights",
+        "caveat": "Premium direct option; cherry-blossom season demand pushes fares toward the upper end.",
+        "class": "Economy / Premium Economy",
+        "fareEstimate": "~$1,400 – $2,100 USD per person",
+        "label": "Direct Round-Trip (Most Comfortable)",
+        "notes": "Nonstop service between SFO and Tokyo-area airports. Minimal jet lag impact and fastest total elapsed time. Strong reliability record.",
+        "route": "SFO ⇄ HND (or NRT) — depart 2026-04-05, return 2026-04-14"
+      },
+      {
+        "airline": "United Airlines",
+        "baggageCaveat": "Basic Economy includes carry-on only; standard economy adds 1 free checked bag.",
+        "bookingLink": "https://www.skyscanner.com/transport/flights/sfo/tok/",
+        "caveat": "Direct competitor to JAL/ANA; often priced slightly lower but seats can be denser on older frames.",
+        "class": "Economy",
+        "fareEstimate": "~$1,200 – $1,800 USD per person",
+        "label": "Direct Round-Trip (Value Alternative)",
+        "notes": "Star Alliance nonstop to NRT. Good for MileagePlus earners and travelers seeking direct flight without Japanese-carrier premium.",
+        "route": "SFO ⇄ NRT — depart 2026-04-05, return 2026-04-14"
+      },
+      {
+        "airline": "Delta / Alaska (codeshare via SEA or LAX)",
+        "baggageCaveat": "Checked bag usually $60–75 each-way on basic fare; Main Cabin includes 1 bag.",
+        "bookingLink": "https://www.google.com/travel/flights",
+        "caveat": "Adds 3–6 hours each way; connection risk during spring weather.",
+        "class": "Economy",
+        "fareEstimate": "~$950 – $1,450 USD per person",
+        "label": "One-Stop (Budget Choice)",
+        "notes": "Likely lowest published fare. Connection via West Coast hub. Good for cost-sensitive travelers willing to trade time for savings.",
+        "route": "SFO → SEA/LAX → NRT/HND — depart 2026-04-05; return via same hub 2026-04-14"
+      },
+      {
+        "airline": "JAL / ANA (Open-Jaw)",
+        "baggageCaveat": "Same generous baggage policy as round-trip; confirm multi-city rules at booking.",
+        "bookingLink": "https://www.google.com/travel/flights",
+        "caveat": "Best itinerary fit but open-jaw inventory can be slightly more limited than simple round-trip.",
+        "class": "Economy / Premium Economy",
+        "fareEstimate": "~$1,500 – $2,200 USD per person",
+        "label": "Open-Jaw: SFO→Tokyo, Osaka/KIX→SFO (Best Itinerary Fit)",
+        "notes": "Fly into Tokyo and home from Kansai International (KIX) near Kyoto/Osaka. Eliminates backtracking to Tokyo and saves a travel day/shinkansen ticket.",
+        "route": "SFO → NRT/HND on 2026-04-05; KIX → SFO on 2026-04-14"
+      },
+      {
+        "airline": "Air Canada / Star Alliance partner",
+        "baggageCaveat": "Standard economy includes 1 checked bag; basic fares may not.",
+        "bookingLink": "https://www.skyscanner.com/transport/flights/sfo/tok/",
+        "caveat": "YVR connections can be smooth but US preclearance in Canada adds steps; schedule dependent.",
+        "class": "Economy",
+        "fareEstimate": "~$1,250 – $1,850 USD per person",
+        "label": "One-Stop via Vancouver (Flexible Alternative)",
+        "notes": "Potential for combining with stopover programs. Good aeroplan/redemption option. Slightly longer routing but competitive pricing.",
+        "route": "SFO → YVR → NRT (or HND) — depart 2026-04-05; return via YVR 2026-04-14"
+      },
+      {
+        "airline": "ZIPAIR / STARLUX or mixed carriers",
+        "baggageCaveat": "Low-cost or hybrid model: checked bags, seat selection, and meals cost extra (~$100–250 add-ons).",
+        "bookingLink": "https://www.google.com/travel/flights",
+        "caveat": "Schedule may include late-night departures or less daily frequency; customer-service tradeoffs vs legacy carriers.",
+        "class": "Economy Light",
+        "fareEstimate": "~$800 – $1,300 USD per person",
+        "label": "Low-Cost / Hybrid (Lowest Base Fare Risk)",
+        "notes": "Emerging transpacific options. Base fare looks attractive but total cost rises after ancillary fees. Consider only if packing light and flexible.",
+        "route": "SFO ↔ NRT — depart 2026-04-05, return 2026-04-14"
+      }
+    ],
+    "schema_version": "1.0.0",
+    "tripDates": {
+      "end": "2026-04-14",
+      "origin": "San Francisco",
+      "start": "2026-04-05"
+    }
+  }
+}

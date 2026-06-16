@@ -20,6 +20,8 @@ export interface ServerConfig {
 	modelId: string;
 	/** API key for the LLM provider. */
 	apiKey: string | undefined;
+	/** Max time to wait for one agent message before returning a timeout. */
+	messageTimeoutMs: number;
 }
 
 function parseCorsOrigins(raw: string | undefined): string[] {
@@ -44,5 +46,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		provider: env.TRAVEL_AGENT_PROVIDER ?? "ollama",
 		modelId: env.TRAVEL_AGENT_MODEL ?? "kimi-k2.6",
 		apiKey: env.OLLAMA_API_KEY,
+		messageTimeoutMs: Number(env.TRAVEL_AGENT_MESSAGE_TIMEOUT_MS ?? "180000"),
 	};
 }

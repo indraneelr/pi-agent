@@ -37,12 +37,17 @@ type UpdateStateInput = Static<typeof updateStateSchema>;
 export interface UpdateStateDetails {
 	field: string;
 	phase: string | null;
+	imageReport?: { totalChecked: number; valid: number; broken: number; refetched: number };
 }
 
 export interface UpdateStateDeps {
 	getState: () => TravelState;
 	setState: (state: TravelState) => void;
 	persistOpts: PersistenceOptions;
+	/** Optional: validate + clean destination image links (in place). Undefined = no-op. */
+	cleanImageLinks?: (
+		cards: Array<{ name?: string; imageQuery?: string; imageLinks?: string[] }>,
+	) => Promise<{ totalChecked: number; valid: number; broken: number; refetched: number }>;
 }
 
 export function createUpdateStateTool(deps: UpdateStateDeps): AgentTool<typeof updateStateSchema, UpdateStateDetails> {
@@ -65,14 +70,28 @@ export function createUpdateStateTool(deps: UpdateStateDeps): AgentTool<typeof u
 			const data = normalizeToolData(params.data);
 			const updated = applyUpdate(state, params.field as UpdateField, data);
 
+			let imageReport: UpdateStateDetails["imageReport"];
+			if (deps.cleanImageLinks && params.field === "destination_research" && updated.destinationResearch) {
+				imageReport = await deps.cleanImageLinks(updated.destinationResearch.subDestinations);
+			}
+
 			deps.setState(updated);
 			saveTravelState(updated, deps.persistOpts);
 
 			return {
-				content: [{ type: "text", text: `Updated ${params.field} successfully.` }],
+				content: [
+					{
+						type: "text",
+						text:
+							imageReport && imageReport.broken > 0
+								? `Updated ${params.field} successfully. Verified image links: ${imageReport.valid} ok, ${imageReport.broken} broken (removed), ${imageReport.refetched} refetched from Wikimedia.`
+								: `Updated ${params.field} successfully.`,
+					},
+				],
 				details: {
 					field: params.field,
 					phase: active?.id ?? null,
+					imageReport,
 				},
 			};
 		},

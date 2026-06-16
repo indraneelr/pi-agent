@@ -130,11 +130,11 @@ These are the highest-priority tasks. Do these first. The goal is one working br
   - [x] Current phase.
   - [x] Preferences summary.
   - [x] Selected destinations.
-- [ ] Verify in browser.
+- [x] Verify in browser.
   - [x] App renders actual UI inside `#root`.
   - [x] Create session from browser.
-  - [ ] Send one real trip prompt.
-  - [ ] Assistant response appears.
+  - [x] Send one real trip prompt.
+  - [x] Assistant response appears.
   - [x] Sidebar updates from returned state snapshot.
 
 ## P1 — Make it feel like an agent product
@@ -146,14 +146,14 @@ These tasks make the web app useful and interactive, but they should come after 
 - [ ] Create shared UI schema module/package.
   - [ ] Use Zod or TypeScript discriminated unions.
   - [ ] Share types between server and web.
-- [ ] Define base UI block envelope.
-  - [ ] `id`
-  - [ ] `kind`
-  - [ ] `version`
-  - [ ] `title`
-  - [ ] `data`
-  - [ ] `actions`
-  - [ ] `sourceStatePath`
+- [x] Define base UI block envelope.
+  - [x] `id`
+  - [x] `kind`
+  - [x] `version`
+  - [x] `title`
+  - [x] `data`
+  - [x] `actions`
+  - [x] `sourceStatePath`
 - [ ] Define v1 block types.
   - [ ] `checklist_progress`
   - [ ] `trip_preferences_summary`
@@ -170,24 +170,24 @@ These tasks make the web app useful and interactive, but they should come after 
   - [ ] Server validates blocks before sending.
   - [ ] Frontend validates blocks before rendering.
   - [ ] Unknown block kinds render a safe fallback.
-- [ ] Add deterministic block composer.
-  - [ ] Convert canonical travel state into UI blocks.
-  - [ ] Do not rely on the model to invent component types.
+- [x] Add deterministic block composer.
+  - [x] Convert canonical travel state into UI blocks.
+  - [x] Do not rely on the model to invent component types.
 
 ### 9. Render the first structured UI blocks
 
-- [ ] Build `DestinationCards`.
-  - [ ] Destination name/summary.
-  - [ ] Why it fits.
-  - [ ] Trade-offs.
-  - [ ] Seasonality if available.
-  - [ ] Select/remove action placeholders.
-- [ ] Build richer `TravelSidebar` blocks.
-  - [ ] Checklist progress.
-  - [ ] Trip preferences summary.
-  - [ ] Selected destinations.
-  - [ ] Budget summary.
-- [ ] Render UI blocks inline or beside chat.
+- [x] Build `DestinationCards`.
+  - [x] Destination name/summary.
+  - [x] Why it fits.
+  - [x] Trade-offs.
+  - [x] Seasonality if available.
+  - [x] Select/remove action placeholders.
+- [x] Build richer `TravelSidebar` blocks.
+  - [x] Checklist progress.
+  - [x] Trip preferences summary.
+  - [x] Selected destinations.
+  - [x] Budget summary.
+- [x] Render UI blocks inline or beside chat.
 - [ ] Verify destination cards render from real state.
 
 ### 10. Add AG-UI streaming gateway

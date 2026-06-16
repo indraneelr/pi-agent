@@ -7,9 +7,19 @@
 
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Agent, type AgentMessage, type ThinkingLevel } from "@mariozechner/pi-agent-core";
-import type { Message, Model } from "@mariozechner/pi-ai";
+import {
+	type AgentEvent,
+	AgentHarness,
+	type AgentMessage,
+	type JsonlSessionMetadata,
+	JsonlSessionRepo,
+	type Session,
+	type ThinkingLevel,
+} from "@mariozechner/pi-agent-core";
+import { NodeExecutionEnv } from "@mariozechner/pi-agent-core/node";
+import type { ImageContent, Model, TextContent } from "@mariozechner/pi-ai";
 import { loadChecklistConfig } from "./checklist.js";
+import { cleanDestinationImageLinks } from "./image-validation.js";
 import { loadTravelState, type PersistenceOptions, saveTravelState } from "./persistence.js";
 import type { SearchProvider } from "./search/types.js";
 import { createTravelState, type TravelState } from "./state.js";
@@ -42,9 +52,28 @@ export interface CreateTravelSessionOptions {
 	promptOptions?: TravelSystemPromptOptions;
 }
 
+export interface TravelConversationMessage {
+	role: "user" | "assistant";
+	content: string;
+}
+
+export interface TravelAgentFacadeState {
+	messages: AgentMessage[];
+	errorMessage?: string;
+	isStreaming: boolean;
+}
+
+export interface TravelAgentFacade {
+	state: TravelAgentFacadeState;
+	prompt(input: string, images?: ImageContent[]): Promise<void>;
+	subscribe(listener: (event: AgentEvent, signal?: AbortSignal) => Promise<void> | void): () => void;
+	abort(): void;
+	waitForIdle(): Promise<void>;
+}
+
 export interface TravelSession {
-	/** The underlying Agent instance. */
-	agent: Agent;
+	/** Agent-compatible facade backed by AgentHarness + JsonlSessionRepo. */
+	agent: TravelAgentFacade;
 	/** Current travel state. */
 	state: TravelState;
 	/** Shut down the session. */
@@ -88,31 +117,22 @@ export async function createTravelSession(options: CreateTravelSessionOptions): 
 		persistOpts,
 		model: options.model,
 		getApiKey: options.apiKey ? () => options.apiKey as string : undefined,
+		cleanImageLinks: (cards) => cleanDestinationImageLinks(cards, { refetch: true }),
 	});
 
-	// Build initial system prompt
-	const systemPrompt = buildTravelSystemPrompt(state, options.promptOptions);
+	const env = new NodeExecutionEnv({ cwd: process.cwd() });
+	const session = await openOrCreateHarnessSession(env, persistOpts.dataDir, options.sessionId);
 
-	// Create agent
-	const agent = new Agent({
-		initialState: {
-			systemPrompt,
-			model: options.model,
-			thinkingLevel: options.thinkingLevel ?? "medium",
-			tools,
-		},
-		convertToLlm: (messages: AgentMessage[]): Message[] => {
-			return messages.filter(
-				(m): m is Message => m.role === "user" || m.role === "assistant" || m.role === "toolResult",
-			);
-		},
-		transformContext: async (messages: AgentMessage[]) => {
-			// Rebuild system prompt with latest state before each LLM turn
-			agent.state.systemPrompt = buildTravelSystemPrompt(stateRef.get(), options.promptOptions);
-			return messages;
-		},
-		...(options.apiKey ? { getApiKey: () => options.apiKey } : {}),
+	const harness = new AgentHarness({
+		env,
+		session,
+		model: options.model,
+		thinkingLevel: options.thinkingLevel ?? "medium",
+		tools,
+		systemPrompt: () => buildTravelSystemPrompt(stateRef.get(), options.promptOptions),
+		...(options.apiKey ? { getApiKeyAndHeaders: async () => ({ apiKey: options.apiKey as string }) } : {}),
 	});
+	const agent = await TravelAgentHarnessFacade.create(harness, session);
 
 	// Save initial state
 	saveTravelState(state, persistOpts);
@@ -129,4 +149,123 @@ export async function createTravelSession(options: CreateTravelSessionOptions): 
 			await agent.waitForIdle();
 		},
 	};
+}
+
+// =============================================================================
+// AgentHarness-backed compatibility facade
+// =============================================================================
+
+class TravelAgentHarnessFacade implements TravelAgentFacade {
+	readonly state: TravelAgentFacadeState;
+
+	private constructor(
+		private readonly harness: AgentHarness,
+		private readonly harnessSession: Session,
+		messages: AgentMessage[],
+	) {
+		this.state = { messages, isStreaming: false };
+		this.harness.subscribe(async (event) => {
+			if (event.type === "agent_start") {
+				this.state.isStreaming = true;
+				this.state.errorMessage = undefined;
+			}
+			if (event.type === "message_end") {
+				this.state.messages = [...this.state.messages, event.message];
+			}
+			if (event.type === "agent_end") {
+				this.state.isStreaming = false;
+				await this.refreshMessages();
+			}
+		});
+	}
+
+	static async create(harness: AgentHarness, harnessSession: Session): Promise<TravelAgentHarnessFacade> {
+		const context = await harnessSession.buildContext();
+		return new TravelAgentHarnessFacade(harness, harnessSession, context.messages);
+	}
+
+	async prompt(input: string, images?: ImageContent[]): Promise<void> {
+		this.state.errorMessage = undefined;
+		try {
+			await this.harness.prompt(input, images ? { images } : undefined);
+			await this.refreshMessages();
+		} catch (e) {
+			this.state.errorMessage = e instanceof Error ? e.message : String(e);
+			throw e;
+		} finally {
+			this.state.isStreaming = false;
+		}
+	}
+
+	subscribe(listener: (event: AgentEvent, signal?: AbortSignal) => Promise<void> | void): () => void {
+		return this.harness.subscribe((event, signal) => listener(event as AgentEvent, signal));
+	}
+
+	abort(): void {
+		void this.harness.abort();
+	}
+
+	async waitForIdle(): Promise<void> {
+		await this.harness.waitForIdle();
+		await this.refreshMessages();
+	}
+
+	private async refreshMessages(): Promise<void> {
+		const context = await this.harnessSession.buildContext();
+		this.state.messages = context.messages;
+	}
+}
+
+async function openOrCreateHarnessSession(env: NodeExecutionEnv, dataDir: string, sessionId: string): Promise<Session> {
+	const existing = await findHarnessSession(env, dataDir, sessionId);
+	return existing
+		? new JsonlSessionRepo({ fs: env, sessionsRoot: join(dataDir, "sessions") }).open(existing)
+		: new JsonlSessionRepo({ fs: env, sessionsRoot: join(dataDir, "sessions") }).create({
+				cwd: process.cwd(),
+				id: sessionId,
+			});
+}
+
+async function findHarnessSession(
+	env: NodeExecutionEnv,
+	dataDir: string,
+	sessionId: string,
+): Promise<JsonlSessionMetadata | undefined> {
+	const repo = new JsonlSessionRepo({ fs: env, sessionsRoot: join(dataDir, "sessions") });
+	return (await repo.list({ cwd: process.cwd() })).find((metadata: JsonlSessionMetadata) => metadata.id === sessionId);
+}
+
+export function extractTravelConversation(messages: readonly AgentMessage[]): TravelConversationMessage[] {
+	const conversation: TravelConversationMessage[] = [];
+	for (const message of messages) {
+		if (message.role !== "user" && message.role !== "assistant") continue;
+		const content = textContentFromMessageContent(message.content).trim();
+		if (content) conversation.push({ role: message.role, content });
+	}
+	return conversation;
+}
+
+function textContentFromMessageContent(content: unknown): string {
+	if (typeof content === "string") return content;
+	if (!Array.isArray(content)) return "";
+	return content
+		.filter(
+			(part): part is TextContent =>
+				!!part && typeof part === "object" && (part as { type?: unknown }).type === "text",
+		)
+		.map((part) => part.text)
+		.join("");
+}
+
+export async function loadTravelConversation(
+	sessionId: string,
+	dataDir = join(process.cwd(), "travel-data"),
+): Promise<TravelConversationMessage[]> {
+	const env = new NodeExecutionEnv({ cwd: process.cwd() });
+	const metadata = await findHarnessSession(env, dataDir, sessionId);
+	if (!metadata) return [];
+	const repo = new JsonlSessionRepo({ fs: env, sessionsRoot: join(dataDir, "sessions") });
+	const session = await repo.open(metadata);
+	const context = await session.buildContext();
+	return extractTravelConversation(context.messages);
 }
