@@ -1,12 +1,8 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { CopilotKit } from "@copilotkit/react-core";
+import type { FormEvent } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createTravelSession, getTravelSession, sendTravelMessage, type TravelState, type TravelUiBlock } from "./api.js";
-
-interface ChatMessage {
-	role: "user" | "assistant";
-	content: string;
-}
-
-type RunStatus = "idle" | "starting" | "sending";
+import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
 export function App() {
 	const [sessionId, setSessionId] = useState<string | null>(null);
@@ -117,65 +113,21 @@ export function App() {
 	}
 
 	return (
-		<main className="app-shell">
-			<section className="chat-column" aria-label="Travel chat">
-				<header className="app-header">
-					<div>
-						<p className="eyebrow">Pi Travel Agent</p>
-						<h1>Plan the trip, keep the choices visible.</h1>
-					</div>
-					<button type="button" className="secondary-button" onClick={() => void startSession()} disabled={runStatus !== "idle"}>
-						New session
-					</button>
-				</header>
+		<CopilotKit>
+			<main className="app-shell">
+				<TravelCopilotChat
+					draft={draft}
+					error={error}
+					messages={messages}
+					onDraftChange={setDraft}
+					onNewSession={() => void startSession()}
+					onSubmit={handleSubmit}
+					progressMessage={progressMessage}
+					runStatus={runStatus}
+					sessionReady={Boolean(sessionId)}
+				/>
 
-				{error ? <div className="error-banner">{error}</div> : null}
-				{progressMessage ? (
-					<div className="progress-banner" role="status" aria-live="polite">
-						<span className="spinner" aria-hidden="true" />
-						{progressMessage}
-					</div>
-				) : null}
-
-				<div className="messages" aria-live="polite">
-					{messages.length === 0 ? (
-						<div className="empty-state">
-							<h2>Where are we going?</h2>
-							<p>Start with dates, origin, budget, vibe, or a rough destination. I’ll keep the planning state visible on the right.</p>
-						</div>
-					) : (
-						<>
-						{messages.map((message, index) => (
-							<article className={`message ${message.role}`} key={`${message.role}-${index}`}>
-								<strong>{message.role === "user" ? "You" : "Travel agent"}</strong>
-								{message.role === "assistant" ? <MarkdownText text={message.content} /> : <p>{message.content}</p>}
-							</article>
-						))}
-						{runStatus === "sending" ? (
-							<article className="message assistant pending">
-								<strong>Travel agent</strong>
-								<p><span className="typing-dot" /> Working on your request…</p>
-							</article>
-						) : null}
-						</>
-					)}
-				</div>
-
-				<form className="composer" onSubmit={handleSubmit}>
-					<input
-						aria-label="Travel request"
-						placeholder="Plan 5 days in Japan from Jakarta, mid-range budget..."
-						value={draft}
-						onChange={(event) => setDraft(event.target.value)}
-						disabled={!sessionId || runStatus !== "idle"}
-					/>
-					<button type="submit" disabled={!sessionId || !draft.trim() || runStatus !== "idle"}>
-						{runStatus === "sending" ? "Sending…" : "Send"}
-					</button>
-				</form>
-			</section>
-
-			<aside className="sidebar" aria-label="Travel state">
+				<aside className="sidebar" aria-label="Travel state">
 				<div className="session-card">
 					<p className="eyebrow">Session</p>
 					<code>{sessionId ?? (runStatus === "starting" ? "Creating…" : "Not started")}</code>
@@ -203,76 +155,9 @@ export function App() {
 					</div>
 				)}
 			</aside>
-		</main>
+			</main>
+		</CopilotKit>
 	);
-}
-
-function MarkdownText({ text }: { text: string }) {
-	const blocks = text.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
-	return (
-		<div className="markdown-content">
-			{blocks.map((block, index) => {
-				if (block.startsWith("### ")) return <h4 key={index}>{renderInlineMarkdown(block.slice(4))}</h4>;
-				if (block.startsWith("## ")) return <h3 key={index}>{renderInlineMarkdown(block.slice(3))}</h3>;
-				if (block.startsWith("# ")) return <h2 key={index}>{renderInlineMarkdown(block.slice(2))}</h2>;
-
-				const imgOnly = block.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-				if (imgOnly) {
-					return <figure className="markdown-figure" key={index}><SafeImage src={imgOnly[2]} alt={imgOnly[1]} /></figure>;
-				}
-
-				const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
-				if (isMarkdownTable(lines)) {
-					const [headerLine, , ...rowLines] = lines;
-					const headers = parseTableRow(headerLine);
-					return (
-						<div className="markdown-table-wrap" key={index}>
-							<table>
-								<thead><tr>{headers.map((header) => <th key={header}>{renderInlineMarkdown(header)}</th>)}</tr></thead>
-								<tbody>
-									{rowLines.map((row, rowIndex) => <tr key={rowIndex}>{parseTableRow(row).map((cell, cellIndex) => <td key={cellIndex}>{renderInlineMarkdown(cell)}</td>)}</tr>)}
-								</tbody>
-							</table>
-						</div>
-					);
-				}
-				if (lines.every((line) => /^[-*]\s+/.test(line))) {
-					return (
-						<ul key={index}>
-							{lines.map((line, lineIndex) => <li key={lineIndex}>{renderInlineMarkdown(line.replace(/^[-*]\s+/, ""))}</li>)}
-						</ul>
-					);
-				}
-				if (lines.every((line) => /^\d+\.\s+/.test(line))) {
-					return (
-						<ol key={index}>
-							{lines.map((line, lineIndex) => <li key={lineIndex}>{renderInlineMarkdown(line.replace(/^\d+\.\s+/, ""))}</li>)}
-						</ol>
-					);
-				}
-				return <p key={index}>{renderInlineMarkdown(block.replace(/\n/g, " "))}</p>;
-			})}
-		</div>
-	);
-}
-
-function isMarkdownTable(lines: string[]) {
-	return lines.length >= 3 && lines[0].includes("|") && /^\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?$/.test(lines[1]);
-}
-
-function parseTableRow(line: string) {
-	return line.replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
-}
-
-function renderInlineMarkdown(text: string) {
-	const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|!\[[^\]]*\]\([^)]+\))/g).filter(Boolean);
-	return parts.map((part, index) => {
-		if (part.startsWith("**") && part.endsWith("**")) return <strong key={index}>{part.slice(2, -2)}</strong>;
-		if (part.startsWith("`") && part.endsWith("`")) return <code key={index}>{part.slice(1, -1)}</code>;
-		const img = part.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
-		if (img) return <SafeImage key={index} src={img[2]} alt={img[1]} inline />;
-		return part;
-	});
 }
 
 function SafeImage({ src, alt, inline }: { src: string; alt: string; inline?: boolean }) {

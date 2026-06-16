@@ -219,11 +219,11 @@ These tasks make the web app useful and interactive, but they should come after 
 
 ### 11. Wire CopilotKit to AG-UI
 
-- [ ] Install/wire CopilotKit in the web app.
-  - [ ] Use modern provider import for self-managed AG-UI agents.
-  - [ ] Configure backend AG-UI endpoint.
-  - [ ] Verify app renders before adding complex UI.
-- [ ] Replace or augment non-streaming chat path with AG-UI streaming.
+- [x] Install/wire CopilotKit in the web app.
+  - [x] Use modern provider import for Phase 1 shell (`CopilotKit` from `@copilotkit/react-core`).
+  - [ ] Configure backend AG-UI endpoint. _(Deferred: Phase 1 uses existing REST adapter.)_
+  - [x] Verify app renders/builds before adding complex UI.
+- [ ] Replace or augment non-streaming chat path with AG-UI streaming. _(Deferred: REST remains authoritative in Phase 1.)_
 - [ ] Show tool/run status indicators.
 - [ ] Stream assistant text into chat.
 - [ ] Stream state snapshots into sidebar.

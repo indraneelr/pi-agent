@@ -466,3 +466,36 @@ pre {
 		grid-template-columns: 1fr;
 	}
 }
+
+.copilot-rest-chat {
+	--copilot-kit-primary-color: #f59e0b;
+	--copilot-kit-contrast-color: #111827;
+}
+
+.copilot-shell-label {
+	margin-top: 0.45rem;
+	color: #94a3b8;
+	font-size: 0.85rem;
+}
+
+.copilot-messages .markdown-content :first-child {
+	margin-top: 0;
+}
+
+.copilot-messages .markdown-content :last-child {
+	margin-bottom: 0;
+}
+
+.markdown-safe-image-wrap {
+	display: inline-block;
+	max-width: 100%;
+}
+
+.markdown-safe-image {
+	display: block;
+	max-width: min(100%, 720px);
+	max-height: 420px;
+	margin: 0.75rem 0;
+	border-radius: 16px;
+	object-fit: cover;
+}
