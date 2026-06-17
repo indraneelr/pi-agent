@@ -1,4 +1,3 @@
-import { CopilotKit } from "@copilotkit/react-core";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createTravelSession, getTravelSession, sendTravelMessage, type TravelState, type TravelUiBlock } from "./api.js";
@@ -113,8 +112,7 @@ export function App() {
 	}
 
 	return (
-		<CopilotKit>
-			<main className="app-shell">
+		<main className="app-shell">
 				<TravelCopilotChat
 					draft={draft}
 					error={error}
@@ -155,8 +153,7 @@ export function App() {
 					</div>
 				)}
 			</aside>
-			</main>
-		</CopilotKit>
+		</main>
 	);
 }
 

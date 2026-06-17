@@ -39,6 +39,22 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 
 	app.register(cors, { origin: config.corsOrigins });
 
+	app.addHook("onResponse", async (request, reply) => {
+		app.log.info(
+			{
+				method: request.method,
+				url: request.url,
+				statusCode: reply.statusCode,
+			},
+			"HTTP request completed",
+		);
+	});
+
+	app.setNotFoundHandler((request, reply) => {
+		app.log.warn({ method: request.method, url: request.url }, "HTTP route not found");
+		return reply.status(404).send({ error: `Route not found: ${request.method} ${request.url}` });
+	});
+
 	app.get("/health", async () => ({ status: "ok" }));
 
 	app.post("/api/travel/sessions", async (_request, reply) => {
