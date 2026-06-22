@@ -51,6 +51,7 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	);
 	const credentialStore = new CredentialStore(config);
 	const sessionManager = manager ?? new TravelSessionManager(config, app.log, credentialStore);
+	const rateLimits = new Map<string, { windowStart: number; count: number }>();
 
 	app.register(cors, { origin: config.corsOrigins });
 
@@ -72,9 +73,13 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 
 	app.addHook("preHandler", async (request, reply) => {
 		const protectedApi = request.url.startsWith("/api/travel/") || request.url.startsWith("/api/credentials");
-		if (!config.authRequired || !protectedApi) return;
+		if (!protectedApi) return;
 		const user = getRequestUser(request, config);
-		if (!user) return reply.status(401).send({ error: "Authentication required" });
+		const rateKey = user?.id ?? request.ip;
+		if (!consumeRateLimit(rateLimits, rateKey, config.rateLimitPerMinute)) {
+			return reply.status(429).send({ error: "Rate limit exceeded" });
+		}
+		if (config.authRequired && !user) return reply.status(401).send({ error: "Authentication required" });
 	});
 
 	app.get("/health", async () => ({ status: "ok" }));
@@ -257,6 +262,23 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	});
 
 	return app;
+}
+
+function consumeRateLimit(
+	limits: Map<string, { windowStart: number; count: number }>,
+	key: string,
+	limitPerMinute: number,
+): boolean {
+	if (limitPerMinute <= 0) return true;
+	const now = Date.now();
+	const current = limits.get(key);
+	if (!current || now - current.windowStart >= 60_000) {
+		limits.set(key, { windowStart: now, count: 1 });
+		return true;
+	}
+	if (current.count >= limitPerMinute) return false;
+	current.count++;
+	return true;
 }
 
 function checkStorage(dataDir: string): boolean {

@@ -40,6 +40,8 @@ export interface ServerConfig {
 	serverKeyFallbackAllowlist: string[];
 	/** SearXNG base URL for alpha image/search readiness. */
 	searxngBaseUrl: string | undefined;
+	/** Simple per-user/IP request limit per minute for alpha abuse control. */
+	rateLimitPerMinute: number;
 }
 
 function parseList(raw: string | undefined): string[] {
@@ -95,5 +97,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 			env.CREDENTIAL_ENCRYPTION_SECRET ?? env.AUTH_SESSION_SECRET ?? "dev-credential-secret-change-me",
 		serverKeyFallbackAllowlist: parseList(env.SERVER_KEY_FALLBACK_ALLOWLIST),
 		searxngBaseUrl: env.SEARXNG_BASE_URL,
+		rateLimitPerMinute: Number(env.RATE_LIMIT_PER_MINUTE ?? "120"),
 	};
 }

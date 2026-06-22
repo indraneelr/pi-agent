@@ -117,7 +117,20 @@ describe("server without LLM configured", () => {
 	});
 });
 
-describe("readiness", () => {
+describe("readiness and abuse controls", () => {
+	test("limits protected API requests by user or IP", async () => {
+		const app = createServer(loadConfig({ AUTH_REQUIRED: "false", RATE_LIMIT_PER_MINUTE: "1" }));
+		await app.ready();
+		try {
+			const first = await app.inject({ method: "GET", url: "/api/credentials" });
+			expect(first.statusCode).toBe(200);
+			const second = await app.inject({ method: "GET", url: "/api/credentials" });
+			expect(second.statusCode).toBe(429);
+		} finally {
+			await app.close();
+		}
+	});
+
 	test("GET /ready passes when alpha dependencies are configured", async () => {
 		const tmpDataDir = await mkdtemp(join(tmpdir(), "travel-agent-ready-test-"));
 		const app = createServer(

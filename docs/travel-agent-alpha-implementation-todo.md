@@ -100,13 +100,14 @@ Status: in progress
 
 Tasks:
 
-- [ ] Add Railway staging deployment instructions/workflow.
+- [x] Add Railway staging deployment instructions/workflow.
 - [x] Add health/readiness checks for server, DB/storage, encryption config, SearXNG config.
-- [ ] Add redacted logs/request IDs/user/session/run IDs.
-- [ ] Add rate limits and one-active-run/concurrency controls.
-- [ ] Add staging smoke script for auth, credentials, workflow, resource truthfulness.
-- [ ] Document rollback, data deletion, and alpha no-backup/data-reset policy.
-- [ ] Commit Phase 5 readiness slice.
+- [x] Add redacted logs/request IDs/user/session/run IDs.
+- [x] Add rate limits and one-active-run/concurrency controls.
+- [x] Add staging smoke script for auth, credentials, workflow, resource truthfulness.
+- [x] Document rollback, data deletion, and alpha no-backup/data-reset policy.
+- [x] Commit Phase 5 readiness slice (`57121249`).
+- [ ] Commit Phase 5 Railway runbook/rate-limit slice.
 
 ## Resume notes
 
