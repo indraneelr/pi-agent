@@ -15,6 +15,7 @@ interface TravelCopilotChatProps {
 	onDraftChange: (draft: string) => void;
 	onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 	onNewSession: () => void;
+	onRetry?: () => void;
 	error: string | null;
 	progressMessage: string | null;
 	sessionReady: boolean;
@@ -27,6 +28,7 @@ export function TravelCopilotChat({
 	onDraftChange,
 	onSubmit,
 	onNewSession,
+	onRetry,
 	error,
 	progressMessage,
 	sessionReady,
@@ -46,7 +48,12 @@ export function TravelCopilotChat({
 				</button>
 			</header>
 
-			{error ? <div className="error-banner">{error}</div> : null}
+			{error ? (
+				<div className="error-banner">
+					<span>{error}</span>
+					{onRetry ? <button type="button" onClick={onRetry} disabled={runStatus !== "idle"}>Retry last message</button> : null}
+				</div>
+			) : null}
 			{progressMessage ? (
 				<div className="progress-banner" role="status" aria-live="polite">
 					<span className="spinner" aria-hidden="true" />

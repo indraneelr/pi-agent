@@ -12,6 +12,7 @@ export function App() {
 	const [draft, setDraft] = useState("");
 	const [runStatus, setRunStatus] = useState<RunStatus>("idle");
 	const [error, setError] = useState<string | null>(null);
+	const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 
 	useEffect(() => {
 		const existingSessionId = new URLSearchParams(window.location.search).get("session");
@@ -91,6 +92,7 @@ export function App() {
 		setRunStatus("sending");
 		try {
 			const response = await sendTravelMessage(sessionId, message);
+			setLastFailedMessage(null);
 			setState(response.state);
 			setUiBlocks(response.uiBlocks);
 			if (response.conversation?.length) {
@@ -99,6 +101,7 @@ export function App() {
 				setMessages((current) => [...current, { role: "assistant", content: response.assistantMessage || "Done." }]);
 			}
 		} catch (e) {
+			setLastFailedMessage(message);
 			setError(errorMessage(e));
 		} finally {
 			setRunStatus("idle");
@@ -124,6 +127,7 @@ export function App() {
 					progressMessage={progressMessage}
 					runStatus={runStatus}
 					sessionReady={Boolean(sessionId)}
+					onRetry={lastFailedMessage ? () => sendMessageToAgent(lastFailedMessage) : undefined}
 				/>
 
 				<aside className="sidebar" aria-label="Travel state">

@@ -88,9 +88,10 @@ Tasks:
 - [ ] Harden preferences → shortlist → selection → activities → itinerary flow.
 - [ ] Add final-plan smoke/eval.
 - [x] Hide/disable hotels and flights unless validation is complete.
-- [ ] Add clear error/retry states.
+- [x] Add clear error/retry states.
 - [ ] Add Greece/Japan/Portugal staging scenario coverage.
-- [ ] Commit Phase 4 hide-unvalidated-booking slice.
+- [x] Commit Phase 4 hide-unvalidated-booking slice (`3ff96be5`).
+- [ ] Commit Phase 4 retry-state slice.
 
 ## Phase 5 — Railway staging gates
 
