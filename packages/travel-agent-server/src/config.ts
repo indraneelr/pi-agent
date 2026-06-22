@@ -22,6 +22,8 @@ export interface ServerConfig {
 	apiKey: string | undefined;
 	/** Max time to wait for one agent message before returning a timeout. */
 	messageTimeoutMs: number;
+	/** Require authenticated Google/user sessions for travel APIs. */
+	authRequired: boolean;
 }
 
 function parseCorsOrigins(raw: string | undefined): string[] {
@@ -30,6 +32,22 @@ function parseCorsOrigins(raw: string | undefined): string[] {
 		.split(",")
 		.map((s) => s.trim())
 		.filter(Boolean);
+}
+
+function parseBoolean(raw: string | undefined): boolean | undefined {
+	if (raw === undefined) return undefined;
+	const normalized = raw.trim().toLowerCase();
+	if (["1", "true", "yes", "on"].includes(normalized)) return true;
+	if (["0", "false", "no", "off"].includes(normalized)) return false;
+	return undefined;
+}
+
+function defaultAuthRequired(env: NodeJS.ProcessEnv): boolean {
+	const explicit = parseBoolean(env.AUTH_REQUIRED);
+	if (explicit !== undefined) return explicit;
+	const railwayEnv = env.RAILWAY_ENVIRONMENT?.trim().toLowerCase();
+	if (railwayEnv && railwayEnv !== "development" && railwayEnv !== "dev") return true;
+	return ["production", "staging"].includes((env.NODE_ENV ?? "").trim().toLowerCase());
 }
 
 /**
@@ -47,5 +65,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		modelId: env.TRAVEL_AGENT_MODEL ?? "kimi-k2.6",
 		apiKey: env.OLLAMA_API_KEY,
 		messageTimeoutMs: Number(env.TRAVEL_AGENT_MESSAGE_TIMEOUT_MS ?? "180000"),
+		authRequired: defaultAuthRequired(env),
 	};
 }

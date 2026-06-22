@@ -110,6 +110,46 @@ describe("server without LLM configured", () => {
 // Model resolution
 // =============================================================================
 
+describe("server auth feature toggle", () => {
+	test("defaults auth off for dev/test and on for Railway production-like environments", () => {
+		expect(loadConfig({}).authRequired).toBe(false);
+		expect(loadConfig({ NODE_ENV: "production" }).authRequired).toBe(true);
+		expect(loadConfig({ RAILWAY_ENVIRONMENT: "production" }).authRequired).toBe(true);
+		expect(loadConfig({ AUTH_REQUIRED: "false", RAILWAY_ENVIRONMENT: "production" }).authRequired).toBe(false);
+		expect(loadConfig({ AUTH_REQUIRED: "true" }).authRequired).toBe(true);
+	});
+
+	test("exposes a dev current-user response when auth is disabled", async () => {
+		const app = createServer(loadConfig({ AUTH_REQUIRED: "false" }));
+		await app.ready();
+		try {
+			const res = await app.inject({ method: "GET", url: "/api/auth/current-user" });
+			expect(res.statusCode).toBe(200);
+			expect(res.json()).toMatchObject({ authRequired: false, authenticated: false, user: { id: "dev-user" } });
+		} finally {
+			await app.close();
+		}
+	});
+
+	test("blocks travel APIs when auth is required before Google OIDC is configured", async () => {
+		const app = createServer(loadConfig({ AUTH_REQUIRED: "true" }));
+		await app.ready();
+		try {
+			const health = await app.inject({ method: "GET", url: "/health" });
+			expect(health.statusCode).toBe(200);
+			const res = await app.inject({ method: "POST", url: "/api/travel/sessions" });
+			expect(res.statusCode).toBe(501);
+			expect(res.json().error).toContain("Authentication is required");
+		} finally {
+			await app.close();
+		}
+	});
+});
+
+// =============================================================================
+// Model resolution
+// =============================================================================
+
 describe("TravelSessionManager model resolution", () => {
 	test("supports the Ollama Cloud kimi-k2.6 model used by travel evals", () => {
 		const manager = new TravelSessionManager(

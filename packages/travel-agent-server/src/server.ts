@@ -32,6 +32,7 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			dataDir: config.dataDir,
 			messageTimeoutMs: config.messageTimeoutMs,
 			hasApiKey: Boolean(config.apiKey),
+			authRequired: config.authRequired,
 		},
 		"Starting travel agent server",
 	);
@@ -55,7 +56,18 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		return reply.status(404).send({ error: `Route not found: ${request.method} ${request.url}` });
 	});
 
+	app.addHook("preHandler", async (request, reply) => {
+		if (!config.authRequired || !request.url.startsWith("/api/travel/")) return;
+		return reply.status(501).send({ error: "Authentication is required but Google OIDC is not configured yet." });
+	});
+
 	app.get("/health", async () => ({ status: "ok" }));
+
+	app.get("/api/auth/current-user", async () => ({
+		authRequired: config.authRequired,
+		authenticated: false,
+		user: config.authRequired ? null : { id: "dev-user", email: "dev@local", name: "Dev User" },
+	}));
 
 	app.post("/api/travel/sessions", async (_request, reply) => {
 		try {

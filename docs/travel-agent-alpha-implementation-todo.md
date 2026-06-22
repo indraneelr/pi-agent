@@ -49,17 +49,17 @@ Tasks:
 
 ## Phase 2 — Auth feature toggle and Google session isolation
 
-Status: pending
+Status: in progress
 
 Tasks:
 
-- [ ] Add `AUTH_REQUIRED`-style config with safe staging/production default.
-- [ ] Add dev/debug auth-disabled mode with clear warnings.
+- [x] Add `AUTH_REQUIRED`-style config with safe staging/production default.
+- [x] Add dev/debug auth-disabled mode with clear warnings.
 - [ ] Add Google OIDC login/logout/current-user.
 - [ ] Add secure HTTP-only session cookies when auth is enabled.
 - [ ] Scope sessions/resources/runs/credentials by `userId` when auth is enabled.
 - [ ] Add cross-user isolation tests.
-- [ ] Commit Phase 2.
+- [ ] Commit Phase 2 auth-toggle slice.
 
 ## Phase 3 — Encrypted user LLM credentials + fallback allowlist
 
@@ -105,4 +105,4 @@ Tasks:
 
 ## Resume notes
 
-Start with Phase 1. The existing `get_images` tests pass, but UI still renders raw URL strings. The first implementation target is to preserve validated evidence and require that evidence at render time.
+Phase 1 is complete. Continue Phase 2 from Google OIDC login/logout/current-user. Auth toggle is implemented and tested; travel APIs return 501 when `AUTH_REQUIRED=true` until Google OIDC is wired.
