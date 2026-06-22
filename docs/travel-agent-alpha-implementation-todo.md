@@ -81,7 +81,7 @@ Tasks:
 
 ## Phase 4 — Core alpha workflow hardening
 
-Status: pending
+Status: in progress
 
 Tasks:
 
