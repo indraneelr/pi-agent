@@ -19,6 +19,7 @@ import {
 	verifyOAuthState,
 } from "./auth.js";
 import { loadConfig, type ServerConfig } from "./config.js";
+import { CredentialNotFoundError, CredentialStore } from "./credentials.js";
 import {
 	SessionBusyError,
 	SessionConfigurationError,
@@ -48,6 +49,7 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		"Starting travel agent server",
 	);
 	const sessionManager = manager ?? new TravelSessionManager(config, app.log);
+	const credentialStore = new CredentialStore(config);
 
 	app.register(cors, { origin: config.corsOrigins });
 
@@ -68,7 +70,8 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	});
 
 	app.addHook("preHandler", async (request, reply) => {
-		if (!config.authRequired || !request.url.startsWith("/api/travel/")) return;
+		const protectedApi = request.url.startsWith("/api/travel/") || request.url.startsWith("/api/credentials");
+		if (!config.authRequired || !protectedApi) return;
 		const user = getRequestUser(request, config);
 		if (!user) return reply.status(401).send({ error: "Authentication required" });
 	});
@@ -77,7 +80,12 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 
 	app.get("/api/auth/current-user", async (request) => {
 		const user = getRequestUser(request, config);
-		return { authRequired: config.authRequired, authenticated: Boolean(user), user };
+		return {
+			authRequired: config.authRequired,
+			authenticated: Boolean(user),
+			user,
+			serverKeyFallbackAllowed: user ? credentialStore.isServerKeyFallbackAllowed(user.id, user.email) : false,
+		};
 	});
 
 	app.get("/api/auth/login", async (_request, reply) => {
@@ -110,6 +118,52 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	app.post("/api/auth/logout", async (_request, reply) => {
 		clearSessionCookie(reply, config);
 		return reply.send({ ok: true });
+	});
+
+	app.get("/api/credentials", async (request) => {
+		const user = getRequestUser(request, config)!;
+		return {
+			credentials: credentialStore.list(user.id),
+			serverKeyFallbackAllowed: credentialStore.isServerKeyFallbackAllowed(user.id, user.email),
+		};
+	});
+
+	app.post("/api/credentials", async (request, reply) => {
+		const user = getRequestUser(request, config)!;
+		const body = request.body as { provider?: string; label?: string; apiKey?: string } | null;
+		try {
+			const credential = credentialStore.create(user.id, {
+				provider: body?.provider ?? "",
+				label: body?.label,
+				apiKey: body?.apiKey ?? "",
+			});
+			return reply.status(201).send({ credential });
+		} catch (e) {
+			return reply.status(400).send({ error: e instanceof Error ? e.message : "Invalid credential" });
+		}
+	});
+
+	app.post("/api/credentials/:credentialId/validate", async (request, reply) => {
+		const user = getRequestUser(request, config)!;
+		const { credentialId } = request.params as { credentialId: string };
+		try {
+			return reply.send({ credential: credentialStore.validate(user.id, credentialId) });
+		} catch (e) {
+			if (e instanceof CredentialNotFoundError) return reply.status(404).send({ error: e.message });
+			return reply.status(400).send({ error: e instanceof Error ? e.message : "Credential validation failed" });
+		}
+	});
+
+	app.delete("/api/credentials/:credentialId", async (request, reply) => {
+		const user = getRequestUser(request, config)!;
+		const { credentialId } = request.params as { credentialId: string };
+		try {
+			credentialStore.delete(user.id, credentialId);
+			return reply.send({ ok: true });
+		} catch (e) {
+			if (e instanceof CredentialNotFoundError) return reply.status(404).send({ error: e.message });
+			return reply.status(500).send({ error: "Internal server error" });
+		}
 	});
 
 	app.post("/api/travel/sessions", async (_request, reply) => {

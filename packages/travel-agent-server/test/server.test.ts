@@ -6,6 +6,7 @@
  * TravelSessionManager.
  */
 
+import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -249,6 +250,93 @@ describe("server auth feature toggle", () => {
 			await app.close();
 		}
 	});
+
+	test("stores encrypted credentials without plaintext responses and isolates by user", async () => {
+		const tmpDataDir = await mkdtemp(join(tmpdir(), "travel-agent-credentials-test-"));
+		vi.spyOn(globalThis, "fetch")
+			.mockResolvedValueOnce(jsonResponse({ id_token: "id-token-1" }))
+			.mockResolvedValueOnce(
+				jsonResponse({ sub: "user-1", email: "one@example.com", email_verified: true, aud: "google-client" }),
+			)
+			.mockResolvedValueOnce(jsonResponse({ id_token: "id-token-2" }))
+			.mockResolvedValueOnce(
+				jsonResponse({ sub: "user-2", email: "two@example.com", email_verified: true, aud: "google-client" }),
+			);
+		const app = createServer(
+			loadConfig({
+				AUTH_REQUIRED: "true",
+				AUTH_COOKIE_SECURE: "false",
+				AUTH_SESSION_SECRET: "test-secret",
+				CREDENTIAL_ENCRYPTION_SECRET: "credential-secret",
+				SERVER_KEY_FALLBACK_ALLOWLIST: "user-1,allowed@example.com",
+				TRAVEL_AGENT_DATA_DIR: tmpDataDir,
+				GOOGLE_CLIENT_ID: "google-client",
+				GOOGLE_CLIENT_SECRET: "google-secret",
+				GOOGLE_REDIRECT_URI: "http://localhost/api/auth/callback",
+			}),
+		);
+		await app.ready();
+		try {
+			const userOneCookie = await signInForTest(app);
+			const userTwoCookie = await signInForTest(app);
+			const current = await app.inject({
+				method: "GET",
+				url: "/api/auth/current-user",
+				cookies: { travel_auth: userOneCookie },
+			});
+			expect(current.json().serverKeyFallbackAllowed).toBe(true);
+
+			const createRes = await app.inject({
+				method: "POST",
+				url: "/api/credentials",
+				cookies: { travel_auth: userOneCookie },
+				payload: { provider: "openai", label: "OpenAI", apiKey: "sk-secret-value" },
+			});
+			expect(createRes.statusCode).toBe(201);
+			expect(JSON.stringify(createRes.json())).not.toContain("sk-secret-value");
+			const credentialId = createRes.json().credential.id;
+			const stored = await readFile(join(tmpDataDir, "credentials", `${shaUserForTest("user-1")}.json`), "utf-8");
+			expect(stored).not.toContain("sk-secret-value");
+			expect(stored).toContain("encryptedApiKey");
+
+			const listOwn = await app.inject({
+				method: "GET",
+				url: "/api/credentials",
+				cookies: { travel_auth: userOneCookie },
+			});
+			expect(listOwn.json().credentials).toHaveLength(1);
+			expect(JSON.stringify(listOwn.json())).not.toContain("sk-secret-value");
+
+			const listOther = await app.inject({
+				method: "GET",
+				url: "/api/credentials",
+				cookies: { travel_auth: userTwoCookie },
+			});
+			expect(listOther.json().credentials).toEqual([]);
+			expect(listOther.json().serverKeyFallbackAllowed).toBe(false);
+
+			const validate = await app.inject({
+				method: "POST",
+				url: `/api/credentials/${credentialId}/validate`,
+				cookies: { travel_auth: userOneCookie },
+			});
+			expect(validate.json().credential.status).toBe("valid");
+			const deleteRes = await app.inject({
+				method: "DELETE",
+				url: `/api/credentials/${credentialId}`,
+				cookies: { travel_auth: userOneCookie },
+			});
+			expect(deleteRes.statusCode).toBe(200);
+			expect(
+				(
+					await app.inject({ method: "GET", url: "/api/credentials", cookies: { travel_auth: userOneCookie } })
+				).json().credentials,
+			).toEqual([]);
+		} finally {
+			await app.close();
+			await rm(tmpDataDir, { recursive: true, force: true });
+		}
+	});
 });
 
 // =============================================================================
@@ -350,6 +438,10 @@ describe("server with mock manager", () => {
 		expect(body.status).toBe("idle");
 	});
 });
+
+function shaUserForTest(userId: string): string {
+	return createHash("sha256").update(userId).digest("hex");
+}
 
 async function signInForTest(app: FastifyInstance): Promise<string> {
 	const login = await app.inject({ method: "GET", url: "/api/auth/login" });

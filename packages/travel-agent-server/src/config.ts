@@ -34,14 +34,22 @@ export interface ServerConfig {
 	googleClientSecret: string | undefined;
 	/** Google OAuth redirect URI. */
 	googleRedirectUri: string | undefined;
+	/** Secret used for application-level encryption of user LLM credentials. */
+	credentialEncryptionSecret: string;
+	/** Users allowed to use server-funded fallback LLM keys. */
+	serverKeyFallbackAllowlist: string[];
 }
 
-function parseCorsOrigins(raw: string | undefined): string[] {
-	if (!raw) return ["*"];
-	return raw
+function parseList(raw: string | undefined): string[] {
+	return (raw ?? "")
 		.split(",")
 		.map((s) => s.trim())
 		.filter(Boolean);
+}
+
+function parseCorsOrigins(raw: string | undefined): string[] {
+	const parsed = parseList(raw);
+	return parsed.length > 0 ? parsed : ["*"];
 }
 
 function parseBoolean(raw: string | undefined): boolean | undefined {
@@ -81,5 +89,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		googleClientId: env.GOOGLE_CLIENT_ID,
 		googleClientSecret: env.GOOGLE_CLIENT_SECRET,
 		googleRedirectUri: env.GOOGLE_REDIRECT_URI,
+		credentialEncryptionSecret:
+			env.CREDENTIAL_ENCRYPTION_SECRET ?? env.AUTH_SESSION_SECRET ?? "dev-credential-secret-change-me",
+		serverKeyFallbackAllowlist: parseList(env.SERVER_KEY_FALLBACK_ALLOWLIST),
 	};
 }

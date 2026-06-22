@@ -69,14 +69,14 @@ Status: in progress
 
 Tasks:
 
-- [ ] Add Railway-env-backed app secret for encryption.
-- [ ] Add application-level envelope encryption for user LLM keys.
-- [ ] Add credential CRUD/metadata APIs without plaintext responses.
-- [ ] Add validation/test-call API.
+- [x] Add Railway-env-backed app secret for encryption.
+- [x] Add application-level envelope encryption for user LLM keys.
+- [x] Add credential CRUD/metadata APIs without plaintext responses.
+- [x] Add validation/test-call API.
 - [ ] Add provider/model router scoped to authenticated user/session.
-- [ ] Add server-key fallback allowlist by user ID/email.
-- [ ] Add tests for redaction, isolation, rotation/deletion, fallback allowlist.
-- [ ] Commit Phase 3.
+- [x] Add server-key fallback allowlist by user ID/email.
+- [x] Add tests for redaction, isolation, rotation/deletion, fallback allowlist.
+- [ ] Commit Phase 3 credential-store slice.
 
 ## Phase 4 — Core alpha workflow hardening
 
