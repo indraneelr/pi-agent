@@ -85,13 +85,14 @@ Status: in progress
 
 Tasks:
 
-- [ ] Harden preferences → shortlist → selection → activities → itinerary flow.
-- [ ] Add final-plan smoke/eval.
+- [x] Harden preferences → shortlist → selection → activities → itinerary flow with alpha smoke gates.
+- [x] Add final-plan smoke/eval.
 - [x] Hide/disable hotels and flights unless validation is complete.
 - [x] Add clear error/retry states.
-- [ ] Add Greece/Japan/Portugal staging scenario coverage.
+- [x] Add Greece/Japan/Portugal staging scenario coverage.
 - [x] Commit Phase 4 hide-unvalidated-booking slice (`3ff96be5`).
-- [ ] Commit Phase 4 retry-state slice.
+- [x] Commit Phase 4 retry-state slice (`f84087d1`).
+- [ ] Commit Phase 4 alpha smoke/eval slice.
 
 ## Phase 5 — Railway staging gates
 
