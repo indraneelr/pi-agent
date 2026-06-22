@@ -42,6 +42,15 @@ describe("server without LLM configured", () => {
 		expect(res.json()).toEqual({ status: "ok" });
 	});
 
+	test("GET /ready reports missing alpha production dependencies", async () => {
+		const res = await app.inject({ method: "GET", url: "/ready" });
+		expect(res.statusCode).toBe(503);
+		expect(res.json()).toMatchObject({
+			status: "not_ready",
+			checks: { storage: true, encryption: false, searxng: false },
+		});
+	});
+
 	test("POST /api/travel/sessions creates inert session without configured model", async () => {
 		const res = await app.inject({ method: "POST", url: "/api/travel/sessions" });
 		expect(res.statusCode).toBe(201);
@@ -105,6 +114,35 @@ describe("server without LLM configured", () => {
 			payload: { message: "Plan a trip to Japan" },
 		});
 		expect(res.statusCode).toBe(404);
+	});
+});
+
+describe("readiness", () => {
+	test("GET /ready passes when alpha dependencies are configured", async () => {
+		const tmpDataDir = await mkdtemp(join(tmpdir(), "travel-agent-ready-test-"));
+		const app = createServer(
+			loadConfig({
+				TRAVEL_AGENT_DATA_DIR: tmpDataDir,
+				CREDENTIAL_ENCRYPTION_SECRET: "credential-secret",
+				SEARXNG_BASE_URL: "https://searxng.example",
+				AUTH_REQUIRED: "true",
+				GOOGLE_CLIENT_ID: "google-client",
+				GOOGLE_CLIENT_SECRET: "google-secret",
+				GOOGLE_REDIRECT_URI: "https://app.example/api/auth/callback",
+			}),
+		);
+		await app.ready();
+		try {
+			const res = await app.inject({ method: "GET", url: "/ready" });
+			expect(res.statusCode).toBe(200);
+			expect(res.json()).toMatchObject({
+				status: "ready",
+				checks: { storage: true, encryption: true, searxng: true, auth: true },
+			});
+		} finally {
+			await app.close();
+			await rm(tmpDataDir, { recursive: true, force: true });
+		}
 	});
 });
 

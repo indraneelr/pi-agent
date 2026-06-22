@@ -38,6 +38,8 @@ export interface ServerConfig {
 	credentialEncryptionSecret: string;
 	/** Users allowed to use server-funded fallback LLM keys. */
 	serverKeyFallbackAllowlist: string[];
+	/** SearXNG base URL for alpha image/search readiness. */
+	searxngBaseUrl: string | undefined;
 }
 
 function parseList(raw: string | undefined): string[] {
@@ -92,5 +94,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		credentialEncryptionSecret:
 			env.CREDENTIAL_ENCRYPTION_SECRET ?? env.AUTH_SESSION_SECRET ?? "dev-credential-secret-change-me",
 		serverKeyFallbackAllowlist: parseList(env.SERVER_KEY_FALLBACK_ALLOWLIST),
+		searxngBaseUrl: env.SEARXNG_BASE_URL,
 	};
 }

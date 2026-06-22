@@ -6,6 +6,7 @@
  * 503 (configuration error), 500 (internal error).
  */
 
+import { accessSync, constants, mkdirSync } from "node:fs";
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
 import {
@@ -77,6 +78,19 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	});
 
 	app.get("/health", async () => ({ status: "ok" }));
+
+	app.get("/ready", async (_request, reply) => {
+		const checks = {
+			storage: checkStorage(config.dataDir),
+			encryption: config.credentialEncryptionSecret !== "dev-credential-secret-change-me",
+			searxng: Boolean(config.searxngBaseUrl),
+			auth:
+				!config.authRequired ||
+				Boolean(config.googleClientId && config.googleClientSecret && config.googleRedirectUri),
+		};
+		const ready = Object.values(checks).every(Boolean);
+		return reply.status(ready ? 200 : 503).send({ status: ready ? "ready" : "not_ready", checks });
+	});
 
 	app.get("/api/auth/current-user", async (request) => {
 		const user = getRequestUser(request, config);
@@ -243,4 +257,14 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	});
 
 	return app;
+}
+
+function checkStorage(dataDir: string): boolean {
+	try {
+		mkdirSync(dataDir, { recursive: true });
+		accessSync(dataDir, constants.R_OK | constants.W_OK);
+		return true;
+	} catch {
+		return false;
+	}
 }
