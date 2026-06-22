@@ -65,7 +65,7 @@ Tasks:
 
 ## Phase 3 — Encrypted user LLM credentials + fallback allowlist
 
-Status: in progress
+Status: completed
 
 Tasks:
 
@@ -76,7 +76,8 @@ Tasks:
 - [x] Add provider/model router scoped to authenticated user/session.
 - [x] Add server-key fallback allowlist by user ID/email.
 - [x] Add tests for redaction, isolation, rotation/deletion, fallback allowlist.
-- [ ] Commit Phase 3 credential-store/router slice.
+- [x] Commit Phase 3 credential-store slice (`852aa8c1`).
+- [x] Commit Phase 3 credential router slice (`2ad5fdf9`).
 
 ## Phase 4 — Core alpha workflow hardening
 
@@ -107,4 +108,4 @@ Tasks:
 
 ## Resume notes
 
-Phase 1 is complete. Phase 2 auth toggle, Google OIDC endpoints, secure session cookies, and user-owned travel session isolation are implemented. Credentials are not built yet; credential isolation continues in Phase 3.
+Phases 1–3 are complete. Continue with Phase 4 core alpha workflow hardening: final-plan smoke/eval, hide/disable hotels/flights unless validated, clearer error/retry states, and Greece/Japan/Portugal scenario coverage.
