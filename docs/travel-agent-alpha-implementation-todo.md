@@ -65,7 +65,7 @@ Tasks:
 
 ## Phase 3 — Encrypted user LLM credentials + fallback allowlist
 
-Status: pending
+Status: in progress
 
 Tasks:
 
