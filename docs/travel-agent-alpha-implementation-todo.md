@@ -96,7 +96,7 @@ Tasks:
 
 ## Phase 5 — Railway staging gates
 
-Status: pending
+Status: in progress
 
 Tasks:
 
