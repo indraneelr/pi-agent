@@ -96,7 +96,7 @@ Tasks:
 
 ## Phase 5 — Railway staging gates
 
-Status: in progress
+Status: completed
 
 Tasks:
 
@@ -107,8 +107,8 @@ Tasks:
 - [x] Add staging smoke script for auth, credentials, workflow, resource truthfulness.
 - [x] Document rollback, data deletion, and alpha no-backup/data-reset policy.
 - [x] Commit Phase 5 readiness slice (`57121249`).
-- [ ] Commit Phase 5 Railway runbook/rate-limit slice.
+- [x] Commit Phase 5 Railway runbook/rate-limit slice (`56de0aea`).
 
 ## Resume notes
 
-Phases 1–4 are complete. Continue with Phase 5 Railway staging gates: deployment docs, health/readiness checks, redacted observability, rate limits/one-active-run controls, staging smoke script, rollback/deletion/no-backup policy.
+Phases 1–5 are complete for the minimal alpha implementation plan. Remaining work before real launch is environment setup on Railway, real Google OAuth credentials, SearXNG endpoint, and live staging smoke validation.
