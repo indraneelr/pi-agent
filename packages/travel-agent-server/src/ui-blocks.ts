@@ -1,5 +1,7 @@
 import type { TravelState, ValidatedImage } from "@mariozechner/pi-travel-agent";
 
+const ALPHA_SHOW_BOOKING_BLOCKS = false;
+
 export type TravelUiBlock =
 	| ChecklistProgressBlock
 	| TripPreferencesSummaryBlock
@@ -262,7 +264,9 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 		});
 	}
 
-	if (state.accommodationResearch?.areasToStay?.length) {
+	// Alpha release hides accommodation and flight surfaces until provider-backed
+	// link validation is implemented for those resource types.
+	if (ALPHA_SHOW_BOOKING_BLOCKS && state.accommodationResearch?.areasToStay?.length) {
 		blocks.push({
 			id: "accommodation-cards",
 			kind: "accommodation_cards",
@@ -283,7 +287,7 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 		});
 	}
 
-	if (state.flightResearch) {
+	if (ALPHA_SHOW_BOOKING_BLOCKS && state.flightResearch) {
 		blocks.push({
 			id: "flight-options",
 			kind: "flight_options",
