@@ -43,7 +43,7 @@ Tasks:
   - `packages/travel-agent`: build + focused get-images/image-validation/tools tests passed (40 tests)
   - `packages/travel-agent-server`: `npm run check` passed
   - `packages/travel-agent-web`: `npm run check && npm test` passed (4 tests)
-- [ ] Commit Phase 1 evidence/rendering slice.
+- [x] Commit Phase 1 evidence/rendering slice (`e8b04506`).
 
 ## Phase 2 — Auth feature toggle and Google session isolation
 
