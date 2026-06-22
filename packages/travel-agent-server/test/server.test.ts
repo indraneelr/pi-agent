@@ -115,6 +115,18 @@ describe("server without LLM configured", () => {
 		});
 		expect(res.statusCode).toBe(404);
 	});
+
+	test("DELETE /api/travel/sessions/:id deletes owned session state", async () => {
+		const createRes = await app.inject({ method: "POST", url: "/api/travel/sessions" });
+		const { sessionId } = createRes.json();
+		expect(await readFile(join(tmpDataDir, `${sessionId}.json`), "utf-8")).toContain(sessionId);
+
+		const deleteRes = await app.inject({ method: "DELETE", url: `/api/travel/sessions/${sessionId}` });
+		expect(deleteRes.statusCode).toBe(200);
+
+		const getRes = await app.inject({ method: "GET", url: `/api/travel/sessions/${sessionId}` });
+		expect(getRes.statusCode).toBe(404);
+	});
 });
 
 describe("readiness and abuse controls", () => {
@@ -298,6 +310,13 @@ describe("server auth feature toggle", () => {
 				cookies: { travel_auth: userTwoCookie },
 			});
 			expect(crossRead.statusCode).toBe(403);
+
+			const crossDelete = await app.inject({
+				method: "DELETE",
+				url: `/api/travel/sessions/${sessionId}`,
+				cookies: { travel_auth: userTwoCookie },
+			});
+			expect(crossDelete.statusCode).toBe(403);
 		} finally {
 			await app.close();
 		}

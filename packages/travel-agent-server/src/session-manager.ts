@@ -6,7 +6,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
@@ -15,6 +15,7 @@ import { getModels } from "@mariozechner/pi-ai";
 import {
 	createTravelSession,
 	createTravelState,
+	deleteTravelState,
 	detectSearchProvider,
 	extractTravelConversation,
 	loadChecklistConfig,
@@ -203,6 +204,24 @@ export class TravelSessionManager {
 	 * initializes the agent lazily, then dispatches the prompt.
 	 * Returns the extracted assistant text and updated state.
 	 */
+	async deleteSession(sessionId: string, userId = "dev-user"): Promise<void> {
+		let record = this.sessions.get(sessionId);
+		if (!record) {
+			const persistedState = loadTravelState(sessionId, { dataDir: this.config.dataDir });
+			if (!persistedState) throw new SessionNotFoundError(sessionId);
+			record = {
+				state: persistedState,
+				status: "idle",
+				userId: loadSessionOwner(this.config.dataDir, sessionId) ?? "dev-user",
+			};
+		}
+		this.assertSessionOwner(record, sessionId, userId);
+		this.sessions.delete(sessionId);
+		this.activeSessions.delete(sessionId);
+		deleteTravelState(sessionId, { dataDir: this.config.dataDir });
+		deleteSessionOwner(this.config.dataDir, sessionId);
+	}
+
 	async sendMessage(sessionId: string, message: string, userId = "dev-user"): Promise<SendMessageResult> {
 		if (!message || message.trim().length === 0) {
 			throw new Error("Message must not be empty");
@@ -373,6 +392,11 @@ function loadSessionOwner(dataDir: string, sessionId: string): string | null {
 	} catch {
 		return null;
 	}
+}
+
+function deleteSessionOwner(dataDir: string, sessionId: string): void {
+	const filePath = sessionOwnerPath(dataDir, sessionId);
+	if (existsSync(filePath)) rmSync(filePath);
 }
 
 function resolveCustomModel(provider: string, modelId: string): Model<"openai-completions"> | undefined {

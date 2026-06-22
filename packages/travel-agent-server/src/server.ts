@@ -220,6 +220,20 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		}
 	});
 
+	app.delete("/api/travel/sessions/:sessionId", async (request, reply) => {
+		const { sessionId } = request.params as { sessionId: string };
+		try {
+			const user = getRequestUser(request, config);
+			await sessionManager.deleteSession(sessionId, user?.id);
+			return reply.send({ ok: true });
+		} catch (e) {
+			if (e instanceof SessionNotFoundError) return reply.status(404).send({ error: e.message });
+			if (e instanceof SessionForbiddenError) return reply.status(403).send({ error: e.message });
+			app.log.error(e);
+			return reply.status(500).send({ error: "Internal server error" });
+		}
+	});
+
 	app.post("/api/travel/sessions/:sessionId/messages", async (request, reply) => {
 		const { sessionId } = request.params as { sessionId: string };
 		const body = request.body as { message?: string } | null;
