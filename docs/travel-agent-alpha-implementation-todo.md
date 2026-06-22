@@ -15,14 +15,14 @@ Last updated: 2026-06-22
 
 ## Phase 0 — Commit current planning state
 
-Status: in progress
+Status: completed
 
 - [x] Update production release plan with user feedback.
-- [ ] Commit current repo state before implementation.
+- [x] Commit current repo state before implementation (`f0a1f7c0`).
 
 ## Phase 1 — Validated image/resource rendering
 
-Status: pending
+Status: in progress
 
 Goal: no fake or unvalidated visible image/resource URLs in alpha UI.
 
