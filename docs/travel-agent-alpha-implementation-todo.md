@@ -109,7 +109,7 @@ Tasks:
 - [x] Add alpha trip/session deletion endpoint and owner-isolation tests.
 - [x] Commit Phase 5 readiness slice (`57121249`).
 - [x] Commit Phase 5 Railway runbook/rate-limit slice (`56de0aea`).
-- [ ] Commit Phase 5 session deletion slice.
+- [x] Commit Phase 5 session deletion slice (`ae98ec1d`).
 
 ## Resume notes
 
