@@ -199,6 +199,56 @@ describe("server auth feature toggle", () => {
 			await app.close();
 		}
 	});
+
+	test("prevents one signed-in user from reading another user's session", async () => {
+		vi.spyOn(globalThis, "fetch")
+			.mockResolvedValueOnce(jsonResponse({ id_token: "id-token-1" }))
+			.mockResolvedValueOnce(
+				jsonResponse({ sub: "user-1", email: "one@example.com", email_verified: true, aud: "google-client" }),
+			)
+			.mockResolvedValueOnce(jsonResponse({ id_token: "id-token-2" }))
+			.mockResolvedValueOnce(
+				jsonResponse({ sub: "user-2", email: "two@example.com", email_verified: true, aud: "google-client" }),
+			);
+		const app = createServer(
+			loadConfig({
+				AUTH_REQUIRED: "true",
+				AUTH_COOKIE_SECURE: "false",
+				AUTH_SESSION_SECRET: "test-secret",
+				GOOGLE_CLIENT_ID: "google-client",
+				GOOGLE_CLIENT_SECRET: "google-secret",
+				GOOGLE_REDIRECT_URI: "http://localhost/api/auth/callback",
+			}),
+		);
+		await app.ready();
+		try {
+			const userOneCookie = await signInForTest(app);
+			const userTwoCookie = await signInForTest(app);
+			const createRes = await app.inject({
+				method: "POST",
+				url: "/api/travel/sessions",
+				cookies: { travel_auth: userOneCookie },
+			});
+			expect(createRes.statusCode).toBe(201);
+			const { sessionId } = createRes.json();
+
+			const ownRead = await app.inject({
+				method: "GET",
+				url: `/api/travel/sessions/${sessionId}`,
+				cookies: { travel_auth: userOneCookie },
+			});
+			expect(ownRead.statusCode).toBe(200);
+
+			const crossRead = await app.inject({
+				method: "GET",
+				url: `/api/travel/sessions/${sessionId}`,
+				cookies: { travel_auth: userTwoCookie },
+			});
+			expect(crossRead.statusCode).toBe(403);
+		} finally {
+			await app.close();
+		}
+	});
 });
 
 // =============================================================================
@@ -300,6 +350,19 @@ describe("server with mock manager", () => {
 		expect(body.status).toBe("idle");
 	});
 });
+
+async function signInForTest(app: FastifyInstance): Promise<string> {
+	const login = await app.inject({ method: "GET", url: "/api/auth/login" });
+	const state = new URL(String(login.headers.location)).searchParams.get("state");
+	const stateCookie = login.cookies.find((cookie) => cookie.name === "travel_oauth_state");
+	const callback = await app.inject({
+		method: "GET",
+		url: `/api/auth/callback?code=abc&state=${state}`,
+		cookies: { travel_oauth_state: stateCookie!.value },
+	});
+	const sessionCookie = callback.cookies.find((cookie) => cookie.name === "travel_auth");
+	return sessionCookie!.value;
+}
 
 function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), {

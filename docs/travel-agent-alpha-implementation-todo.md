@@ -57,10 +57,11 @@ Tasks:
 - [x] Add dev/debug auth-disabled mode with clear warnings.
 - [x] Add Google OIDC login/logout/current-user.
 - [x] Add secure HTTP-only session cookies when auth is enabled.
-- [ ] Scope sessions/resources/runs/credentials by `userId` when auth is enabled.
-- [ ] Add cross-user isolation tests.
+- [x] Scope travel sessions by `userId` when auth is enabled.
+- [x] Add cross-user session isolation tests.
 - [x] Commit Phase 2 auth-toggle slice (`af76b14e`).
-- [ ] Commit Phase 2 Google OIDC slice.
+- [x] Commit Phase 2 Google OIDC slice (`eb843faf`).
+- [ ] Commit Phase 2 user-owned session isolation slice.
 
 ## Phase 3 — Encrypted user LLM credentials + fallback allowlist
 
@@ -106,4 +107,4 @@ Tasks:
 
 ## Resume notes
 
-Phase 1 is complete. Phase 2 auth toggle and Google OIDC endpoints are implemented. Continue Phase 2 from user-owned session/resource scoping and cross-user isolation tests.
+Phase 1 is complete. Phase 2 auth toggle, Google OIDC endpoints, secure session cookies, and user-owned travel session isolation are implemented. Credentials are not built yet; credential isolation continues in Phase 3.

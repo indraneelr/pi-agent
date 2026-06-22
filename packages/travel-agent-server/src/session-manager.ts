@@ -6,6 +6,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
@@ -85,6 +86,13 @@ export class SessionBusyError extends Error {
 	}
 }
 
+export class SessionForbiddenError extends Error {
+	constructor(public readonly sessionId: string) {
+		super(`Session access denied: ${sessionId}`);
+		this.name = "SessionForbiddenError";
+	}
+}
+
 export class SessionConfigurationError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -109,6 +117,7 @@ export class SessionTimeoutError extends Error {
 interface SessionRecord {
 	state: TravelState;
 	status: SessionStatus;
+	userId: string;
 }
 
 interface SessionLogger {
@@ -140,12 +149,13 @@ export class TravelSessionManager {
 	 * agent. This lets web clients create/resume UI sessions even when provider
 	 * configuration is missing; configuration failures surface on first run.
 	 */
-	async createSession(): Promise<CreateSessionResult> {
+	async createSession(userId = "dev-user"): Promise<CreateSessionResult> {
 		const sessionId = randomUUID();
-		this.logger.info({ sessionId }, "Creating travel session");
+		this.logger.info({ sessionId, userId }, "Creating travel session");
 		const state = createTravelState(sessionId, this.checklistConfig);
-		this.sessions.set(sessionId, { state, status: "idle" });
+		this.sessions.set(sessionId, { state, status: "idle", userId });
 		saveTravelState(state, { dataDir: this.config.dataDir });
+		saveSessionOwner(this.config.dataDir, sessionId, userId);
 		this.logger.info({ sessionId, dataDir: this.config.dataDir }, "Travel session created and persisted");
 		return { sessionId, state, uiBlocks: composeTravelUiBlocks(state), conversation: [], status: "idle" };
 	}
@@ -156,15 +166,20 @@ export class TravelSessionManager {
 	 * Returns session info if the ID is known (created via createSession).
 	 * Throws SessionNotFoundError if the ID was never created.
 	 */
-	async getSession(sessionId: string): Promise<GetSessionResult> {
-		this.logger.info({ sessionId }, "Loading travel session");
+	async getSession(sessionId: string, userId = "dev-user"): Promise<GetSessionResult> {
+		this.logger.info({ sessionId, userId }, "Loading travel session");
 		let record = this.sessions.get(sessionId);
 		if (!record) {
 			const persistedState = loadTravelState(sessionId, { dataDir: this.config.dataDir });
 			if (!persistedState) throw new SessionNotFoundError(sessionId);
-			record = { state: persistedState, status: "idle" };
+			record = {
+				state: persistedState,
+				status: "idle",
+				userId: loadSessionOwner(this.config.dataDir, sessionId) ?? "dev-user",
+			};
 			this.sessions.set(sessionId, record);
 		}
+		this.assertSessionOwner(record, sessionId, userId);
 		const activeSession = this.activeSessions.get(sessionId);
 		const state = activeSession?.state ?? record.state;
 		const conversation = activeSession
@@ -186,14 +201,22 @@ export class TravelSessionManager {
 	 * initializes the agent lazily, then dispatches the prompt.
 	 * Returns the extracted assistant text and updated state.
 	 */
-	async sendMessage(sessionId: string, message: string): Promise<SendMessageResult> {
+	async sendMessage(sessionId: string, message: string, userId = "dev-user"): Promise<SendMessageResult> {
 		if (!message || message.trim().length === 0) {
 			throw new Error("Message must not be empty");
 		}
-		const record = this.sessions.get(sessionId);
+		let record = this.sessions.get(sessionId);
 		if (!record) {
-			throw new SessionNotFoundError(sessionId);
+			const persistedState = loadTravelState(sessionId, { dataDir: this.config.dataDir });
+			if (!persistedState) throw new SessionNotFoundError(sessionId);
+			record = {
+				state: persistedState,
+				status: "idle",
+				userId: loadSessionOwner(this.config.dataDir, sessionId) ?? "dev-user",
+			};
+			this.sessions.set(sessionId, record);
 		}
+		this.assertSessionOwner(record, sessionId, userId);
 		if (record.status === "busy") {
 			throw new SessionBusyError(sessionId);
 		}
@@ -244,6 +267,10 @@ export class TravelSessionManager {
 	 * Build a TravelSession from config, resolving model and search provider.
 	 * Wraps all setup failures in SessionConfigurationError with a safe message.
 	 */
+	private assertSessionOwner(record: SessionRecord, sessionId: string, userId: string): void {
+		if (record.userId !== userId) throw new SessionForbiddenError(sessionId);
+	}
+
 	private async buildSession(sessionId: string): Promise<TravelSession> {
 		if (!this.config.apiKey) {
 			throw new SessionConfigurationError(formatMissingApiKeyMessage(this.config.provider));
@@ -317,6 +344,26 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorFacto
 function formatMissingApiKeyMessage(provider: string): string {
 	if (provider === "ollama") return "Ollama Cloud API key is not configured. Set OLLAMA_API_KEY.";
 	return `API key is not configured for provider: ${provider}.`;
+}
+
+function sessionOwnerPath(dataDir: string, sessionId: string): string {
+	return join(dataDir, `${sessionId}.owner.json`);
+}
+
+function saveSessionOwner(dataDir: string, sessionId: string, userId: string): void {
+	mkdirSync(dataDir, { recursive: true });
+	writeFileSync(sessionOwnerPath(dataDir, sessionId), `${JSON.stringify({ userId })}\n`, "utf-8");
+}
+
+function loadSessionOwner(dataDir: string, sessionId: string): string | null {
+	const filePath = sessionOwnerPath(dataDir, sessionId);
+	if (!existsSync(filePath)) return null;
+	try {
+		const parsed = JSON.parse(readFileSync(filePath, "utf-8")) as { userId?: unknown };
+		return typeof parsed.userId === "string" && parsed.userId.trim() ? parsed.userId : null;
+	} catch {
+		return null;
+	}
 }
 
 function resolveCustomModel(provider: string, modelId: string): Model<"openai-completions"> | undefined {

@@ -22,6 +22,7 @@ import { loadConfig, type ServerConfig } from "./config.js";
 import {
 	SessionBusyError,
 	SessionConfigurationError,
+	SessionForbiddenError,
 	SessionNotFoundError,
 	SessionTimeoutError,
 	TravelSessionManager,
@@ -113,8 +114,9 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 
 	app.post("/api/travel/sessions", async (_request, reply) => {
 		try {
-			app.log.info("POST /api/travel/sessions start");
-			const result = await sessionManager.createSession();
+			const user = getRequestUser(_request, config);
+			app.log.info({ userId: user?.id }, "POST /api/travel/sessions start");
+			const result = await sessionManager.createSession(user?.id);
 			app.log.info({ sessionId: result.sessionId }, "POST /api/travel/sessions complete");
 			return reply.status(201).send(result);
 		} catch (e) {
@@ -129,12 +131,16 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	app.get("/api/travel/sessions/:sessionId", async (request, reply) => {
 		const { sessionId } = request.params as { sessionId: string };
 		try {
-			app.log.info({ sessionId }, "GET /api/travel/sessions/:sessionId start");
-			const result = await sessionManager.getSession(sessionId);
+			const user = getRequestUser(request, config);
+			app.log.info({ sessionId, userId: user?.id }, "GET /api/travel/sessions/:sessionId start");
+			const result = await sessionManager.getSession(sessionId, user?.id);
 			return reply.send(result);
 		} catch (e) {
 			if (e instanceof SessionNotFoundError) {
 				return reply.status(404).send({ error: e.message });
+			}
+			if (e instanceof SessionForbiddenError) {
+				return reply.status(403).send({ error: e.message });
 			}
 			app.log.error(e);
 			return reply.status(500).send({ error: "Internal server error" });
@@ -150,11 +156,12 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		}
 
 		try {
+			const user = getRequestUser(request, config);
 			app.log.info(
-				{ sessionId, messageLength: body.message.length },
+				{ sessionId, userId: user?.id, messageLength: body.message.length },
 				"POST /api/travel/sessions/:sessionId/messages start",
 			);
-			const result = await sessionManager.sendMessage(sessionId, body.message);
+			const result = await sessionManager.sendMessage(sessionId, body.message, user?.id);
 			app.log.info(
 				{ sessionId, uiBlockCount: result.uiBlocks.length },
 				"POST /api/travel/sessions/:sessionId/messages complete",
@@ -166,6 +173,9 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			}
 			if (e instanceof SessionBusyError) {
 				return reply.status(409).send({ error: e.message });
+			}
+			if (e instanceof SessionForbiddenError) {
+				return reply.status(403).send({ error: e.message });
 			}
 			if (e instanceof SessionConfigurationError) {
 				return reply.status(503).send({ error: e.message });
