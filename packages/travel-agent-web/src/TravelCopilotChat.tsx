@@ -113,19 +113,8 @@ function CopilotMarkdown({ content }: { content: string }) {
 function SafeMarkdownImage({ src, alt }: { src?: string; alt?: ReactNode }) {
 	if (!src) return null;
 	return (
-		<span className="markdown-safe-image-wrap">
-			<img
-				alt={typeof alt === "string" ? alt : "Travel image"}
-				className="markdown-safe-image"
-				onError={(event) => {
-					const image = event.currentTarget;
-					image.style.display = "none";
-					const fallback = image.nextElementSibling;
-					if (fallback instanceof HTMLElement) fallback.style.display = "block";
-				}}
-				src={src}
-			/>
-			<span className="image-fallback" style={{ display: "none" }}>Image unavailable</span>
+		<span className="image-fallback" title={`Blocked unverified image URL: ${src}`}>
+			Image blocked until verified{typeof alt === "string" && alt.trim() ? `: ${alt}` : ""}
 		</span>
 	);
 }

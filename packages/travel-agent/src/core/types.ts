@@ -16,6 +16,23 @@ export interface Reviews {
 	sources?: string[];
 }
 
+export interface ValidatedImage {
+	kind: "image";
+	url: string;
+	finalUrl: string;
+	provider: string;
+	source?: string;
+	title?: string;
+	retrievedAt: string;
+	validatedAt: string;
+	httpStatus: number;
+	contentType: string | null;
+	width: number;
+	height: number;
+	validationStatus: "valid" | "invalid" | "stale";
+	rejectionReason?: string;
+}
+
 // =============================================================================
 // Preferences
 // =============================================================================
@@ -112,6 +129,7 @@ export interface SubDestination {
 	selected?: boolean;
 	imageKeywords?: string;
 	imageLinks?: string[];
+	validatedImages?: ValidatedImage[];
 	city?: string;
 	country?: string;
 	themes?: string[];
@@ -129,6 +147,7 @@ export interface Destination {
 	bestTimeToVisit: string;
 	imageKeywords?: string;
 	imageLinks?: string[];
+	validatedImages?: ValidatedImage[];
 	reviews: Reviews;
 	sources: string[];
 }
@@ -165,6 +184,7 @@ export interface Activity {
 	estimatedCost?: number;
 	imageKeywords?: string;
 	imageLinks?: string[];
+	validatedImages?: ValidatedImage[];
 	reviews: Reviews;
 	suitableForGroups?: string[];
 	themes?: string[];
@@ -207,6 +227,7 @@ export interface ItineraryDay {
 	dayNumber: number;
 	imageKeywords?: string;
 	imageLinks?: string[];
+	validatedImages?: ValidatedImage[];
 	activities: ItineraryActivity[];
 }
 
@@ -240,6 +261,7 @@ export interface AccommodationArea {
 	reviews: Reviews;
 	imageKeywords?: string[];
 	imageLinks?: string[];
+	validatedImages?: ValidatedImage[];
 	accommodationLinks?: string[];
 	sources: string[];
 }

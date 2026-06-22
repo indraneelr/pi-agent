@@ -66,7 +66,11 @@ export function createStagehandImageSearchProvider(options: StagehandImageSearch
 					dimensionProbe: options.dimensionProbe,
 					signal: query.signal,
 				});
-				return { provider: "stagehand", ...validated };
+				return {
+					provider: "stagehand",
+					images: withEvidenceProvider(validated.images, "stagehand"),
+					rejectedCount: validated.rejectedCount,
+				};
 			} finally {
 				query.signal?.removeEventListener("abort", onAbort);
 			}
@@ -101,6 +105,10 @@ function resolveImageStagehandConfig(options: StagehandImageSearchOptions): Reso
 function buildImageSearchUrl(query: string): string {
 	// Bing Images exposes useful DOM img.currentSrc/naturalWidth/naturalHeight in local Playwright.
 	return `https://www.bing.com/images/search?q=${encodeURIComponent(query)}&form=HDRSC2&first=1`;
+}
+
+function withEvidenceProvider<T extends { evidence?: { provider: string } }>(images: T[], provider: "stagehand"): T[] {
+	return images.map((image) => (image.evidence ? { ...image, evidence: { ...image.evidence, provider } } : image));
 }
 
 function defaultStagehandImageClientFactory(config: ResolvedStagehandConfig): StagehandImageClient {

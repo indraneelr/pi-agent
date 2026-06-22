@@ -143,4 +143,5 @@ export type {
 	Reviews,
 	SubDestination,
 	TravelPreferences,
+	ValidatedImage,
 } from "./core/types.js";

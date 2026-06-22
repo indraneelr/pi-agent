@@ -157,12 +157,12 @@ export function App() {
 	);
 }
 
-function SafeImage({ src, alt, inline }: { src: string; alt: string; inline?: boolean }) {
+function SafeImage({ src, alt, inline, source }: { src: string; alt: string; inline?: boolean; source?: string }) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return <span className="image-placeholder" title={`Image unavailable: ${alt}`}>{inline ? "🖼" : "Image unavailable"}</span>;
 	}
-	return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
+	return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} title={source ? `Source: ${source}` : undefined} />;
 }
 
 function SafeUiBlockView(props: { block: TravelUiBlock; onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void; disabled: boolean }) {
@@ -220,9 +220,15 @@ function UiBlockView({ block, onDestinationAction, disabled }: { block: TravelUi
 								{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
 								{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
 								{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
-								{(card.imageLinks ?? []).length > 0 ? (
-									<div className="image-strip">{(card.imageLinks ?? []).slice(0, 3).map((src) => <SafeImage src={src} alt={card.name} key={src} />)}</div>
-								) : null}
+								{(card.validatedImages ?? []).length > 0 ? (
+									<div className="image-strip">
+										{(card.validatedImages ?? []).slice(0, 3).map((image) => (
+											<SafeImage src={image.finalUrl} alt={image.title ?? card.name} source={image.source ?? image.provider} key={image.finalUrl} />
+										))}
+									</div>
+								) : (
+									<span className="image-placeholder">No verified images yet</span>
+								)}
 								<div className="card-actions">
 									<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled || card.selected}>{card.selected ? "Selected" : "Select place"}</button>
 									<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>

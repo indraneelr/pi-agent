@@ -40,6 +40,7 @@ export async function validateImageCandidates(
 
 	const images: ValidImageResult[] = [];
 	let rejectedCount = 0;
+	const retrievedAt = new Date().toISOString();
 
 	for (const candidate of deduped) {
 		if (images.length >= options.limit) break;
@@ -70,7 +71,29 @@ export async function validateImageCandidates(
 			continue;
 		}
 
-		images.push({ url: candidate.url, width, height, title: candidate.title, source: candidate.source });
+		const validatedAt = new Date().toISOString();
+		images.push({
+			url: candidate.url,
+			width,
+			height,
+			title: candidate.title,
+			source: candidate.source,
+			evidence: {
+				kind: "image",
+				url: candidate.url,
+				finalUrl: candidate.url,
+				provider: "validator",
+				source: candidate.source,
+				title: candidate.title,
+				retrievedAt,
+				validatedAt,
+				httpStatus: result.status,
+				contentType: result.contentType,
+				width,
+				height,
+				validationStatus: "valid",
+			},
+		});
 	}
 
 	// Count valid-but-over-limit as rejected because they were not returned.

@@ -39,7 +39,18 @@ describe("get_images", () => {
 				},
 			},
 		);
-		expect(result.images).toEqual([{ url: "https://example.com/ok.jpg", width: 1280, height: 720 }]);
+		expect(result.images[0]).toMatchObject({ url: "https://example.com/ok.jpg", width: 1280, height: 720 });
+		expect(result.images[0]?.evidence).toMatchObject({
+			kind: "image",
+			url: "https://example.com/ok.jpg",
+			finalUrl: "https://example.com/ok.jpg",
+			httpStatus: 200,
+			contentType: "image/jpeg",
+			width: 1280,
+			height: 720,
+			validationStatus: "valid",
+		});
+		expect(result.images).toHaveLength(1);
 		expect(result.rejectedCount).toBe(2);
 	});
 
@@ -116,7 +127,21 @@ describe("get_images", () => {
 		});
 
 		expect(result.details.images[0]).toMatchObject({ width: 1600, height: 900 });
+		expect(result.details.validatedImages[0]).toMatchObject({
+			kind: "image",
+			url: "https://example.com/dolomites.jpg",
+			finalUrl: "https://example.com/dolomites.jpg",
+			provider: "searxng",
+			width: 1600,
+			height: 900,
+		});
 		expect(latest.destinationResearch?.subDestinations[0].imageLinks).toEqual(["https://example.com/dolomites.jpg"]);
+		expect(latest.destinationResearch?.subDestinations[0].validatedImages?.[0]).toMatchObject({
+			url: "https://example.com/dolomites.jpg",
+			provider: "searxng",
+			width: 1600,
+			height: 900,
+		});
 	});
 
 	it("parses PNG dimensions from bytes", () => {

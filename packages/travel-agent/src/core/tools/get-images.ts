@@ -11,6 +11,7 @@ import type { ImageSearchProvider, ImageSearchProviderName, ValidImageResult } f
 import type { PersistenceOptions } from "../persistence.js";
 import { saveTravelState } from "../persistence.js";
 import type { TravelState } from "../state.js";
+import type { ValidatedImage } from "../types.js";
 
 const getImagesSchema = Type.Object({
 	query: Type.String({ description: "Image search query, e.g. 'Dolomites Italy mountains landscape'." }),
@@ -39,6 +40,7 @@ export interface GetImagesDetails {
 	minHeight: number;
 	maxHeight: number | null;
 	images: ValidImageResult[];
+	validatedImages: ValidatedImage[];
 	rejectedCount: number;
 	updatedDestination?: string;
 	providerErrors?: string[];
@@ -83,7 +85,7 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 					lastRejected += result.rejectedCount;
 					if (result.images.length === 0 && providerPreference === "auto") continue;
 					const updatedDestination = params.destination_name
-						? updateDestinationImages(deps, params.destination_name, result.images)
+						? updateDestinationImages(deps, params.destination_name, result.images, result.provider)
 						: undefined;
 					return formatResult(
 						params.query,
@@ -126,11 +128,12 @@ function updateDestinationImages(
 	deps: GetImagesDeps,
 	destinationName: string,
 	images: ValidImageResult[],
+	provider: string,
 ): string | undefined {
 	if (images.length === 0) return undefined;
 	const normalized = normalizeName(destinationName);
 	const state = deps.getState();
-	let matched: { imageLinks?: string[]; name?: string } | undefined;
+	let matched: { imageLinks?: string[]; validatedImages?: ValidatedImage[]; name?: string } | undefined;
 
 	for (const destination of state.destinationResearch?.subDestinations ?? []) {
 		if (normalizeName(destination.name) === normalized) matched = destination;
@@ -140,6 +143,7 @@ function updateDestinationImages(
 	}
 	if (!matched) return undefined;
 	matched.imageLinks = images.map((image) => image.url);
+	matched.validatedImages = toValidatedImages(images, provider);
 	deps.setState(state);
 	saveTravelState(state, deps.persistOpts);
 	return matched.name ?? destinationName;
@@ -155,7 +159,18 @@ function formatResult(
 	updatedDestination?: string,
 	providerErrors?: string[],
 ): AgentToolResult<GetImagesDetails> {
-	const details = { query, provider, minHeight, maxHeight, images, rejectedCount, updatedDestination, providerErrors };
+	const validatedImages = toValidatedImages(images, provider);
+	const details = {
+		query,
+		provider,
+		minHeight,
+		maxHeight,
+		images,
+		validatedImages,
+		rejectedCount,
+		updatedDestination,
+		providerErrors,
+	};
 	return {
 		content: [
 			{
@@ -167,6 +182,7 @@ function formatResult(
 						min_height: minHeight,
 						max_height: maxHeight,
 						images,
+						validatedImages,
 						rejectedCount,
 						updatedDestination,
 						providerErrors,
@@ -182,4 +198,27 @@ function formatResult(
 
 function normalizeName(name: string | undefined): string {
 	return (name ?? "").trim().toLowerCase();
+}
+
+function toValidatedImages(images: ValidImageResult[], provider: string): ValidatedImage[] {
+	const now = new Date().toISOString();
+	return images.map((image) =>
+		image.evidence
+			? { ...image.evidence, provider: image.evidence.provider === "validator" ? provider : image.evidence.provider }
+			: {
+					kind: "image",
+					url: image.url,
+					finalUrl: image.url,
+					provider,
+					source: image.source,
+					title: image.title,
+					retrievedAt: now,
+					validatedAt: now,
+					httpStatus: 200,
+					contentType: "image/*",
+					width: image.width,
+					height: image.height,
+					validationStatus: "valid",
+				},
+	);
 }

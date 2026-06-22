@@ -1,4 +1,4 @@
-import type { TravelState } from "@mariozechner/pi-travel-agent";
+import type { TravelState, ValidatedImage } from "@mariozechner/pi-travel-agent";
 
 export type TravelUiBlock =
 	| ChecklistProgressBlock
@@ -59,6 +59,7 @@ export interface DestinationCard {
 	logisticsFit?: string;
 	imageQuery?: string;
 	imageLinks: string[];
+	validatedImages: ValidatedImage[];
 	selected: boolean;
 }
 
@@ -176,6 +177,7 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 					logisticsFit: destination.logisticsFit,
 					imageQuery: destination.imageQuery ?? destination.imageKeywords,
 					imageLinks: destination.imageLinks ?? [],
+					validatedImages: destination.validatedImages ?? [],
 					selected: state.selectedDestinations.some((selected) => selected.name === destination.name),
 				})),
 			},

@@ -28,19 +28,22 @@ Goal: no fake or unvalidated visible image/resource URLs in alpha UI.
 
 Tasks:
 
-- [ ] Add minimal `ValidatedResource` / `ValidatedImage` contract consistent with current code patterns.
-- [ ] Extend `get_images` so validation evidence is preserved, not discarded into raw strings only.
-- [ ] Persist validated image evidence for destination cards first.
-- [ ] Update server UI blocks/API types to expose validated evidence.
-- [ ] Update web destination-card renderer to render evidence-backed images only.
-- [ ] Guard assistant Markdown image rendering so arbitrary model URLs do not render unless allowed by server-approved evidence.
-- [ ] Add fallback/verified-empty UI state.
+- [x] Add minimal `ValidatedResource` / `ValidatedImage` contract consistent with current code patterns.
+- [x] Extend `get_images` so validation evidence is preserved, not discarded into raw strings only.
+- [x] Persist validated image evidence for destination cards first.
+- [x] Update server UI blocks/API types to expose validated evidence.
+- [x] Update web destination-card renderer to render evidence-backed images only.
+- [x] Guard assistant Markdown image rendering so arbitrary model URLs do not render unless allowed by server-approved evidence.
+- [x] Add fallback/verified-empty UI state.
 - [ ] Add regression tests:
   - [ ] fake/model-invented Markdown image URL is not rendered
   - [ ] raw `imageLinks` without evidence does not render
   - [ ] validated evidence renders
-- [ ] Run relevant tests/checks.
-- [ ] Commit Phase 1.
+- [x] Run relevant tests/checks:
+  - `packages/travel-agent`: build + focused get-images/image-validation/tools tests passed (40 tests)
+  - `packages/travel-agent-server`: `npm run check` passed
+  - `packages/travel-agent-web`: `npm run check && npm test` passed (4 tests)
+- [ ] Commit Phase 1 evidence/rendering slice.
 
 ## Phase 2 — Auth feature toggle and Google session isolation
 
