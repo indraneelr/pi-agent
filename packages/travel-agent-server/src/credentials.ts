@@ -82,6 +82,14 @@ export class CredentialStore {
 		this.writeFile(userId, { credentials: next });
 	}
 
+	getApiKeyForProvider(userId: string, provider: string): string | undefined {
+		const normalized = provider.trim().toLowerCase();
+		const credential = this.readFile(userId).credentials.find(
+			(item) => item.provider === normalized && item.status !== "invalid",
+		);
+		return credential ? decrypt(credential.encryptedApiKey, this.config.credentialEncryptionSecret) : undefined;
+	}
+
 	isServerKeyFallbackAllowed(userId: string, email?: string): boolean {
 		return (
 			this.config.serverKeyFallbackAllowlist.includes(userId) ||

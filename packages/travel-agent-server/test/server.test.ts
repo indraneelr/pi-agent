@@ -13,6 +13,7 @@ import { join } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { loadConfig } from "../src/config.js";
+import { CredentialStore } from "../src/credentials.js";
 import { createServer } from "../src/server.js";
 import { TravelSessionManager, type TravelSessionManager as TravelSessionManagerType } from "../src/session-manager.js";
 
@@ -344,6 +345,32 @@ describe("server auth feature toggle", () => {
 // =============================================================================
 
 describe("TravelSessionManager model resolution", () => {
+	test("routes model API key through user credential before server fallback", async () => {
+		const tmpDataDir = await mkdtemp(join(tmpdir(), "travel-agent-router-test-"));
+		try {
+			const config = loadConfig({
+				AUTH_REQUIRED: "true",
+				TRAVEL_AGENT_DATA_DIR: tmpDataDir,
+				TRAVEL_AGENT_PROVIDER: "ollama",
+				OLLAMA_API_KEY: "server-key",
+				CREDENTIAL_ENCRYPTION_SECRET: "credential-secret",
+				SERVER_KEY_FALLBACK_ALLOWLIST: "fallback-user",
+			});
+			const store = new CredentialStore(config);
+			store.create("user-1", { provider: "ollama", apiKey: "user-key" });
+			const manager = new TravelSessionManager(config, undefined, store);
+			const resolveApiKey = (
+				manager as unknown as { resolveApiKey: (userId: string) => string | undefined }
+			).resolveApiKey.bind(manager);
+
+			expect(resolveApiKey("user-1")).toBe("user-key");
+			expect(resolveApiKey("fallback-user")).toBe("server-key");
+			expect(resolveApiKey("other-user")).toBeUndefined();
+		} finally {
+			await rm(tmpDataDir, { recursive: true, force: true });
+		}
+	});
+
 	test("supports the Ollama Cloud kimi-k2.6 model used by travel evals", () => {
 		const manager = new TravelSessionManager(
 			loadConfig({

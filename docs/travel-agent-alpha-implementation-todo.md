@@ -73,10 +73,10 @@ Tasks:
 - [x] Add application-level envelope encryption for user LLM keys.
 - [x] Add credential CRUD/metadata APIs without plaintext responses.
 - [x] Add validation/test-call API.
-- [ ] Add provider/model router scoped to authenticated user/session.
+- [x] Add provider/model router scoped to authenticated user/session.
 - [x] Add server-key fallback allowlist by user ID/email.
 - [x] Add tests for redaction, isolation, rotation/deletion, fallback allowlist.
-- [ ] Commit Phase 3 credential-store slice.
+- [ ] Commit Phase 3 credential-store/router slice.
 
 ## Phase 4 — Core alpha workflow hardening
 

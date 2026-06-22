@@ -27,6 +27,7 @@ import {
 	type TravelState,
 } from "@mariozechner/pi-travel-agent";
 import type { ServerConfig } from "./config.js";
+import type { CredentialStore } from "./credentials.js";
 import { composeTravelUiBlocks, type TravelUiBlock } from "./ui-blocks.js";
 
 const DEFAULT_CHECKLIST_CONFIG = join(
@@ -140,6 +141,7 @@ export class TravelSessionManager {
 	constructor(
 		private readonly config: ServerConfig,
 		private readonly logger: SessionLogger = noopLogger,
+		private readonly credentialStore?: CredentialStore,
 	) {}
 
 	/**
@@ -228,7 +230,7 @@ export class TravelSessionManager {
 			let session = this.activeSessions.get(sessionId);
 			if (!session) {
 				this.logger.info({ sessionId }, "Initializing travel agent session");
-				session = await this.buildSession(sessionId);
+				session = await this.buildSession(sessionId, userId);
 				this.activeSessions.set(sessionId, session);
 				this.logger.info({ sessionId }, "Travel agent session initialized");
 			}
@@ -271,21 +273,20 @@ export class TravelSessionManager {
 		if (record.userId !== userId) throw new SessionForbiddenError(sessionId);
 	}
 
-	private async buildSession(sessionId: string): Promise<TravelSession> {
-		if (!this.config.apiKey) {
+	private async buildSession(sessionId: string, userId: string): Promise<TravelSession> {
+		const apiKey = this.resolveApiKey(userId);
+		if (!apiKey) {
 			throw new SessionConfigurationError(formatMissingApiKeyMessage(this.config.provider));
 		}
 
 		this.logger.info(
-			{ sessionId, provider: this.config.provider, modelId: this.config.modelId },
+			{ sessionId, userId, provider: this.config.provider, modelId: this.config.modelId },
 			"Resolving travel model",
 		);
 		const model = this.resolveModel();
 		let searchProvider: SearchProvider | null | undefined;
 		try {
-			searchProvider = detectSearchProvider(
-				this.config.apiKey ? { stagehandFallbackApiKey: this.config.apiKey } : {},
-			);
+			searchProvider = detectSearchProvider({ stagehandFallbackApiKey: apiKey });
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
 			throw new SessionConfigurationError(msg);
@@ -299,7 +300,7 @@ export class TravelSessionManager {
 		try {
 			return await createTravelSession({
 				model,
-				apiKey: this.config.apiKey,
+				apiKey,
 				sessionId,
 				searchProvider,
 				dataDir: this.config.dataDir,
@@ -308,6 +309,14 @@ export class TravelSessionManager {
 			const msg = e instanceof Error ? e.message : String(e);
 			throw new SessionConfigurationError(`Failed to create travel session: ${msg}`);
 		}
+	}
+
+	private resolveApiKey(userId: string): string | undefined {
+		const userKey = this.credentialStore?.getApiKeyForProvider(userId, this.config.provider);
+		if (userKey) return userKey;
+		if (this.credentialStore?.isServerKeyFallbackAllowed(userId) || !this.config.authRequired)
+			return this.config.apiKey;
+		return undefined;
 	}
 
 	/**

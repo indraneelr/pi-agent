@@ -48,8 +48,8 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		},
 		"Starting travel agent server",
 	);
-	const sessionManager = manager ?? new TravelSessionManager(config, app.log);
 	const credentialStore = new CredentialStore(config);
+	const sessionManager = manager ?? new TravelSessionManager(config, app.log, credentialStore);
 
 	app.register(cors, { origin: config.corsOrigins });
 
