@@ -35,14 +35,15 @@ Tasks:
 - [x] Update web destination-card renderer to render evidence-backed images only.
 - [x] Guard assistant Markdown image rendering so arbitrary model URLs do not render unless allowed by server-approved evidence.
 - [x] Add fallback/verified-empty UI state.
-- [ ] Add regression tests:
-  - [ ] fake/model-invented Markdown image URL is not rendered
-  - [ ] raw `imageLinks` without evidence does not render
-  - [ ] validated evidence renders
+- [x] Add regression tests:
+  - [x] fake/model-invented Markdown image URL is not rendered
+  - [x] raw `imageLinks` without evidence does not render
+  - [x] validated evidence renders
 - [x] Run relevant tests/checks:
   - `packages/travel-agent`: build + focused get-images/image-validation/tools tests passed (40 tests)
   - `packages/travel-agent-server`: `npm run check` passed
-  - `packages/travel-agent-web`: `npm run check && npm test` passed (4 tests)
+  - `packages/travel-agent-web`: `npm run check && npm test` passed (8 tests)
+  - root `npm run check` passed
 - [x] Commit Phase 1 evidence/rendering slice (`e8b04506`).
 
 ## Phase 2 — Auth feature toggle and Google session isolation

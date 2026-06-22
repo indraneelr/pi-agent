@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { createTravelSession, getTravelSession, sendTravelMessage, type TravelState, type TravelUiBlock } from "./api.js";
+import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
 export function App() {
@@ -210,31 +211,34 @@ function UiBlockView({ block, onDestinationAction, disabled }: { block: TravelUi
 					<h3>{block.data.destinationName}</h3>
 					<p>{block.data.overallSummary}</p>
 					<div className="destination-cards">
-						{(block.data.cards ?? []).map((card) => (
-							<article className={card.selected ? "destination-card selected" : "destination-card"} key={card.name}>
-								<div className="card-header">
-									<h4>{card.name}</h4>
-									{card.selected ? <span>Selected</span> : null}
-								</div>
-								<p>{card.summary}</p>
-								{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
-								{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
-								{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
-								{(card.validatedImages ?? []).length > 0 ? (
-									<div className="image-strip">
-										{(card.validatedImages ?? []).slice(0, 3).map((image) => (
-											<SafeImage src={image.finalUrl} alt={image.title ?? card.name} source={image.source ?? image.provider} key={image.finalUrl} />
-										))}
+						{(block.data.cards ?? []).map((card) => {
+							const renderableImages = getRenderableDestinationImages(card);
+							return (
+								<article className={card.selected ? "destination-card selected" : "destination-card"} key={card.name}>
+									<div className="card-header">
+										<h4>{card.name}</h4>
+										{card.selected ? <span>Selected</span> : null}
 									</div>
-								) : (
-									<span className="image-placeholder">No verified images yet</span>
-								)}
-								<div className="card-actions">
-									<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled || card.selected}>{card.selected ? "Selected" : "Select place"}</button>
-									<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
-								</div>
-							</article>
-						))}
+									<p>{card.summary}</p>
+									{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
+									{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
+									{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
+									{renderableImages.length > 0 ? (
+										<div className="image-strip">
+											{renderableImages.slice(0, 3).map((image) => (
+												<SafeImage src={image.finalUrl} alt={image.title ?? card.name} source={image.source ?? image.provider} key={image.finalUrl} />
+											))}
+										</div>
+									) : (
+										<span className="image-placeholder">No verified images yet</span>
+									)}
+									<div className="card-actions">
+										<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled || card.selected}>{card.selected ? "Selected" : "Select place"}</button>
+										<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
+									</div>
+								</article>
+							);
+						})}
 					</div>
 				</div>
 			);
