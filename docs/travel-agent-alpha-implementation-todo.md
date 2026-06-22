@@ -81,7 +81,7 @@ Tasks:
 
 ## Phase 4 — Core alpha workflow hardening
 
-Status: in progress
+Status: completed
 
 Tasks:
 
@@ -92,7 +92,7 @@ Tasks:
 - [x] Add Greece/Japan/Portugal staging scenario coverage.
 - [x] Commit Phase 4 hide-unvalidated-booking slice (`3ff96be5`).
 - [x] Commit Phase 4 retry-state slice (`f84087d1`).
-- [ ] Commit Phase 4 alpha smoke/eval slice.
+- [x] Commit Phase 4 alpha smoke/eval slice (`40d64cce`).
 
 ## Phase 5 — Railway staging gates
 
@@ -110,4 +110,4 @@ Tasks:
 
 ## Resume notes
 
-Phases 1–3 are complete. Continue with Phase 4 core alpha workflow hardening: final-plan smoke/eval, hide/disable hotels/flights unless validated, clearer error/retry states, and Greece/Japan/Portugal scenario coverage.
+Phases 1–4 are complete. Continue with Phase 5 Railway staging gates: deployment docs, health/readiness checks, redacted observability, rate limits/one-active-run controls, staging smoke script, rollback/deletion/no-backup policy.
