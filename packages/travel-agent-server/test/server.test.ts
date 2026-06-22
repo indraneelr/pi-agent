@@ -125,21 +125,76 @@ describe("server auth feature toggle", () => {
 		try {
 			const res = await app.inject({ method: "GET", url: "/api/auth/current-user" });
 			expect(res.statusCode).toBe(200);
-			expect(res.json()).toMatchObject({ authRequired: false, authenticated: false, user: { id: "dev-user" } });
+			expect(res.json()).toMatchObject({ authRequired: false, authenticated: true, user: { id: "dev-user" } });
 		} finally {
 			await app.close();
 		}
 	});
 
-	test("blocks travel APIs when auth is required before Google OIDC is configured", async () => {
+	test("blocks travel APIs when auth is required and no session cookie is present", async () => {
 		const app = createServer(loadConfig({ AUTH_REQUIRED: "true" }));
 		await app.ready();
 		try {
 			const health = await app.inject({ method: "GET", url: "/health" });
 			expect(health.statusCode).toBe(200);
 			const res = await app.inject({ method: "POST", url: "/api/travel/sessions" });
-			expect(res.statusCode).toBe(501);
-			expect(res.json().error).toContain("Authentication is required");
+			expect(res.statusCode).toBe(401);
+			expect(res.json().error).toContain("Authentication required");
+		} finally {
+			await app.close();
+		}
+	});
+
+	test("redirects to Google login and creates a signed session on callback", async () => {
+		const fetchMock = vi.spyOn(globalThis, "fetch");
+		fetchMock.mockResolvedValueOnce(jsonResponse({ id_token: "id-token" })).mockResolvedValueOnce(
+			jsonResponse({
+				sub: "user-1",
+				email: "user@example.com",
+				email_verified: true,
+				name: "Test User",
+				aud: "google-client",
+			}),
+		);
+		const app = createServer(
+			loadConfig({
+				AUTH_REQUIRED: "true",
+				AUTH_COOKIE_SECURE: "false",
+				AUTH_SESSION_SECRET: "test-secret",
+				GOOGLE_CLIENT_ID: "google-client",
+				GOOGLE_CLIENT_SECRET: "google-secret",
+				GOOGLE_REDIRECT_URI: "http://localhost/api/auth/callback",
+			}),
+		);
+		await app.ready();
+		try {
+			const login = await app.inject({ method: "GET", url: "/api/auth/login" });
+			expect(login.statusCode).toBe(302);
+			expect(login.headers.location).toContain("accounts.google.com");
+			const state = new URL(String(login.headers.location)).searchParams.get("state");
+			expect(state).toEqual(expect.any(String));
+			const stateCookie = login.cookies.find((cookie) => cookie.name === "travel_oauth_state");
+			expect(stateCookie?.value).toBe(state);
+
+			const callback = await app.inject({
+				method: "GET",
+				url: `/api/auth/callback?code=abc&state=${state}`,
+				cookies: { travel_oauth_state: stateCookie!.value },
+			});
+			expect(callback.statusCode).toBe(302);
+			const sessionCookie = callback.cookies.find((cookie) => cookie.name === "travel_auth");
+			expect(sessionCookie?.httpOnly).toBe(true);
+
+			const current = await app.inject({
+				method: "GET",
+				url: "/api/auth/current-user",
+				cookies: { travel_auth: sessionCookie!.value },
+			});
+			expect(current.json()).toMatchObject({
+				authRequired: true,
+				authenticated: true,
+				user: { id: "user-1", email: "user@example.com", name: "Test User" },
+			});
 		} finally {
 			await app.close();
 		}
@@ -245,3 +300,10 @@ describe("server with mock manager", () => {
 		expect(body.status).toBe("idle");
 	});
 });
+
+function jsonResponse(body: unknown, status = 200): Response {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { "content-type": "application/json" },
+	});
+}

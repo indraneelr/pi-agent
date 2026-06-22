@@ -8,6 +8,16 @@
 
 import cors from "@fastify/cors";
 import Fastify, { type FastifyInstance } from "fastify";
+import {
+	buildGoogleLoginRedirect,
+	clearOAuthStateCookie,
+	clearSessionCookie,
+	exchangeGoogleCodeForUser,
+	getRequestUser,
+	setOAuthStateCookie,
+	setSessionCookie,
+	verifyOAuthState,
+} from "./auth.js";
 import { loadConfig, type ServerConfig } from "./config.js";
 import {
 	SessionBusyError,
@@ -58,16 +68,48 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 
 	app.addHook("preHandler", async (request, reply) => {
 		if (!config.authRequired || !request.url.startsWith("/api/travel/")) return;
-		return reply.status(501).send({ error: "Authentication is required but Google OIDC is not configured yet." });
+		const user = getRequestUser(request, config);
+		if (!user) return reply.status(401).send({ error: "Authentication required" });
 	});
 
 	app.get("/health", async () => ({ status: "ok" }));
 
-	app.get("/api/auth/current-user", async () => ({
-		authRequired: config.authRequired,
-		authenticated: false,
-		user: config.authRequired ? null : { id: "dev-user", email: "dev@local", name: "Dev User" },
-	}));
+	app.get("/api/auth/current-user", async (request) => {
+		const user = getRequestUser(request, config);
+		return { authRequired: config.authRequired, authenticated: Boolean(user), user };
+	});
+
+	app.get("/api/auth/login", async (_request, reply) => {
+		if (!config.authRequired) return reply.redirect("/");
+		try {
+			const login = buildGoogleLoginRedirect(config);
+			setOAuthStateCookie(reply, login.state, config);
+			return reply.redirect(login.url);
+		} catch (e) {
+			return reply.status(503).send({ error: e instanceof Error ? e.message : "Google OAuth is not configured" });
+		}
+	});
+
+	app.get("/api/auth/callback", async (request, reply) => {
+		const query = request.query as { code?: string; state?: string; error?: string };
+		if (query.error) return reply.status(400).send({ error: query.error });
+		if (!query.code || !verifyOAuthState(request, query.state)) {
+			return reply.status(400).send({ error: "Invalid OAuth callback" });
+		}
+		try {
+			const user = await exchangeGoogleCodeForUser(query.code, config);
+			clearOAuthStateCookie(reply, config);
+			setSessionCookie(reply, user, config);
+			return reply.redirect("/");
+		} catch (e) {
+			return reply.status(401).send({ error: e instanceof Error ? e.message : "Google sign-in failed" });
+		}
+	});
+
+	app.post("/api/auth/logout", async (_request, reply) => {
+		clearSessionCookie(reply, config);
+		return reply.send({ ok: true });
+	});
 
 	app.post("/api/travel/sessions", async (_request, reply) => {
 		try {

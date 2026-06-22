@@ -24,6 +24,16 @@ export interface ServerConfig {
 	messageTimeoutMs: number;
 	/** Require authenticated Google/user sessions for travel APIs. */
 	authRequired: boolean;
+	/** HMAC secret for auth session cookies. */
+	authSessionSecret: string;
+	/** Whether auth cookies require HTTPS. */
+	cookieSecure: boolean;
+	/** Google OAuth client ID. */
+	googleClientId: string | undefined;
+	/** Google OAuth client secret. */
+	googleClientSecret: string | undefined;
+	/** Google OAuth redirect URI. */
+	googleRedirectUri: string | undefined;
 }
 
 function parseCorsOrigins(raw: string | undefined): string[] {
@@ -66,5 +76,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		apiKey: env.OLLAMA_API_KEY,
 		messageTimeoutMs: Number(env.TRAVEL_AGENT_MESSAGE_TIMEOUT_MS ?? "180000"),
 		authRequired: defaultAuthRequired(env),
+		authSessionSecret: env.AUTH_SESSION_SECRET ?? "dev-auth-session-secret-change-me",
+		cookieSecure: parseBoolean(env.AUTH_COOKIE_SECURE) ?? defaultAuthRequired(env),
+		googleClientId: env.GOOGLE_CLIENT_ID,
+		googleClientSecret: env.GOOGLE_CLIENT_SECRET,
+		googleRedirectUri: env.GOOGLE_REDIRECT_URI,
 	};
 }

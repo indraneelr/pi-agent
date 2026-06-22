@@ -55,11 +55,12 @@ Tasks:
 
 - [x] Add `AUTH_REQUIRED`-style config with safe staging/production default.
 - [x] Add dev/debug auth-disabled mode with clear warnings.
-- [ ] Add Google OIDC login/logout/current-user.
-- [ ] Add secure HTTP-only session cookies when auth is enabled.
+- [x] Add Google OIDC login/logout/current-user.
+- [x] Add secure HTTP-only session cookies when auth is enabled.
 - [ ] Scope sessions/resources/runs/credentials by `userId` when auth is enabled.
 - [ ] Add cross-user isolation tests.
-- [ ] Commit Phase 2 auth-toggle slice.
+- [x] Commit Phase 2 auth-toggle slice (`af76b14e`).
+- [ ] Commit Phase 2 Google OIDC slice.
 
 ## Phase 3 — Encrypted user LLM credentials + fallback allowlist
 
@@ -105,4 +106,4 @@ Tasks:
 
 ## Resume notes
 
-Phase 1 is complete. Continue Phase 2 from Google OIDC login/logout/current-user. Auth toggle is implemented and tested; travel APIs return 501 when `AUTH_REQUIRED=true` until Google OIDC is wired.
+Phase 1 is complete. Phase 2 auth toggle and Google OIDC endpoints are implemented. Continue Phase 2 from user-owned session/resource scoping and cross-user isolation tests.
