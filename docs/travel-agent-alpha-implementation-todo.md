@@ -49,7 +49,7 @@ Tasks:
 
 ## Phase 2 — Auth feature toggle and Google session isolation
 
-Status: in progress
+Status: completed
 
 Tasks:
 
@@ -61,7 +61,7 @@ Tasks:
 - [x] Add cross-user session isolation tests.
 - [x] Commit Phase 2 auth-toggle slice (`af76b14e`).
 - [x] Commit Phase 2 Google OIDC slice (`eb843faf`).
-- [ ] Commit Phase 2 user-owned session isolation slice.
+- [x] Commit Phase 2 user-owned session isolation slice (`c055e7ec`).
 
 ## Phase 3 — Encrypted user LLM credentials + fallback allowlist
 
