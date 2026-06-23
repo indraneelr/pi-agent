@@ -124,7 +124,7 @@ Status: in progress
 - [x] Add server UI-block regression test proving validated destination images are forwarded to the web UI.
 - [x] Validate and commit blocked-image UX fix.
 - [x] Commit markdown-image root-cause fix (`fa4df030`).
-- [ ] Commit validatedImages visibility fix.
+- [x] Commit validatedImages visibility fix (`e84ae6a6`).
 
 ## Resume notes
 
