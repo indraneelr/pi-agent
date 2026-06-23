@@ -1,6 +1,6 @@
 import { Markdown } from "@copilotkit/react-ui";
 import type { FormEvent, ReactNode } from "react";
-import { canRenderMarkdownImage } from "./render-safety.js";
+import { useMemo, useState } from "react";
 
 export interface ChatMessage {
 	role: "user" | "assistant";
@@ -106,16 +106,57 @@ export function TravelCopilotChat({
 }
 
 function CopilotMarkdown({ content }: { content: string }) {
+	const [expandedImage, setExpandedImage] = useState<MarkdownImage | null>(null);
+	const { contentWithoutImages, images } = useMemo(() => extractMarkdownImages(content), [content]);
 	return (
 		<div className="markdown-content copilot-markdown-content">
 			<Markdown
-				content={content}
+				content={contentWithoutImages}
 				components={{
 					img: ({ src, alt }) => <SafeMarkdownImage src={typeof src === "string" ? src : undefined} alt={alt ?? "Travel image"} />,
 				}}
 			/>
+			{images.length > 0 ? <ImageGallery images={images} onImageClick={setExpandedImage} /> : null}
+			{expandedImage ? <ImageModal image={expandedImage} onClose={() => setExpandedImage(null)} /> : null}
 		</div>
 	);
+}
+
+interface MarkdownImage {
+	src: string;
+	alt: string;
+}
+
+function ImageGallery({ images, onImageClick }: { images: MarkdownImage[]; onImageClick: (image: MarkdownImage) => void }) {
+	return (
+		<div className="assistant-image-gallery" aria-label="Travel images">
+			{images.map((image) => (
+				<button type="button" key={`${image.src}-${image.alt}`} onClick={() => onImageClick(image)}>
+					<img src={image.src} alt={image.alt} loading="lazy" />
+				</button>
+			))}
+		</div>
+	);
+}
+
+function ImageModal({ image, onClose }: { image: MarkdownImage; onClose: () => void }) {
+	return (
+		<div className="image-modal-backdrop" role="dialog" aria-modal="true" aria-label={image.alt}>
+			<div className="image-modal">
+				<button type="button" className="image-modal-close" onClick={onClose}>Close</button>
+				<img src={image.src} alt={image.alt} />
+			</div>
+		</div>
+	);
+}
+
+function extractMarkdownImages(content: string): { contentWithoutImages: string; images: MarkdownImage[] } {
+	const images: MarkdownImage[] = [];
+	const contentWithoutImages = content.replace(/!\[([^\]]*)\]\(([^\s)]+)(?:\s+"[^"]*")?\)/g, (_match, alt: string, src: string) => {
+		images.push({ alt: alt || "Travel image", src });
+		return "";
+	});
+	return { contentWithoutImages, images };
 }
 
 function SafeMarkdownImage({ src, alt }: { src?: string; alt?: ReactNode }) {

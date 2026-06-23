@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { createTravelSession, getTravelSession, sendTravelMessage, type TravelState, type TravelUiBlock } from "./api.js";
+import { createTravelSession, getTravelSession, sendTravelMessage, type ChecklistPhase, type DestinationCardsBlock, type TravelState, type TravelUiBlock } from "./api.js";
 import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
@@ -13,6 +13,7 @@ export function App() {
 	const [runStatus, setRunStatus] = useState<RunStatus>("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+	const [selectedDestinationNames, setSelectedDestinationNames] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		const existingSessionId = new URLSearchParams(window.location.search).get("session");
@@ -27,6 +28,17 @@ export function App() {
 		if (!sessionId) return;
 		saveSessionMessages(sessionId, messages);
 	}, [sessionId, messages]);
+
+	useEffect(() => {
+		const selectedNames = new Set<string>();
+		for (const block of uiBlocks) {
+			if (block.kind !== "destination_cards") continue;
+			for (const card of block.data.cards ?? []) {
+				if (card.selected) selectedNames.add(card.name);
+			}
+		}
+		setSelectedDestinationNames(selectedNames);
+	}, [uiBlocks]);
 
 	const activePhase = useMemo(() => {
 		if (!state) return null;
@@ -109,10 +121,27 @@ export function App() {
 	}
 
 	function handleDestinationAction(action: "select" | "images", destinationName: string, imageQuery?: string) {
-		const message = action === "select"
-			? `Select ${destinationName} as a place of interest for this trip.`
-			: `Fetch and show images for ${destinationName}${imageQuery ? ` using this image query: ${imageQuery}` : ""}.`;
+		if (action === "select") {
+			setSelectedDestinationNames((current) => {
+				const next = new Set(current);
+				if (next.has(destinationName)) {
+					next.delete(destinationName);
+				} else {
+					next.add(destinationName);
+				}
+				return next;
+			});
+			return;
+		}
+
+		const message = `Fetch and show images for ${destinationName}${imageQuery ? ` using this image query: ${imageQuery}` : ""}.`;
 		void sendMessageToAgent(message);
+	}
+
+	function handleDestinationSelectionDone() {
+		if (selectedDestinationNames.size === 0) return;
+		const selectedNames = Array.from(selectedDestinationNames);
+		void sendMessageToAgent(`Use these selected places for this trip: ${selectedNames.join(", ")}.`);
 	}
 
 	return (
@@ -143,19 +172,20 @@ export function App() {
 				</div>
 
 				{uiBlocks.length > 0 ? (
-					uiBlocks.map((block, index) => <SafeUiBlockView block={block} key={block.id ?? `${block.kind}-${index}`} onDestinationAction={handleDestinationAction} disabled={runStatus !== "idle"} />)
+					uiBlocks.map((block, index) => (
+						<SafeUiBlockView
+							block={block}
+							disabled={runStatus !== "idle"}
+							key={block.id ?? `${block.kind}-${index}`}
+							onDestinationAction={handleDestinationAction}
+							onDestinationSelectionDone={handleDestinationSelectionDone}
+							selectedDestinationNames={selectedDestinationNames}
+						/>
+					))
+				) : state ? (
+					<ChecklistBreadcrumb activePhaseIndex={state.checklist.activePhaseIndex} phases={state.checklist.phases} />
 				) : (
-					<div className="state-card">
-						<p className="eyebrow">Checklist</p>
-						<ol className="checklist">
-							{state?.checklist.phases.map((phase) => (
-								<li className={phase.status} key={phase.id}>
-									<span>{phase.label}</span>
-									<small>{phase.status}</small>
-								</li>
-							)) ?? <li>Loading checklist…</li>}
-						</ol>
-					</div>
+					<div className="state-card">Loading checklist…</div>
 				)}
 			</aside>
 		</main>
@@ -165,12 +195,18 @@ export function App() {
 function SafeImage({ src, alt, inline }: { src: string; alt: string; inline?: boolean }) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
-		return <span className="image-placeholder" title={`Image unavailable: ${alt}`}>{inline ? "🖼" : "Image unavailable"}</span>;
+		return <span className="image-placeholder" title={`Image unavailable: ${alt}`}>{inline ? "Image" : "Image unavailable"}</span>;
 	}
 	return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
 }
 
-function SafeUiBlockView(props: { block: TravelUiBlock; onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void; disabled: boolean }) {
+function SafeUiBlockView(props: {
+	block: TravelUiBlock;
+	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
+	onDestinationSelectionDone: () => void;
+	disabled: boolean;
+	selectedDestinationNames: Set<string>;
+}) {
 	try {
 		return UiBlockView(props);
 	} catch (error) {
@@ -184,58 +220,34 @@ function SafeUiBlockView(props: { block: TravelUiBlock; onDestinationAction: (ac
 	}
 }
 
-function UiBlockView({ block, onDestinationAction, disabled }: { block: TravelUiBlock; onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void; disabled: boolean }) {
+function UiBlockView({
+	block,
+	onDestinationAction,
+	onDestinationSelectionDone,
+	disabled,
+	selectedDestinationNames,
+}: {
+	block: TravelUiBlock;
+	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
+	onDestinationSelectionDone: () => void;
+	disabled: boolean;
+	selectedDestinationNames: Set<string>;
+}) {
 	if (!block?.data) return null;
 	switch (block.kind) {
 		case "checklist_progress":
-			return (
-				<div className="state-card">
-					<p className="eyebrow">{block.title}</p>
-					<ol className="checklist">
-						{(block.data.phases ?? []).map((phase) => (
-							<li className={phase.status} key={phase.id}>
-								<span>{phase.label}</span>
-								<small>{phase.status}</small>
-							</li>
-						))}
-					</ol>
-				</div>
-			);
+			return <ChecklistBreadcrumb activePhaseIndex={block.data.activePhaseIndex} phases={block.data.phases ?? []} />;
 		case "trip_preferences_summary":
-			return (
-				<div className="state-card">
-					<p className="eyebrow">{block.title}</p>
-					<pre>{JSON.stringify(block.data.preferences, null, 2)}</pre>
-				</div>
-			);
+			return <TripPreferencesSummary preferences={block.data.preferences} title={block.title} />;
 		case "destination_cards":
 			return (
-				<div className="state-card destination-block">
-					<p className="eyebrow">{block.title}</p>
-					<h3>{block.data.destinationName}</h3>
-					<p>{block.data.overallSummary}</p>
-					<div className="destination-cards">
-						{(block.data.cards ?? []).map((card) => (
-							<article className={card.selected ? "destination-card selected" : "destination-card"} key={card.name}>
-								<div className="card-header">
-									<h4>{card.name}</h4>
-									{card.selected ? <span>Selected</span> : null}
-								</div>
-								<p>{card.summary}</p>
-								{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
-								{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
-								{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
-								{(card.imageLinks ?? []).length > 0 ? (
-									<div className="image-strip">{(card.imageLinks ?? []).slice(0, 3).map((src) => <SafeImage src={src} alt={card.name} key={src} />)}</div>
-								) : null}
-								<div className="card-actions">
-									<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled || card.selected}>{card.selected ? "Selected" : "Select place"}</button>
-									<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
-								</div>
-							</article>
-						))}
-					</div>
-				</div>
+				<DestinationCards
+					block={block}
+					disabled={disabled}
+					onDestinationAction={onDestinationAction}
+					onDestinationSelectionDone={onDestinationSelectionDone}
+					selectedDestinationNames={selectedDestinationNames}
+				/>
 			);
 		case "selected_destinations":
 			return (
@@ -323,6 +335,114 @@ function UiBlockView({ block, onDestinationAction, disabled }: { block: TravelUi
 				</div>
 			);
 	}
+}
+
+function ChecklistBreadcrumb({ activePhaseIndex, phases }: { activePhaseIndex: number; phases: ChecklistPhase[] }) {
+	return (
+		<nav className="phase-breadcrumb" aria-label="Travel planning progress">
+			{phases.map((phase, index) => (
+				<div className={`phase-crumb ${phase.status}`} key={phase.id} title={phase.description}>
+					<span className="phase-step">{index + 1}</span>
+					<span>{phase.label}</span>
+					{index === activePhaseIndex ? <strong>Now</strong> : null}
+				</div>
+			))}
+		</nav>
+	);
+}
+
+function TripPreferencesSummary({ preferences, title }: { preferences: Record<string, unknown>; title: string }) {
+	const entries = Object.entries(preferences).filter(([, value]) => value !== null && value !== undefined && value !== "");
+	return (
+		<div className="state-card preferences-card">
+			<p className="eyebrow">{title}</p>
+			{entries.length > 0 ? (
+				<dl className="preferences-list">
+					{entries.map(([key, value]) => (
+						<div key={key}>
+							<dt>{formatPreferenceLabel(key)}</dt>
+							<dd>{formatPreferenceValue(value)}</dd>
+						</div>
+					))}
+				</dl>
+			) : (
+				<p>No preferences captured yet.</p>
+			)}
+		</div>
+	);
+}
+
+function DestinationCards({
+	block,
+	onDestinationAction,
+	onDestinationSelectionDone,
+	disabled,
+	selectedDestinationNames,
+}: {
+	block: DestinationCardsBlock;
+	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
+	onDestinationSelectionDone: () => void;
+	disabled: boolean;
+	selectedDestinationNames: Set<string>;
+}) {
+	return (
+		<div className="state-card destination-block">
+			<div className="destination-block-header">
+				<div>
+					<p className="eyebrow">{block.title}</p>
+					<h3>{block.data.destinationName}</h3>
+				</div>
+				<button type="button" className="done-button" onClick={onDestinationSelectionDone} disabled={disabled || selectedDestinationNames.size === 0}>
+					Done{selectedDestinationNames.size > 0 ? ` (${selectedDestinationNames.size})` : ""}
+				</button>
+			</div>
+			<p>{block.data.overallSummary}</p>
+			<div className="destination-cards">
+				{(block.data.cards ?? []).map((card) => {
+					const selected = selectedDestinationNames.has(card.name);
+					return (
+						<article className={selected ? "destination-card selected" : "destination-card"} key={card.name}>
+							<div className="card-header">
+								<h4>{card.name}</h4>
+								{selected ? <span>Selected</span> : null}
+							</div>
+							<p>{card.summary}</p>
+							{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
+							{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
+							{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
+							{(card.imageLinks ?? []).length > 0 ? (
+								<div className="image-strip">{(card.imageLinks ?? []).slice(0, 3).map((src) => <SafeImage src={src} alt={card.name} key={src} />)}</div>
+							) : null}
+							<div className="card-actions">
+								<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled}>
+									{selected ? "Remove" : "Select place"}
+								</button>
+								<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
+							</div>
+						</article>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
+function formatPreferenceLabel(key: string) {
+	return key
+		.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+		.replace(/[_-]+/g, " ")
+		.replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function formatPreferenceValue(value: unknown): string {
+	if (Array.isArray(value)) return value.map(formatPreferenceValue).join(", ");
+	if (typeof value === "object" && value !== null) {
+		return Object.entries(value)
+			.filter(([, nestedValue]) => nestedValue !== null && nestedValue !== undefined && nestedValue !== "")
+			.map(([nestedKey, nestedValue]) => `${formatPreferenceLabel(nestedKey)}: ${formatPreferenceValue(nestedValue)}`)
+			.join(" · ");
+	}
+	return String(value);
 }
 
 function loadSessionMessages(sessionId: string): ChatMessage[] {
