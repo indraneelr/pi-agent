@@ -9,31 +9,43 @@ export interface ChatMessage {
 
 export type RunStatus = "idle" | "starting" | "sending";
 
-interface TravelCopilotChatProps {
+interface ResearchTabOption<T extends string = string> {
+	id: T;
+	label: string;
+	count: number;
+}
+
+interface TravelCopilotChatProps<T extends string = string> {
+	activeResearchTab: T;
 	messages: ChatMessage[];
 	draft: string;
 	onDraftChange: (draft: string) => void;
 	onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 	onNewSession: () => void;
+	onResearchTabChange: (tab: T) => void;
 	onRetry?: () => void;
 	error: string | null;
 	progressMessage: string | null;
+	researchTabs: Array<ResearchTabOption<T>>;
 	sessionReady: boolean;
 	runStatus: RunStatus;
 }
 
-export function TravelCopilotChat({
+export function TravelCopilotChat<T extends string>({
+	activeResearchTab,
 	messages,
 	draft,
 	onDraftChange,
 	onSubmit,
 	onNewSession,
+	onResearchTabChange,
 	onRetry,
 	error,
 	progressMessage,
+	researchTabs,
 	sessionReady,
 	runStatus,
-}: TravelCopilotChatProps) {
+}: TravelCopilotChatProps<T>) {
 	const disabled = !sessionReady || runStatus !== "idle";
 	return (
 		<section className="chat-column copilot-rest-chat" aria-label="Travel chat">
@@ -47,6 +59,20 @@ export function TravelCopilotChat({
 					New session
 				</button>
 			</header>
+
+			<nav className="research-tabs" aria-label="Research sections">
+				{researchTabs.map((tab) => (
+					<button
+						type="button"
+						className={tab.id === activeResearchTab ? "active" : undefined}
+						onClick={() => onResearchTabChange(tab.id)}
+						key={tab.id}
+					>
+						<span>{tab.label}</span>
+						<small>{tab.count}</small>
+					</button>
+				))}
+			</nav>
 
 			{error ? (
 				<div className="error-banner">

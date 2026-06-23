@@ -102,6 +102,38 @@ input:disabled {
 	cursor: not-allowed;
 }
 
+.research-tabs {
+	display: flex;
+	gap: 0.45rem;
+	padding: 0.85rem 1.25rem 0;
+	overflow-x: auto;
+}
+
+.research-tabs button {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 999px;
+	padding: 0.45rem 0.65rem;
+	background: rgba(255, 255, 255, 0.06);
+	color: #d6d3d1;
+	font-weight: 700;
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.research-tabs button.active {
+	border-color: rgba(251, 191, 36, 0.65);
+	background: rgba(251, 191, 36, 0.18);
+	color: #fef3c7;
+}
+
+.research-tabs small {
+	color: #a8a29e;
+	font-size: 0.72rem;
+}
+
 .error-banner,
 .progress-banner {
 	margin: 1rem 1.25rem 0;

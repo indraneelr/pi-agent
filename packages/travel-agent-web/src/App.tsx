@@ -4,6 +4,17 @@ import { createTravelSession, getTravelSession, sendTravelMessage, type Activity
 import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
+type ResearchTab = "overview" | "places" | "activities" | "itinerary" | "stays" | "flights";
+
+const RESEARCH_TABS: Array<{ id: ResearchTab; label: string }> = [
+	{ id: "overview", label: "Overview" },
+	{ id: "places", label: "Places" },
+	{ id: "activities", label: "Activities" },
+	{ id: "itinerary", label: "Itinerary" },
+	{ id: "stays", label: "Stays" },
+	{ id: "flights", label: "Flights" },
+];
+
 export function App() {
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [state, setState] = useState<TravelState | null>(null);
@@ -13,6 +24,7 @@ export function App() {
 	const [runStatus, setRunStatus] = useState<RunStatus>("idle");
 	const [error, setError] = useState<string | null>(null);
 	const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+	const [activeResearchTab, setActiveResearchTab] = useState<ResearchTab>("overview");
 	const [selectedDestinationNames, setSelectedDestinationNames] = useState<Set<string>>(new Set());
 	const [selectedActivityNames, setSelectedActivityNames] = useState<Set<string>>(new Set());
 
@@ -48,16 +60,18 @@ export function App() {
 	}, [uiBlocks]);
 
 	const activityResearchFallback = useMemo(() => extractActivityResearchFallback(messages), [messages]);
-	const visibleMessages = useMemo(() => {
-		if (!activityResearchFallback) return messages;
-		return messages.filter((_message, index) => index !== activityResearchFallback.messageIndex);
-	}, [activityResearchFallback, messages]);
+	const visibleMessages = useMemo(() => messages.filter((message) => !isResearchMessage(message)), [messages]);
 	const visibleUiBlocks = useMemo(() => {
 		if (!activityResearchFallback || uiBlocks.some((block) => block.kind === "activity_cards")) return uiBlocks;
 		const destinationIndex = uiBlocks.findLastIndex((block) => block.kind === "destination_cards");
 		if (destinationIndex < 0) return [...uiBlocks, activityResearchFallback.block];
 		return [...uiBlocks.slice(0, destinationIndex + 1), activityResearchFallback.block, ...uiBlocks.slice(destinationIndex + 1)];
 	}, [activityResearchFallback, uiBlocks]);
+	const researchTabs = useMemo(() => buildResearchTabs(visibleUiBlocks), [visibleUiBlocks]);
+	const displayedUiBlocks = useMemo(
+		() => filterUiBlocksByResearchTab(visibleUiBlocks, activeResearchTab),
+		[activeResearchTab, visibleUiBlocks],
+	);
 
 	const activePhase = useMemo(() => {
 		if (!state) return null;
@@ -184,13 +198,16 @@ export function App() {
 	return (
 		<main className="app-shell">
 				<TravelCopilotChat
+					activeResearchTab={activeResearchTab}
 					draft={draft}
 					error={error}
 					messages={visibleMessages}
 					onDraftChange={setDraft}
 					onNewSession={() => void startSession()}
+					onResearchTabChange={setActiveResearchTab}
 					onSubmit={handleSubmit}
 					progressMessage={progressMessage}
+					researchTabs={researchTabs}
 					runStatus={runStatus}
 					sessionReady={Boolean(sessionId)}
 					onRetry={lastFailedMessage ? () => sendMessageToAgent(lastFailedMessage) : undefined}
@@ -208,8 +225,8 @@ export function App() {
 					<p>{activePhase?.description ?? "Creating your planning session."}</p>
 				</div>
 
-				{visibleUiBlocks.length > 0 ? (
-					visibleUiBlocks.map((block, index) => (
+				{displayedUiBlocks.length > 0 ? (
+					displayedUiBlocks.map((block, index) => (
 						<SafeUiBlockView
 							block={block}
 							disabled={runStatus !== "idle"}
@@ -519,6 +536,59 @@ function ActivityCards({
 				})}
 			</div>
 		</div>
+	);
+}
+
+function buildResearchTabs(blocks: TravelUiBlock[]): Array<{ id: ResearchTab; label: string; count: number }> {
+	return RESEARCH_TABS.map((tab) => ({
+		...tab,
+		count: countBlocksForResearchTab(blocks, tab.id),
+	}));
+}
+
+function countBlocksForResearchTab(blocks: TravelUiBlock[], tab: ResearchTab) {
+	if (tab === "overview") return blocks.length;
+	return blocks.filter((block) => blockMatchesResearchTab(block, tab)).length;
+}
+
+function filterUiBlocksByResearchTab(blocks: TravelUiBlock[], tab: ResearchTab) {
+	if (tab === "overview") return blocks;
+	const pinned = blocks.filter((block) => block.kind === "checklist_progress" || block.kind === "trip_preferences_summary");
+	const selectedPlaces = tab === "activities" || tab === "itinerary"
+		? blocks.filter((block) => block.kind === "selected_destinations")
+		: [];
+	const matching = blocks.filter((block) => blockMatchesResearchTab(block, tab));
+	return [...pinned, ...selectedPlaces, ...matching].filter(
+		(block, index, allBlocks) => allBlocks.findIndex((candidate) => candidate.id === block.id && candidate.kind === block.kind) === index,
+	);
+}
+
+function blockMatchesResearchTab(block: TravelUiBlock, tab: ResearchTab) {
+	switch (tab) {
+		case "places":
+			return block.kind === "destination_cards" || block.kind === "selected_destinations";
+		case "activities":
+			return block.kind === "activity_cards";
+		case "itinerary":
+			return block.kind === "itinerary_timeline";
+		case "stays":
+			return block.kind === "accommodation_cards";
+		case "flights":
+			return block.kind === "flight_options";
+		case "overview":
+			return true;
+	}
+}
+
+function isResearchMessage(message: ChatMessage) {
+	if (message.role !== "assistant") return false;
+	const content = message.content;
+	return (
+		extractActivitiesFromMarkdown(content).length > 0 ||
+		/\|\s*Activity\s*\|\s*Why It Fits\s*\|\s*Practicality/i.test(content) ||
+		/##\s+.+?Activity Options/i.test(content) ||
+		/\b(?:activity|destination|place|itinerary|accommodation|flight) (?:lineup|options|shortlist|research)\b/i.test(content) ||
+		/\|\s*(?:Place|Destination|Area|Hotel|Flight|Carrier|Day)\s*\|/i.test(content)
 	);
 }
 
