@@ -60,7 +60,7 @@ function buildToolsSection(): string {
 	return `# Available Tools
 
 - web_search: Search the web for travel information (destinations, activities, hotels, flights, reviews)
-- get_images: Search for real, validated image URLs with width/height. Use this whenever the user asks to see images or before saving imageLinks. Never invent image URLs.
+- get_images: Search for real, validated image URLs with width/height for structured state only. Use this whenever the user asks to see images or before saving imageLinks. Never invent image URLs. Never place image URLs in conversational Markdown; the UI renders validated image galleries from saved state.
 - save_destination_shortlist: Save the destination shortlist / choice cards (destination research). Use this — NOT update_travel_state — for destination_research.
 - update_travel_state: Save other structured data to the session (preferences, activities, itinerary, accommodation, flights, selections)
 - advance_checklist: Mark the current phase as complete and move to the next
@@ -147,7 +147,7 @@ Every card's 'tradeoff' field MUST be contextual to a preference the traveler ac
 
 Steps:
 1. Use web_search briefly to research destinations matching the preferences. Limit shortlist research to 1-2 web_search calls unless the user explicitly asks for deeper research.
-2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. Use get_images with min_height 720 to fetch imageLinks. Try for ${minImageLinks} valid image URLs when fast, but never save an option card with zero imageLinks.
+2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. Use get_images with min_height 720 to fetch imageLinks for saved structured state only. Try for ${minImageLinks} valid image URLs when fast, but never save an option card with zero imageLinks. Do not include image Markdown in your user-facing prose.
 3. Score each destination against the user's preferences.
 4. Immediately save the research using save_destination_shortlist.
 5. Present the saved shortlist to the user with fit reasons and clear, contextual tradeoffs (each tied to a stated preference axis).
@@ -187,8 +187,8 @@ Every activity MUST include a practical caveat or tradeoff in its tips or descri
 
 Steps:
 1. For each selected destination, use web_search briefly to find top activities. Limit research to ONE web_search call per selected destination unless the user explicitly asks for deeper research.
-2. Research: name, type, description, duration, cost, reviews, tips, AND at least ${minImageLinks} valid image URLs from get_images for each activity.
-3. Provide exactly 4-6 activity options per selected destination, grouped by theme/practicality with recommended picks, duration/cost estimates, booking notes, and accessibility/child/mobility relevance where applicable.
+2. Research: name, type, description, duration, cost, reviews, tips, AND at least ${minImageLinks} valid image URLs from get_images for each activity, saved as structured state only.
+3. Provide exactly 4-6 activity options per selected destination, grouped by theme/practicality with recommended picks, duration/cost estimates, booking notes, and accessibility/child/mobility relevance where applicable. Do not include Markdown images or direct image URLs in your user-facing prose.
 4. Save using update_travel_state with field="activities_research" BEFORE presenting prose to the user.
 5. Present the activities to the user grouped by destination, each with its contextual caveat/tradeoff.
 6. Ask the user to choose/approve the activity set before locking the day-by-day schedule.
@@ -205,7 +205,7 @@ Steps:
 1. Organize activities into days considering: travel time, opening hours, logical grouping
 2. Account for the user's pace preference and daily travel time limit
 3. Include transport, dining, and rest time between activities
-4. Provide at least ${minImageLinks} valid image URLs from get_images representing each day's locations
+4. Provide at least ${minImageLinks} valid image URLs from get_images representing each day's locations in structured state only; do not include Markdown images or direct image URLs in prose
 5. Save using update_travel_state with field="itinerary_research"
 6. Present the itinerary day by day with times and activities
 7. Advance when the user approves the itinerary`;
@@ -220,8 +220,8 @@ function buildAccommodationFlightsInstructions(options: TravelSystemPromptOption
 
 **Accommodation (4-6 areas per overnight city):**
 1. For each overnight city in the itinerary, use web_search to research the best areas to stay. You MUST use ${accomSites.join(" and ")} for accommodation research.
-2. Provide 4-6 accommodation areas per overnight city when possible, each with: area name, neighborhood fit, proximity to planned activities/transit, typical nightly rates (budget/mid-range/luxury), safety tips, booking URLs, AND at least ${minImageLinks} image URLs from get_images.
-3. Include smart save/splurge alternatives so the user has real tradeoffs.
+2. Provide 4-6 accommodation areas per overnight city when possible, each with: area name, neighborhood fit, proximity to planned activities/transit, typical nightly rates (budget/mid-range/luxury), safety tips, booking URLs, AND at least ${minImageLinks} image URLs from get_images in structured state only.
+3. Include smart save/splurge alternatives so the user has real tradeoffs. Do not include Markdown images or direct image URLs in prose.
 4. Present the options grouped by city and ask the user to choose before locking.
 5. Save accommodation research using update_travel_state with field="accommodation_research"
 
@@ -309,7 +309,7 @@ function buildGuidelinesSection(options: TravelSystemPromptOptions): string {
 		"Confirm with the user before advancing to the next phase",
 		"If the user wants changes, use go_back_to_phase to revisit earlier steps",
 		"Present information in a clear, structured way with specific details",
-		"Include source URLs and image URLs when available",
+		"Include source page URLs when available, but never include direct image URLs or Markdown image syntax in user-facing prose; images are shown only through validated UI galleries.",
 		"Be conversational and helpful, not robotic",
 		"DO NOT hallucinate prices or data. If you cannot find a specific price or detail via web search, explicitly state that it is unknown or provide an estimate and label it as an estimate.",
 		"CRITICAL: Before saving activities, itinerary, flights, or accommodations using update_travel_state, pass that data to verify_research_data to check links, costs, times, and availability. Destination shortlists are exempt: for destination_research, use save_destination_shortlist with bounded web_search, label live/current claims carefully, and save the option cards directly so the user can choose.",

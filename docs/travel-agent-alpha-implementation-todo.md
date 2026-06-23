@@ -117,7 +117,10 @@ Status: in progress
 
 - [x] Remove user-visible blocked-image warning from assistant Markdown rendering.
 - [x] Update final-plan prompt to forbid Markdown image syntax and point users to validated UI galleries.
+- [x] Remove broader prompt causes that told the agent to include direct image URLs/Markdown image syntax in user-facing prose.
+- [x] Add system-prompt regression tests proving image URLs are structured state only and Markdown images are forbidden.
 - [x] Validate and commit blocked-image UX fix.
+- [ ] Commit markdown-image root-cause fix.
 
 ## Resume notes
 
