@@ -86,7 +86,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		provider: env.TRAVEL_AGENT_PROVIDER ?? "ollama",
 		modelId: env.TRAVEL_AGENT_MODEL ?? "kimi-k2.6",
 		apiKey: env.OLLAMA_API_KEY,
-		messageTimeoutMs: Number(env.TRAVEL_AGENT_MESSAGE_TIMEOUT_MS ?? "180000"),
+		messageTimeoutMs: Number(env.TRAVEL_AGENT_MESSAGE_TIMEOUT_MS ?? "360000"),
 		authRequired: defaultAuthRequired(env),
 		authSessionSecret: env.AUTH_SESSION_SECRET ?? "dev-auth-session-secret-change-me",
 		cookieSecure: parseBoolean(env.AUTH_COOKIE_SECURE) ?? defaultAuthRequired(env),
