@@ -103,13 +103,17 @@ input:disabled {
 }
 
 .research-tabs {
+	flex: 0 0 auto;
 	display: flex;
 	gap: 0.45rem;
-	padding: 0;
+	min-height: 2.5rem;
+	padding: 0.35rem 0;
 	overflow-x: auto;
+	overflow-y: visible;
 }
 
 .research-tabs button {
+	flex: 0 0 auto;
 	display: inline-flex;
 	align-items: center;
 	gap: 0.35rem;

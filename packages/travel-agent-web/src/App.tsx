@@ -616,7 +616,8 @@ function isResearchMessage(message: ChatMessage) {
 		extractActivitiesFromMarkdown(content).length > 0 ||
 		/\|\s*Activity\s*\|\s*Why It Fits\s*\|\s*Practicality/i.test(content) ||
 		/##\s+.+?Activity Options/i.test(content) ||
-		/\b(?:activity|destination|place|itinerary|accommodation|flight) (?:lineup|options|shortlist|research)\b/i.test(content) ||
+		/\b(?:activity|destination|place|itinerary|accommodation|flight|image|photo) (?:lineup|options|shortlist|research|search|galleries?)\b/i.test(content) ||
+		/\b(?:photos across|more images|image search tool|photo galleries|travel blogs)\b/i.test(content) ||
 		/\|\s*(?:Place|Destination|Area|Hotel|Flight|Carrier|Day)\s*\|/i.test(content)
 	);
 }
