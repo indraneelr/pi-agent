@@ -1,20 +1,3 @@
-export interface ValidatedImage {
-	kind: "image";
-	url: string;
-	finalUrl: string;
-	provider: string;
-	source?: string;
-	title?: string;
-	retrievedAt: string;
-	validatedAt: string;
-	httpStatus: number;
-	contentType: string | null;
-	width: number;
-	height: number;
-	validationStatus: "valid" | "invalid" | "stale";
-	rejectionReason?: string;
-}
-
 export interface ChecklistPhase {
 	id: string;
 	label: string;
@@ -83,7 +66,6 @@ export type DestinationCardsBlock = UiBlockEnvelope<
 			logisticsFit?: string;
 			imageQuery?: string;
 			imageLinks: string[];
-			validatedImages: ValidatedImage[];
 			selected: boolean;
 		}>;
 	}

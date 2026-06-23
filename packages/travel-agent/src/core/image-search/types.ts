@@ -1,7 +1,5 @@
 /** Shared image-search provider types. */
 
-import type { ValidatedImage } from "../types.js";
-
 export type ImageSearchProviderName = "searxng" | "stagehand";
 
 export interface ImageSearchQuery {
@@ -26,7 +24,6 @@ export interface ValidImageResult {
 	height: number;
 	title?: string;
 	source?: string;
-	evidence?: ValidatedImage;
 }
 
 export interface ImageSearchResult {

@@ -162,12 +162,12 @@ export function App() {
 	);
 }
 
-function SafeImage({ src, alt, inline, source }: { src: string; alt: string; inline?: boolean; source?: string }) {
+function SafeImage({ src, alt, inline }: { src: string; alt: string; inline?: boolean }) {
 	const [failed, setFailed] = useState(false);
 	if (failed) {
 		return <span className="image-placeholder" title={`Image unavailable: ${alt}`}>{inline ? "🖼" : "Image unavailable"}</span>;
 	}
-	return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} title={source ? `Source: ${source}` : undefined} />;
+	return <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />;
 }
 
 function SafeUiBlockView(props: { block: TravelUiBlock; onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void; disabled: boolean }) {
@@ -215,34 +215,25 @@ function UiBlockView({ block, onDestinationAction, disabled }: { block: TravelUi
 					<h3>{block.data.destinationName}</h3>
 					<p>{block.data.overallSummary}</p>
 					<div className="destination-cards">
-						{(block.data.cards ?? []).map((card) => {
-							const renderableImages = getRenderableDestinationImages(card);
-							return (
-								<article className={card.selected ? "destination-card selected" : "destination-card"} key={card.name}>
-									<div className="card-header">
-										<h4>{card.name}</h4>
-										{card.selected ? <span>Selected</span> : null}
-									</div>
-									<p>{card.summary}</p>
-									{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
-									{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
-									{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
-									{renderableImages.length > 0 ? (
-										<div className="image-strip">
-											{renderableImages.slice(0, 3).map((image) => (
-												<SafeImage src={image.finalUrl} alt={image.title ?? card.name} source={image.source ?? image.provider} key={image.finalUrl} />
-											))}
-										</div>
-									) : (
-										<span className="image-placeholder">No verified images yet</span>
-									)}
-									<div className="card-actions">
-										<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled || card.selected}>{card.selected ? "Selected" : "Select place"}</button>
-										<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
-									</div>
-								</article>
-							);
-						})}
+						{(block.data.cards ?? []).map((card) => (
+							<article className={card.selected ? "destination-card selected" : "destination-card"} key={card.name}>
+								<div className="card-header">
+									<h4>{card.name}</h4>
+									{card.selected ? <span>Selected</span> : null}
+								</div>
+								<p>{card.summary}</p>
+								{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
+								{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
+								{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
+								{(card.imageLinks ?? []).length > 0 ? (
+									<div className="image-strip">{(card.imageLinks ?? []).slice(0, 3).map((src) => <SafeImage src={src} alt={card.name} key={src} />)}</div>
+								) : null}
+								<div className="card-actions">
+									<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled || card.selected}>{card.selected ? "Selected" : "Select place"}</button>
+									<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
+								</div>
+							</article>
+						))}
 					</div>
 				</div>
 			);

@@ -44,8 +44,6 @@ Tasks:
   - `packages/travel-agent-server`: `npm run check` passed
   - `packages/travel-agent-web`: `npm run check && npm test` passed (8 tests)
   - root `npm run check` passed
-- [x] Commit Phase 1 evidence/rendering slice (`e8b04506`).
-- [x] Commit Phase 1 render-guard regression tests (`3c6c73b9`).
 
 ## Phase 2 — Auth feature toggle and Google session isolation
 

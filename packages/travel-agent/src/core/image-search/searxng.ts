@@ -54,11 +54,7 @@ export function createSearxngImageSearchProvider(options: SearxngImageSearchOpti
 				dimensionProbe: options.dimensionProbe,
 				signal: query.signal,
 			});
-			return {
-				provider: "searxng",
-				images: withEvidenceProvider(validated.images, "searxng"),
-				rejectedCount: validated.rejectedCount,
-			};
+			return { provider: "searxng", ...validated };
 		},
 	};
 }
@@ -116,8 +112,4 @@ function numberFrom(value: unknown): number | undefined {
 function directImageUrl(url: string | undefined): string | undefined {
 	if (!url) return undefined;
 	return /\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i.test(url) ? url : undefined;
-}
-
-function withEvidenceProvider<T extends { evidence?: { provider: string } }>(images: T[], provider: "searxng"): T[] {
-	return images.map((image) => (image.evidence ? { ...image, evidence: { ...image.evidence, provider } } : image));
 }
