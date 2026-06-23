@@ -120,7 +120,7 @@ Status: in progress
 - [x] Remove broader prompt causes that told the agent to include direct image URLs/Markdown image syntax in user-facing prose.
 - [x] Add system-prompt regression tests proving image URLs are structured state only and Markdown images are forbidden.
 - [x] Validate and commit blocked-image UX fix.
-- [ ] Commit markdown-image root-cause fix.
+- [x] Commit markdown-image root-cause fix (`fa4df030`).
 
 ## Resume notes
 
