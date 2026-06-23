@@ -111,6 +111,14 @@ Tasks:
 - [x] Commit Phase 5 Railway runbook/rate-limit slice (`56de0aea`).
 - [x] Commit Phase 5 session deletion slice (`ae98ec1d`).
 
+## Post-plan production polish
+
+Status: in progress
+
+- [x] Remove user-visible blocked-image warning from assistant Markdown rendering.
+- [x] Update final-plan prompt to forbid Markdown image syntax and point users to validated UI galleries.
+- [x] Validate and commit blocked-image UX fix.
+
 ## Resume notes
 
-Phases 1–5 are complete for the minimal alpha implementation plan. Remaining work before real launch is environment setup on Railway, real Google OAuth credentials, SearXNG endpoint, and live staging smoke validation.
+Phases 1–5 are complete for the minimal alpha implementation plan. Blocked-image UX polish is complete. Remaining work before real launch is environment setup on Railway, real Google OAuth credentials, SearXNG endpoint, and live staging smoke validation.

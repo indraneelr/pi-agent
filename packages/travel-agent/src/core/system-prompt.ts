@@ -240,15 +240,15 @@ function buildFinalPlanInstructions(): string {
 
 Include:
 1. Trip overview (destination, dates, group, budget)
-2. Selected destinations with highlights (render the image links using Markdown syntax: ![Image](url))
-3. Day-by-day itinerary with activities, times, and costs (render the image links using Markdown syntax)
-4. Accommodation recommendations. YOU MUST INCLUDE the actual Accommodation Links collected from your research as clickable Markdown links.
-5. Flight options. YOU MUST INCLUDE the actual Booking Links collected from your research as clickable Markdown links.
+2. Selected destinations with highlights. Do not render Markdown images. Refer to validated image galleries/cards already shown by the UI.
+3. Day-by-day itinerary with activities, times, and costs. Do not render Markdown images.
+4. Accommodation recommendations only if validated accommodation links are available; otherwise state that accommodation booking is not enabled for alpha.
+5. Flight options only if validated flight links are available; otherwise state that flight booking is not enabled for alpha.
 6. Total estimated budget breakdown (Do not hallucinate prices. If you don't know the exact price, state that it is an estimate and provide the source).
 7. Travel tips and important notes
-8. Reference URLs for all the research conducted.
+8. Reference URLs for research only when they are known source pages, not renderable image/booking links.
 
-Present this as a polished, comprehensive travel plan in Markdown. Advance the checklist to mark the plan as complete.`;
+Present this as a polished, comprehensive travel plan in Markdown. Never include Markdown image syntax like ![alt](url); images are rendered only by validated UI galleries. Advance the checklist to mark the plan as complete.`;
 }
 
 function buildStateSection(state: TravelState): string {

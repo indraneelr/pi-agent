@@ -118,14 +118,7 @@ function CopilotMarkdown({ content }: { content: string }) {
 	);
 }
 
-function SafeMarkdownImage({ src, alt }: { src?: string; alt?: ReactNode }) {
-	if (!src) return null;
-	if (!canRenderMarkdownImage(src)) {
-		return (
-			<span className="image-fallback" title={`Blocked unverified image URL: ${src}`}>
-				Image blocked until verified{typeof alt === "string" && alt.trim() ? `: ${alt}` : ""}
-			</span>
-		);
-	}
+function SafeMarkdownImage({ src }: { src?: string; alt?: ReactNode }) {
+	if (!src || !canRenderMarkdownImage(src)) return null;
 	return null;
 }

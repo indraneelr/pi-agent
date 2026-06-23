@@ -38,7 +38,7 @@ describe("render safety", () => {
 		).toEqual([]);
 	});
 
-	test("blocks model-generated Markdown image URLs", () => {
+	test("silently blocks model-generated Markdown image URLs", () => {
 		expect(canRenderMarkdownImage("https://example.com/plausible-but-unverified.jpg")).toBe(false);
 	});
 });
