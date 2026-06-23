@@ -198,16 +198,13 @@ export function App() {
 	return (
 		<main className="app-shell">
 				<TravelCopilotChat
-					activeResearchTab={activeResearchTab}
 					draft={draft}
 					error={error}
 					messages={visibleMessages}
 					onDraftChange={setDraft}
 					onNewSession={() => void startSession()}
-					onResearchTabChange={setActiveResearchTab}
 					onSubmit={handleSubmit}
 					progressMessage={progressMessage}
-					researchTabs={researchTabs}
 					runStatus={runStatus}
 					sessionReady={Boolean(sessionId)}
 					onRetry={lastFailedMessage ? () => sendMessageToAgent(lastFailedMessage) : undefined}
@@ -224,6 +221,12 @@ export function App() {
 					<h2>{activePhase?.label ?? "Loading"}</h2>
 					<p>{activePhase?.description ?? "Creating your planning session."}</p>
 				</div>
+
+				<ResearchTabs
+					activeResearchTab={activeResearchTab}
+					onResearchTabChange={setActiveResearchTab}
+					researchTabs={researchTabs}
+				/>
 
 				{displayedUiBlocks.length > 0 ? (
 					displayedUiBlocks.map((block, index) => (
@@ -246,6 +249,32 @@ export function App() {
 				)}
 			</aside>
 		</main>
+	);
+}
+
+function ResearchTabs({
+	activeResearchTab,
+	onResearchTabChange,
+	researchTabs,
+}: {
+	activeResearchTab: ResearchTab;
+	onResearchTabChange: (tab: ResearchTab) => void;
+	researchTabs: Array<{ id: ResearchTab; label: string; count: number }>;
+}) {
+	return (
+		<nav className="research-tabs" aria-label="Research sections">
+			{researchTabs.map((tab) => (
+				<button
+					type="button"
+					className={tab.id === activeResearchTab ? "active" : undefined}
+					onClick={() => onResearchTabChange(tab.id)}
+					key={tab.id}
+				>
+					<span>{tab.label}</span>
+					<small>{tab.count}</small>
+				</button>
+			))}
+		</nav>
 	);
 }
 

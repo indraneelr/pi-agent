@@ -105,7 +105,7 @@ input:disabled {
 .research-tabs {
 	display: flex;
 	gap: 0.45rem;
-	padding: 0.85rem 1.25rem 0;
+	padding: 0;
 	overflow-x: auto;
 }
 
