@@ -313,6 +313,14 @@ describe("Travel Tools", () => {
 
 			await expect(tool.execute("t6", { subDestinations: cards })).rejects.toThrow(/imageLinks/);
 		});
+
+		it("should reject destination option cards without validated image evidence", async () => {
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			const cards = Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`));
+			delete (cards[2] as any).validatedImages;
+
+			await expect(tool.execute("t7", { subDestinations: cards })).rejects.toThrow(/validatedImages/);
+		});
 	});
 
 	describe("advance_checklist", () => {
@@ -443,6 +451,21 @@ describe("Travel Tools", () => {
 			tradeoff: "Can be very crowded during peak tourist season months",
 			imageQuery: `${name} travel highlights`,
 			imageLinks: [`https://example.com/images/${encodeURIComponent(name)}.jpg`],
+			validatedImages: [
+				{
+					kind: "image",
+					url: `https://example.com/images/${encodeURIComponent(name)}.jpg`,
+					finalUrl: `https://example.com/images/${encodeURIComponent(name)}.jpg`,
+					provider: "searxng",
+					retrievedAt: "2026-06-22T00:00:00.000Z",
+					validatedAt: "2026-06-22T00:00:01.000Z",
+					httpStatus: 200,
+					contentType: "image/jpeg",
+					width: 1280,
+					height: 720,
+					validationStatus: "valid",
+				},
+			],
 			reviews: { rating: 4.5, reviewSummary: "Highly rated by visitors", sources: [] },
 			sources: [],
 		};

@@ -62,6 +62,7 @@ export function normalizeSubDestination(item: Record<string, any>): SubDestinati
 	const imageQuery =
 		item.imageQuery ?? item.imageKeywords ?? (name ? `${name} travel ${bestFor ?? "highlights"}` : undefined);
 	const imageLinks = item.imageLinks ?? item.image_urls ?? item.imageUrls ?? item.images;
+	const validatedImages = item.validatedImages ?? item.validated_images;
 	return {
 		...item,
 		name,
@@ -76,6 +77,7 @@ export function normalizeSubDestination(item: Record<string, any>): SubDestinati
 		tradeoff: item.tradeoff ?? item.tradeOff ?? item.downside,
 		imageQuery,
 		imageLinks: Array.isArray(imageLinks) ? imageLinks : [],
+		validatedImages: Array.isArray(validatedImages) ? validatedImages : [],
 		selected: item.selected ?? false,
 		reviews: item.reviews ?? {},
 		sources: Array.isArray(item.sources) ? item.sources : [],
@@ -130,6 +132,11 @@ export function validateDestinationOptionCards(options: SubDestination[], state:
 		if (typeof roughDays !== "string" || !/[0-9]/.test(roughDays.trim())) {
 			throw new Error(`Destination option "${name}" is missing a useful roughDays field.`);
 		}
+		if (!hasUsefulValidatedImages(option.validatedImages)) {
+			throw new Error(
+				`Destination option "${name}" must include validatedImages returned by get_images; raw imageLinks are not enough for alpha rendering.`,
+			);
+		}
 		if (!hasUsefulImageLinks(option.imageLinks)) {
 			throw new Error(
 				`Destination option "${name}" must include imageLinks with at least one valid .jpg/.jpeg/.png/.webp URL.`,
@@ -153,6 +160,30 @@ function hasUsefulImageLinks(imageLinks: unknown): boolean {
 		imageLinks.some(
 			(url) => typeof url === "string" && /^https?:\/\/.+\.(?:jpe?g|png|webp)(?:[?#].*)?$/i.test(url.trim()),
 		)
+	);
+}
+
+function hasUsefulValidatedImages(validatedImages: unknown): boolean {
+	return (
+		Array.isArray(validatedImages) &&
+		validatedImages.some((image) => {
+			if (!image || typeof image !== "object") return false;
+			const candidate = image as {
+				finalUrl?: unknown;
+				validationStatus?: unknown;
+				width?: unknown;
+				height?: unknown;
+			};
+			return (
+				typeof candidate.finalUrl === "string" &&
+				/^https:\/\//i.test(candidate.finalUrl) &&
+				candidate.validationStatus === "valid" &&
+				typeof candidate.width === "number" &&
+				typeof candidate.height === "number" &&
+				candidate.width > 0 &&
+				candidate.height > 0
+			);
+		})
 	);
 }
 

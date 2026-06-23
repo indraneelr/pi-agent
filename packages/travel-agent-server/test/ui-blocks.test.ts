@@ -3,6 +3,44 @@ import { describe, expect, test } from "vitest";
 import { composeTravelUiBlocks } from "../src/ui-blocks.js";
 
 describe("composeTravelUiBlocks", () => {
+	test("forwards validated destination images so the web UI can render galleries", () => {
+		const validatedImage = {
+			kind: "image",
+			url: "https://example.com/rome.jpg",
+			finalUrl: "https://example.com/rome.jpg",
+			provider: "searxng",
+			retrievedAt: "2026-06-22T00:00:00.000Z",
+			validatedAt: "2026-06-22T00:00:01.000Z",
+			httpStatus: 200,
+			contentType: "image/jpeg",
+			width: 1280,
+			height: 720,
+			validationStatus: "valid",
+		};
+		const state = {
+			sessionId: "s1",
+			checklist: { activePhaseIndex: 0, phases: [] },
+			preferences: {},
+			selectedDestinations: [],
+			destinationResearch: {
+				destination: { name: "Italy" },
+				overallSummary: "Rome options",
+				subDestinations: [
+					{
+						name: "Rome",
+						description: "Ancient city",
+						imageLinks: ["https://example.com/rome.jpg"],
+						validatedImages: [validatedImage],
+					},
+				],
+			},
+		} as unknown as TravelState;
+
+		const destinationBlock = composeTravelUiBlocks(state).find((block) => block.kind === "destination_cards");
+
+		expect(destinationBlock?.data.cards[0].validatedImages).toEqual([validatedImage]);
+	});
+
 	test("hides accommodation and flight blocks for alpha until booking links are validated", () => {
 		const state = {
 			sessionId: "s1",

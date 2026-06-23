@@ -135,8 +135,9 @@ function buildShortlistInstructions(options: TravelSystemPromptOptions): string 
 
 Required save_destination_shortlist payload:
 - destination: top-level destination summary object (optional; inferred from preferences if omitted)
-- subDestinations: the option cards; each card MUST include name, description, bestFor, why, roughDays, logisticsFit, budgetFit, seasonNote, tradeoff, imageQuery, imageLinks, selected=false, reviews, and sources
+- subDestinations: the option cards; each card MUST include name, description, bestFor, why, roughDays, logisticsFit, budgetFit, seasonNote, tradeoff, imageQuery, imageLinks, validatedImages, selected=false, reviews, and sources
 - imageLinks: at least one valid direct http(s) image URL per card from get_images. imageQuery is still useful for fallback/search, but imageQuery alone is rejected by save_destination_shortlist.
+- validatedImages: copy the validatedImages array returned by get_images for that card. This is required because the UI renders images only from validatedImages, not raw imageLinks.
 - nextUserAction: a concrete choice prompt, e.g. "Choose 3-4 places to continue"
 - schemaVersion: "2.0.0" (added automatically)
 
@@ -147,7 +148,7 @@ Every card's 'tradeoff' field MUST be contextual to a preference the traveler ac
 
 Steps:
 1. Use web_search briefly to research destinations matching the preferences. Limit shortlist research to 1-2 web_search calls unless the user explicitly asks for deeper research.
-2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. Use get_images with min_height 720 to fetch imageLinks for saved structured state only. Try for ${minImageLinks} valid image URLs when fast, but never save an option card with zero imageLinks. Do not include image Markdown in your user-facing prose.
+2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. Use get_images with min_height 720 to fetch imageLinks and validatedImages for saved structured state only. Try for ${minImageLinks} valid image URLs when fast, but never save an option card with zero imageLinks or empty validatedImages. Do not include image Markdown in your user-facing prose.
 3. Score each destination against the user's preferences.
 4. Immediately save the research using save_destination_shortlist.
 5. Present the saved shortlist to the user with fit reasons and clear, contextual tradeoffs (each tied to a stated preference axis).

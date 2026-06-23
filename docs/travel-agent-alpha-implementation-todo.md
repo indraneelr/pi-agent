@@ -119,8 +119,12 @@ Status: in progress
 - [x] Update final-plan prompt to forbid Markdown image syntax and point users to validated UI galleries.
 - [x] Remove broader prompt causes that told the agent to include direct image URLs/Markdown image syntax in user-facing prose.
 - [x] Add system-prompt regression tests proving image URLs are structured state only and Markdown images are forbidden.
+- [x] Use reviewer to inspect why images were still not visible.
+- [x] Fix root cause: shortlist cards now require/preserve `validatedImages` from `get_images`; raw `imageLinks` alone are rejected because the UI cannot render them safely.
+- [x] Add server UI-block regression test proving validated destination images are forwarded to the web UI.
 - [x] Validate and commit blocked-image UX fix.
 - [x] Commit markdown-image root-cause fix (`fa4df030`).
+- [ ] Commit validatedImages visibility fix.
 
 ## Resume notes
 
