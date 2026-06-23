@@ -47,6 +47,18 @@ export function App() {
 		setSelectedActivityNames((current) => new Set([...current].filter((name) => activityNames.has(name))));
 	}, [uiBlocks]);
 
+	const activityResearchFallback = useMemo(() => extractActivityResearchFallback(messages), [messages]);
+	const visibleMessages = useMemo(() => {
+		if (!activityResearchFallback) return messages;
+		return messages.filter((_message, index) => index !== activityResearchFallback.messageIndex);
+	}, [activityResearchFallback, messages]);
+	const visibleUiBlocks = useMemo(() => {
+		if (!activityResearchFallback || uiBlocks.some((block) => block.kind === "activity_cards")) return uiBlocks;
+		const destinationIndex = uiBlocks.findLastIndex((block) => block.kind === "destination_cards");
+		if (destinationIndex < 0) return [...uiBlocks, activityResearchFallback.block];
+		return [...uiBlocks.slice(0, destinationIndex + 1), activityResearchFallback.block, ...uiBlocks.slice(destinationIndex + 1)];
+	}, [activityResearchFallback, uiBlocks]);
+
 	const activePhase = useMemo(() => {
 		if (!state) return null;
 		return state.checklist.phases[state.checklist.activePhaseIndex] ?? null;
@@ -174,7 +186,7 @@ export function App() {
 				<TravelCopilotChat
 					draft={draft}
 					error={error}
-					messages={messages}
+					messages={visibleMessages}
 					onDraftChange={setDraft}
 					onNewSession={() => void startSession()}
 					onSubmit={handleSubmit}
@@ -196,8 +208,8 @@ export function App() {
 					<p>{activePhase?.description ?? "Creating your planning session."}</p>
 				</div>
 
-				{uiBlocks.length > 0 ? (
-					uiBlocks.map((block, index) => (
+				{visibleUiBlocks.length > 0 ? (
+					visibleUiBlocks.map((block, index) => (
 						<SafeUiBlockView
 							block={block}
 							disabled={runStatus !== "idle"}
@@ -508,6 +520,73 @@ function ActivityCards({
 			</div>
 		</div>
 	);
+}
+
+function extractActivityResearchFallback(messages: ChatMessage[]): { block: ActivityCardsBlock; messageIndex: number } | null {
+	for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex--) {
+		const message = messages[messageIndex];
+		if (message.role !== "assistant" || !/activity options/i.test(message.content)) continue;
+		const activities = extractActivitiesFromMarkdown(message.content);
+		if (activities.length < 4) continue;
+		return {
+			messageIndex,
+			block: {
+				id: "activity-cards-from-chat",
+				kind: "activity_cards",
+				version: 1,
+				title: "Activity ideas",
+				data: { activities },
+			},
+		};
+	}
+	return null;
+}
+
+function extractActivitiesFromMarkdown(content: string): ActivityCardsBlock["data"]["activities"] {
+	const activities: ActivityCardsBlock["data"]["activities"] = [];
+	let location = "Selected destination";
+	for (const rawLine of content.split("\n")) {
+		const line = rawLine.trim();
+		const heading = line.match(/^##\s+(?:[^\p{L}\p{N}]+)?(.+?)\s+[—–-]\s+Activity Options/iu);
+		if (heading?.[1]) {
+			location = stripMarkdown(heading[1]).replace(/^[^\p{L}\p{N}]+/u, "");
+			continue;
+		}
+		if (!line.startsWith("|") || /^\|\s*:?-+/.test(line) || /\|\s*#\s*\|/i.test(line)) continue;
+		const cells = line.split("|").slice(1, -1).map((cell) => stripMarkdown(cell));
+		if (cells.length < 5 || !/^\d+$/.test(cells[0].replace(/\D/g, ""))) continue;
+		const name = cells[1];
+		if (!name) continue;
+		activities.push({
+			name,
+			type: "Activity",
+			location,
+			summary: [cells[2], cells[3]].filter(Boolean).join(" "),
+			cost: parseCost(cells[4]),
+			durationHours: parseDurationHours(cells[3]),
+			tips: cells[3] || undefined,
+			imageLinks: [],
+		});
+	}
+	return activities;
+}
+
+function stripMarkdown(value: string) {
+	return value
+		.replace(/<[^>]+>/g, "")
+		.replace(/[*_`~]/g, "")
+		.replace(/\s+/g, " ")
+		.trim();
+}
+
+function parseCost(value: string): number | undefined {
+	const match = value.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+	return match ? Number(match[0]) : undefined;
+}
+
+function parseDurationHours(value: string): number | undefined {
+	const match = value.match(/(\d+(?:\.\d+)?)\s*(?:h|hr|hrs|hour|hours)/i);
+	return match ? Number(match[1]) : undefined;
 }
 
 function formatPreferenceLabel(key: string) {
