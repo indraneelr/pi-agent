@@ -15,7 +15,11 @@ import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { loadConfig } from "../src/config.js";
 import { CredentialStore } from "../src/credentials.js";
 import { createServer } from "../src/server.js";
-import { TravelSessionManager, type TravelSessionManager as TravelSessionManagerType } from "../src/session-manager.js";
+import {
+	SessionTimeoutError,
+	TravelSessionManager,
+	type TravelSessionManager as TravelSessionManagerType,
+} from "../src/session-manager.js";
 
 // =============================================================================
 // No-LLM tests (default config, no model configured)
@@ -457,6 +461,56 @@ describe("TravelSessionManager model resolution", () => {
 		expect(model.provider).toBe("ollama");
 		expect(model.id).toBe("kimi-k2.6");
 		expect(model.baseUrl).toBe("https://ollama.com/v1");
+	});
+
+	test("keeps timed-out prompts busy and persists state when the agent finishes later", async () => {
+		const tmpDataDir = await mkdtemp(join(tmpdir(), "travel-agent-timeout-test-"));
+		try {
+			const manager = new TravelSessionManager(
+				loadConfig({
+					TRAVEL_AGENT_DATA_DIR: tmpDataDir,
+					TRAVEL_AGENT_MESSAGE_TIMEOUT_MS: "5",
+				}),
+			);
+			const created = await manager.createSession();
+			let resolvePrompt: (() => void) | undefined;
+			const promptPromise = new Promise<void>((resolve) => {
+				resolvePrompt = resolve;
+			});
+			const fakeState = { ...created.state, preferences: { destination: "Italy" } };
+			(
+				manager as unknown as {
+					buildSession: () => Promise<unknown>;
+				}
+			).buildSession = async () => ({
+				agent: {
+					state: { messages: [] },
+					prompt: () => promptPromise,
+					subscribe: () => () => undefined,
+					abort: () => undefined,
+					waitForIdle: async () => undefined,
+				},
+				get state() {
+					return fakeState;
+				},
+				shutdown: async () => undefined,
+			});
+
+			await expect(manager.sendMessage(created.sessionId, "research activities")).rejects.toBeInstanceOf(
+				SessionTimeoutError,
+			);
+			expect((await manager.getSession(created.sessionId)).status).toBe("busy");
+
+			resolvePrompt?.();
+			await promptPromise;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect((await manager.getSession(created.sessionId)).status).toBe("idle");
+			const persisted = JSON.parse(await readFile(join(tmpDataDir, `${created.sessionId}.json`), "utf-8"));
+			expect(persisted.preferences.destination).toBe("Italy");
+		} finally {
+			await rm(tmpDataDir, { recursive: true, force: true });
+		}
 	});
 });
 

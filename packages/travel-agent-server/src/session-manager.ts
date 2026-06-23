@@ -245,6 +245,7 @@ export class TravelSessionManager {
 		record.status = "busy";
 		const startedAt = Date.now();
 		this.logger.info({ sessionId, messageLength: message.length }, "Received travel message");
+		let timedOut = false;
 		try {
 			let session = this.activeSessions.get(sessionId);
 			if (!session) {
@@ -254,33 +255,34 @@ export class TravelSessionManager {
 				this.logger.info({ sessionId }, "Travel agent session initialized");
 			}
 			this.logger.info({ sessionId, timeoutMs: this.config.messageTimeoutMs }, "Starting agent prompt/research");
-			await withTimeout(
-				session.agent.prompt(message),
-				this.config.messageTimeoutMs,
-				() => new SessionTimeoutError(sessionId, this.config.messageTimeoutMs),
-			);
-			this.logger.info({ sessionId, durationMs: Date.now() - startedAt }, "Agent prompt/research finished");
-			const assistantMessage = extractAssistantText(session.agent.state.messages);
-			record.state = session.state;
-			saveTravelState(record.state, { dataDir: this.config.dataDir });
-			this.logger.info(
-				{ sessionId, uiBlockCount: composeTravelUiBlocks(record.state).length },
-				"Travel state persisted after message",
-			);
-			return {
-				sessionId,
-				assistantMessage,
-				state: record.state,
-				uiBlocks: composeTravelUiBlocks(record.state),
-				conversation: extractTravelConversation(session.agent.state.messages),
-				status: "idle",
-			};
+			const promptPromise = session.agent.prompt(message);
+			try {
+				await withTimeout(
+					promptPromise,
+					this.config.messageTimeoutMs,
+					() => new SessionTimeoutError(sessionId, this.config.messageTimeoutMs),
+				);
+			} catch (e) {
+				if (e instanceof SessionTimeoutError) {
+					timedOut = true;
+					this.persistWhenPromptSettles(sessionId, record, session, promptPromise, startedAt);
+				}
+				throw e;
+			}
+			return this.finishPrompt(sessionId, record, session, startedAt);
 		} catch (e) {
 			this.logger.error({ err: e, sessionId, durationMs: Date.now() - startedAt }, "Travel message failed");
 			throw e;
 		} finally {
-			record.status = "idle";
-			this.logger.info({ sessionId, durationMs: Date.now() - startedAt }, "Travel session returned to idle");
+			if (!timedOut) {
+				record.status = "idle";
+				this.logger.info({ sessionId, durationMs: Date.now() - startedAt }, "Travel session returned to idle");
+			} else {
+				this.logger.warn(
+					{ sessionId, durationMs: Date.now() - startedAt },
+					"Travel request timed out; agent prompt is still running in background",
+				);
+			}
 		}
 	}
 
@@ -290,6 +292,53 @@ export class TravelSessionManager {
 	 */
 	private assertSessionOwner(record: SessionRecord, sessionId: string, userId: string): void {
 		if (record.userId !== userId) throw new SessionForbiddenError(sessionId);
+	}
+
+	private finishPrompt(
+		sessionId: string,
+		record: SessionRecord,
+		session: TravelSession,
+		startedAt: number,
+	): SendMessageResult {
+		this.logger.info({ sessionId, durationMs: Date.now() - startedAt }, "Agent prompt/research finished");
+		const assistantMessage = extractAssistantText(session.agent.state.messages);
+		record.state = session.state;
+		saveTravelState(record.state, { dataDir: this.config.dataDir });
+		this.logger.info(
+			{ sessionId, uiBlockCount: composeTravelUiBlocks(record.state).length },
+			"Travel state persisted after message",
+		);
+		return {
+			sessionId,
+			assistantMessage,
+			state: record.state,
+			uiBlocks: composeTravelUiBlocks(record.state),
+			conversation: extractTravelConversation(session.agent.state.messages),
+			status: "idle",
+		};
+	}
+
+	private persistWhenPromptSettles(
+		sessionId: string,
+		record: SessionRecord,
+		session: TravelSession,
+		promptPromise: Promise<void>,
+		startedAt: number,
+	): void {
+		void promptPromise
+			.then(() => {
+				this.finishPrompt(sessionId, record, session, startedAt);
+			})
+			.catch((e: unknown) => {
+				this.logger.error(
+					{ err: e, sessionId, durationMs: Date.now() - startedAt },
+					"Background travel prompt failed after HTTP timeout",
+				);
+			})
+			.finally(() => {
+				record.status = "idle";
+				this.logger.info({ sessionId, durationMs: Date.now() - startedAt }, "Travel session returned to idle");
+			});
 	}
 
 	private async buildSession(sessionId: string, userId: string): Promise<TravelSession> {

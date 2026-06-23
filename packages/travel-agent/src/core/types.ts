@@ -112,6 +112,7 @@ export interface SubDestination {
 	selected?: boolean;
 	imageKeywords?: string;
 	imageLinks?: string[];
+	validatedImages?: unknown[];
 	city?: string;
 	country?: string;
 	themes?: string[];

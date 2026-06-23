@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { createTravelSession, getTravelSession, sendTravelMessage, type ChecklistPhase, type DestinationCardsBlock, type TravelState, type TravelUiBlock } from "./api.js";
+import { createTravelSession, getTravelSession, sendTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type TravelState, type TravelUiBlock } from "./api.js";
 import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
@@ -14,6 +14,7 @@ export function App() {
 	const [error, setError] = useState<string | null>(null);
 	const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
 	const [selectedDestinationNames, setSelectedDestinationNames] = useState<Set<string>>(new Set());
+	const [selectedActivityNames, setSelectedActivityNames] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		const existingSessionId = new URLSearchParams(window.location.search).get("session");
@@ -31,13 +32,19 @@ export function App() {
 
 	useEffect(() => {
 		const selectedNames = new Set<string>();
+		const activityNames = new Set<string>();
 		for (const block of uiBlocks) {
-			if (block.kind !== "destination_cards") continue;
-			for (const card of block.data.cards ?? []) {
-				if (card.selected) selectedNames.add(card.name);
+			if (block.kind === "destination_cards") {
+				for (const card of block.data.cards ?? []) {
+					if (card.selected) selectedNames.add(card.name);
+				}
+			}
+			if (block.kind === "activity_cards") {
+				for (const activity of block.data.activities ?? []) activityNames.add(activity.name);
 			}
 		}
 		setSelectedDestinationNames(selectedNames);
+		setSelectedActivityNames((current) => new Set([...current].filter((name) => activityNames.has(name))));
 	}, [uiBlocks]);
 
 	const activePhase = useMemo(() => {
@@ -144,6 +151,24 @@ export function App() {
 		void sendMessageToAgent(`Use these selected places for this trip: ${selectedNames.join(", ")}.`);
 	}
 
+	function handleActivityToggle(activityName: string) {
+		setSelectedActivityNames((current) => {
+			const next = new Set(current);
+			if (next.has(activityName)) {
+				next.delete(activityName);
+			} else {
+				next.add(activityName);
+			}
+			return next;
+		});
+	}
+
+	function handleActivitySelectionDone() {
+		if (selectedActivityNames.size === 0) return;
+		const selectedNames = Array.from(selectedActivityNames);
+		void sendMessageToAgent(`Use these selected activities for the itinerary: ${selectedNames.join(", ")}.`);
+	}
+
 	return (
 		<main className="app-shell">
 				<TravelCopilotChat
@@ -177,8 +202,11 @@ export function App() {
 							block={block}
 							disabled={runStatus !== "idle"}
 							key={block.id ?? `${block.kind}-${index}`}
+							onActivitySelectionDone={handleActivitySelectionDone}
+							onActivityToggle={handleActivityToggle}
 							onDestinationAction={handleDestinationAction}
 							onDestinationSelectionDone={handleDestinationSelectionDone}
+							selectedActivityNames={selectedActivityNames}
 							selectedDestinationNames={selectedDestinationNames}
 						/>
 					))
@@ -202,9 +230,12 @@ function SafeImage({ src, alt, inline }: { src: string; alt: string; inline?: bo
 
 function SafeUiBlockView(props: {
 	block: TravelUiBlock;
+	onActivitySelectionDone: () => void;
+	onActivityToggle: (activityName: string) => void;
 	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
 	onDestinationSelectionDone: () => void;
 	disabled: boolean;
+	selectedActivityNames: Set<string>;
 	selectedDestinationNames: Set<string>;
 }) {
 	try {
@@ -222,15 +253,21 @@ function SafeUiBlockView(props: {
 
 function UiBlockView({
 	block,
+	onActivitySelectionDone,
+	onActivityToggle,
 	onDestinationAction,
 	onDestinationSelectionDone,
 	disabled,
+	selectedActivityNames,
 	selectedDestinationNames,
 }: {
 	block: TravelUiBlock;
+	onActivitySelectionDone: () => void;
+	onActivityToggle: (activityName: string) => void;
 	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
 	onDestinationSelectionDone: () => void;
 	disabled: boolean;
+	selectedActivityNames: Set<string>;
 	selectedDestinationNames: Set<string>;
 }) {
 	if (!block?.data) return null;
@@ -272,19 +309,13 @@ function UiBlockView({
 			);
 		case "activity_cards":
 			return (
-				<div className="state-card">
-					<p className="eyebrow">{block.title}</p>
-					<div className="destination-cards">
-						{(block.data.activities ?? []).map((activity) => (
-							<article className="destination-card" key={activity.name}>
-								<div className="card-header"><h4>{activity.name}</h4><span>{activity.type}</span></div>
-								<p>{activity.summary}</p>
-								<small>{activity.location}{activity.durationHours ? ` · ${activity.durationHours}h` : ""}{activity.cost ? ` · ${activity.cost}` : ""}</small>
-								{activity.tips ? <small>Tip: {activity.tips}</small> : null}
-							</article>
-						))}
-					</div>
-				</div>
+				<ActivityCards
+					block={block}
+					disabled={disabled}
+					onActivitySelectionDone={onActivitySelectionDone}
+					onActivityToggle={onActivityToggle}
+					selectedActivityNames={selectedActivityNames}
+				/>
 			);
 		case "itinerary_timeline":
 			return (
@@ -418,6 +449,58 @@ function DestinationCards({
 									{selected ? "Remove" : "Select place"}
 								</button>
 								<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
+							</div>
+						</article>
+					);
+				})}
+			</div>
+		</div>
+	);
+}
+
+function ActivityCards({
+	block,
+	onActivitySelectionDone,
+	onActivityToggle,
+	disabled,
+	selectedActivityNames,
+}: {
+	block: ActivityCardsBlock;
+	onActivitySelectionDone: () => void;
+	onActivityToggle: (activityName: string) => void;
+	disabled: boolean;
+	selectedActivityNames: Set<string>;
+}) {
+	return (
+		<div className="state-card activity-block">
+			<div className="destination-block-header">
+				<div>
+					<p className="eyebrow">{block.title}</p>
+					<h3>Choose activities</h3>
+				</div>
+				<button type="button" className="done-button" onClick={onActivitySelectionDone} disabled={disabled || selectedActivityNames.size === 0}>
+					Done{selectedActivityNames.size > 0 ? ` (${selectedActivityNames.size})` : ""}
+				</button>
+			</div>
+			<div className="destination-cards activity-cards">
+				{(block.data.activities ?? []).map((activity) => {
+					const selected = selectedActivityNames.has(activity.name);
+					return (
+						<article className={selected ? "destination-card selected" : "destination-card"} key={activity.name}>
+							<div className="card-header">
+								<h4>{activity.name}</h4>
+								<span>{activity.type}</span>
+							</div>
+							<p>{activity.summary}</p>
+							<small>{activity.location}{activity.durationHours ? ` · ${activity.durationHours}h` : ""}{activity.cost ? ` · ${activity.cost}` : ""}</small>
+							{activity.tips ? <small>Tip: {activity.tips}</small> : null}
+							{activity.imageLinks.length > 0 ? (
+								<div className="image-strip">{activity.imageLinks.slice(0, 3).map((src) => <SafeImage src={src} alt={activity.name} key={src} />)}</div>
+							) : null}
+							<div className="card-actions">
+								<button type="button" onClick={() => onActivityToggle(activity.name)} disabled={disabled}>
+									{selected ? "Remove" : "Select activity"}
+								</button>
 							</div>
 						</article>
 					);

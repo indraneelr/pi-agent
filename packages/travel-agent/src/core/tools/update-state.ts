@@ -128,7 +128,7 @@ function applyUpdate(state: TravelState, field: UpdateField, data: unknown): Tra
 			updated.destinationResearch = normalizeDestinationResearch(data, state);
 			break;
 		case "selected_destinations":
-			updated.selectedDestinations = data as TravelState["selectedDestinations"];
+			updated.selectedDestinations = normalizeSelectedDestinations(data, state);
 			break;
 		case "activities_research": {
 			const normalized = normalizeActivitiesResearch(data);
@@ -150,6 +150,35 @@ function applyUpdate(state: TravelState, field: UpdateField, data: unknown): Tra
 	}
 
 	return updated;
+}
+
+function normalizeSelectedDestinations(data: unknown, state: TravelState): TravelState["selectedDestinations"] {
+	const record = data && typeof data === "object" && !Array.isArray(data) ? (data as Record<string, unknown>) : {};
+	const rawItems = Array.isArray(data)
+		? data
+		: Array.isArray(record.destinations)
+			? record.destinations
+			: Array.isArray(record.selectedDestinations)
+				? record.selectedDestinations
+				: [];
+	const selected = rawItems.flatMap((item) => {
+		const name = typeof item === "string" ? item : stringValue((item as Record<string, unknown> | undefined)?.name);
+		if (!name) return [];
+		const researched = state.destinationResearch?.subDestinations.find(
+			(destination) => destination.name.toLowerCase() === name.toLowerCase(),
+		);
+		if (typeof item === "string") {
+			return [researched ?? { name, type: "place", description: name, reviews: {}, sources: [] }];
+		}
+		if (item && typeof item === "object") {
+			return [{ ...(researched ?? {}), ...(item as Record<string, unknown>), name }];
+		}
+		return [];
+	}) as TravelState["selectedDestinations"];
+	if (selected.length === 0 && rawItems.length > 0) {
+		throw new Error("selected_destinations must include destination names or destination objects with names.");
+	}
+	return selected;
 }
 
 function normalizeActivitiesResearch(data: unknown): NonNullable<TravelState["activitiesResearch"]> {
@@ -268,7 +297,7 @@ function validateActivitiesResearch(data: unknown, state: TravelState): void {
 		throw new Error("activities_research must include activities.");
 	}
 	for (const selected of state.selectedDestinations) {
-		const selectedName = selected.name?.toLowerCase();
+		const selectedName = selectedDestinationName(selected)?.toLowerCase();
 		if (!selectedName) continue;
 		const count = research.activities.filter((activity) =>
 			String(activity.location ?? "")
@@ -283,7 +312,10 @@ function validateActivitiesResearch(data: unknown, state: TravelState): void {
 	const quality = scoreActivityResearchQuality(
 		research.activities,
 		state.preferences,
-		state.selectedDestinations.map((destination) => ({ name: destination.name })),
+		state.selectedDestinations.flatMap((destination) => {
+			const name = selectedDestinationName(destination);
+			return name ? [{ name }] : [];
+		}),
 	);
 	if (!quality.pass) {
 		throw new Error(
@@ -291,6 +323,13 @@ function validateActivitiesResearch(data: unknown, state: TravelState): void {
 				quality.issues.map((issue) => `activity-quality: ${issue}`).join(" "),
 		);
 	}
+}
+
+function selectedDestinationName(destination: unknown): string | undefined {
+	if (typeof destination === "string") return stringValue(destination);
+	if (destination && typeof destination === "object")
+		return stringValue((destination as Record<string, unknown>).name);
+	return undefined;
 }
 
 function validateAccommodationResearch(data: unknown): void {

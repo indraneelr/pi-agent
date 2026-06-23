@@ -41,6 +41,46 @@ describe("composeTravelUiBlocks", () => {
 	// 	expect(destinationBlock?.data.cards[0].validatedImages).toEqual([validatedImage]);
 	// });
 
+	test("renders legacy string selected destinations and full activity cards", () => {
+		const state = {
+			sessionId: "s1",
+			checklist: { activePhaseIndex: 0, phases: [] },
+			preferences: {},
+			selectedDestinations: ["Rome"],
+			destinationResearch: {
+				destination: { name: "Italy" },
+				overallSummary: "Italy options",
+				subDestinations: [{ name: "Rome", description: "Ancient city", imageLinks: [] }],
+			},
+			activitiesResearch: {
+				activities: Array.from({ length: 9 }, (_, index) => ({
+					name: `Activity ${index}`,
+					type: "Culture",
+					location: "Rome",
+					description: "Family-friendly cultural stop.",
+					estimatedCost: 20,
+					estimatedDurationHours: 2,
+					imageLinks: [`https://example.com/${index}.jpg`],
+					reviews: {},
+					sources: [],
+				})),
+			},
+		} as unknown as TravelState;
+
+		const blocks = composeTravelUiBlocks(state);
+		const destinationBlock = blocks.find((block) => block.kind === "destination_cards");
+		const selectedBlock = blocks.find((block) => block.kind === "selected_destinations");
+		const activityBlock = blocks.find((block) => block.kind === "activity_cards");
+
+		expect(destinationBlock?.data.cards[0].selected).toBe(true);
+		expect(selectedBlock?.data.destinations).toEqual([{ name: "Rome", summary: undefined, whyItFits: undefined }]);
+		expect(activityBlock?.data.activities).toHaveLength(9);
+		expect(activityBlock?.data.activities[0].imageLinks).toEqual(["https://example.com/0.jpg"]);
+		expect(blocks.findIndex((block) => block.kind === "activity_cards")).toBeLessThan(
+			blocks.findIndex((block) => block.kind === "selected_destinations"),
+		);
+	});
+
 	test("hides accommodation and flight blocks for alpha until booking links are validated", () => {
 		const state = {
 			sessionId: "s1",

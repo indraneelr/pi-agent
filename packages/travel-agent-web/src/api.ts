@@ -89,6 +89,7 @@ export type ActivityCardsBlock = UiBlockEnvelope<
 			cost?: number;
 			durationHours?: number;
 			tips?: string;
+			imageLinks: string[];
 		}>;
 	}
 >;

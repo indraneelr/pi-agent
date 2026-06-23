@@ -82,6 +82,7 @@ export type ActivityCardsBlock = UiBlockEnvelope<
 			cost?: number;
 			durationHours?: number;
 			tips?: string;
+			imageLinks: string[];
 		}>;
 	}
 >;
@@ -178,7 +179,9 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 					logisticsFit: destination.logisticsFit,
 					imageQuery: destination.imageQuery ?? destination.imageKeywords,
 					imageLinks: destination.imageLinks ?? [],
-					selected: state.selectedDestinations.some((selected) => selected.name === destination.name),
+					selected: state.selectedDestinations.some(
+						(selected) => selectedDestinationName(selected) === destination.name,
+					),
 				})),
 			},
 			actions: [
@@ -189,6 +192,29 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 		});
 	}
 
+	if (state.activitiesResearch?.activities?.length) {
+		blocks.push({
+			id: "activity-cards",
+			kind: "activity_cards",
+			version: 1,
+			title: "Activity ideas",
+			data: {
+				activities: state.activitiesResearch.activities.map((activity) => ({
+					name: activity.name,
+					type: activity.type,
+					location: activity.location,
+					summary: activity.description,
+					cost: activity.estimatedCost,
+					durationHours: activity.estimatedDurationHours,
+					tips: activity.tips,
+					imageLinks: activity.imageLinks ?? [],
+				})),
+			},
+			actions: [{ id: "select-activity", label: "Select activity", type: "placeholder" }],
+			sourceStatePath: "activitiesResearch.activities",
+		});
+	}
+
 	if (state.selectedDestinations.length > 0) {
 		blocks.push({
 			id: "selected-destinations",
@@ -196,11 +222,11 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 			version: 1,
 			title: "Selected destinations",
 			data: {
-				destinations: state.selectedDestinations.map((destination) => ({
-					name: destination.name,
-					summary: destination.description,
-					whyItFits: destination.why ?? destination.bestFor,
-				})),
+				destinations: state.selectedDestinations.flatMap((destination) => {
+					const name = selectedDestinationName(destination);
+					if (!name) return [];
+					return [{ name, summary: destinationDescription(destination), whyItFits: destinationWhy(destination) }];
+				}),
 			},
 			actions: [],
 			sourceStatePath: "selectedDestinations",
@@ -216,28 +242,6 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 			data: { budget: state.preferences.budget },
 			actions: [],
 			sourceStatePath: "preferences.budget",
-		});
-	}
-
-	if (state.activitiesResearch?.activities?.length) {
-		blocks.push({
-			id: "activity-cards",
-			kind: "activity_cards",
-			version: 1,
-			title: "Activity ideas",
-			data: {
-				activities: state.activitiesResearch.activities.slice(0, 8).map((activity) => ({
-					name: activity.name,
-					type: activity.type,
-					location: activity.location,
-					summary: activity.description,
-					cost: activity.estimatedCost,
-					durationHours: activity.estimatedDurationHours,
-					tips: activity.tips,
-				})),
-			},
-			actions: [],
-			sourceStatePath: "activitiesResearch.activities",
 		});
 	}
 
@@ -311,4 +315,24 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 	}
 
 	return blocks;
+}
+
+function selectedDestinationName(destination: unknown): string | undefined {
+	if (typeof destination === "string") return destination;
+	if (!destination || typeof destination !== "object") return undefined;
+	const name = (destination as { name?: unknown }).name;
+	return typeof name === "string" ? name : undefined;
+}
+
+function destinationDescription(destination: unknown): string | undefined {
+	if (!destination || typeof destination !== "object") return undefined;
+	const description = (destination as { description?: unknown }).description;
+	return typeof description === "string" ? description : undefined;
+}
+
+function destinationWhy(destination: unknown): string | undefined {
+	if (!destination || typeof destination !== "object") return undefined;
+	const candidate = destination as { why?: unknown; bestFor?: unknown };
+	if (typeof candidate.why === "string") return candidate.why;
+	return typeof candidate.bestFor === "string" ? candidate.bestFor : undefined;
 }

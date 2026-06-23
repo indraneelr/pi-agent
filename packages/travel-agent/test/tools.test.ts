@@ -127,6 +127,21 @@ describe("Travel Tools", () => {
 			expect(loaded!.preferences.destination).toBe("Paris");
 		});
 
+		it("should normalize selected destination names to researched destination objects", async () => {
+			state.destinationResearch = makeMinimalResearch();
+			const tool = createUpdateStateTool(makeDeps());
+
+			await tool.execute("t5b", { field: "selected_destinations", data: ["Shibuya", "Ueno"] });
+
+			expect(state.selectedDestinations.map((destination) => destination.name)).toEqual(["Shibuya", "Ueno"]);
+			expect(state.selectedDestinations[0].description).toBe("d");
+			expect(state.selectedDestinations[1]).toMatchObject({
+				name: "Ueno",
+				type: "place",
+				description: "Ueno",
+			});
+		});
+
 		it("should reject activities_research when activity caveats do not map to stated preferences", async () => {
 			fillMandatoryPreferences();
 			state.preferences.travel_themes = ["food", "culture", "history"];
