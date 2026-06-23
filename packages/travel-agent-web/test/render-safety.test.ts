@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 import type { ValidatedImage } from "../src/api.js";
 import { canRenderMarkdownImage, getRenderableDestinationImages } from "../src/render-safety.js";
 
@@ -17,12 +17,26 @@ const validImage: ValidatedImage = {
 	validationStatus: "valid",
 };
 
+afterEach(() => {
+	import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES = "false";
+});
+
 describe("render safety", () => {
-	test("does not render raw destination imageLinks without validation evidence", () => {
+	test("can render raw destination imageLinks when strict validation toggle is off", () => {
+		const images = getRenderableDestinationImages({ imageLinks: ["https://fake.example/image.jpg"] });
+		expect(images[0]).toMatchObject({
+			finalUrl: "https://fake.example/image.jpg",
+			provider: "debug-raw-imageLinks",
+		});
+	});
+
+	test("does not render raw destination imageLinks when strict validation toggle is on", () => {
+		import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES = "true";
 		expect(getRenderableDestinationImages({ imageLinks: ["https://fake.example/image.jpg"] })).toEqual([]);
 	});
 
-	test("renders only valid image evidence", () => {
+	test("renders valid image evidence regardless of toggle", () => {
+		import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES = "true";
 		expect(getRenderableDestinationImages({ validatedImages: [validImage] })).toEqual([validImage]);
 	});
 

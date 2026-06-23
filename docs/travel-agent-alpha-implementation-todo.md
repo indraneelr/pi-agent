@@ -115,6 +115,10 @@ Tasks:
 
 Status: in progress
 
+- [x] Add feature toggle for strict validated-image-only rendering:
+  - frontend `VITE_REQUIRE_VALIDATED_IMAGES=true`
+  - agent/server `TRAVEL_AGENT_REQUIRE_VALIDATED_IMAGES=true`
+  - default is false so raw `imageLinks` can render for debugging while validated image flow is investigated
 - [x] Remove user-visible blocked-image warning from assistant Markdown rendering.
 - [x] Update final-plan prompt to forbid Markdown image syntax and point users to validated UI galleries.
 - [x] Remove broader prompt causes that told the agent to include direct image URLs/Markdown image syntax in user-facing prose.

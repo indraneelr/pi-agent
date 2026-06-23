@@ -132,9 +132,9 @@ export function validateDestinationOptionCards(options: SubDestination[], state:
 		if (typeof roughDays !== "string" || !/[0-9]/.test(roughDays.trim())) {
 			throw new Error(`Destination option "${name}" is missing a useful roughDays field.`);
 		}
-		if (!hasUsefulValidatedImages(option.validatedImages)) {
+		if (requireValidatedImages() && !hasUsefulValidatedImages(option.validatedImages)) {
 			throw new Error(
-				`Destination option "${name}" must include validatedImages returned by get_images; raw imageLinks are not enough for alpha rendering.`,
+				`Destination option "${name}" must include validatedImages returned by get_images; raw imageLinks are not enough when TRAVEL_AGENT_REQUIRE_VALIDATED_IMAGES=true.`,
 			);
 		}
 		if (!hasUsefulImageLinks(option.imageLinks)) {
@@ -152,6 +152,10 @@ export function looksLikeCopiedDescription(option: SubDestination, options: SubD
 	const own = normalizeText(option.description ?? "");
 	if (own.length < 40) return false;
 	return options.some((other) => other !== option && normalizeText(other.description ?? "") === own);
+}
+
+function requireValidatedImages(): boolean {
+	return (process.env.TRAVEL_AGENT_REQUIRE_VALIDATED_IMAGES ?? "false").toLowerCase() === "true";
 }
 
 function hasUsefulImageLinks(imageLinks: unknown): boolean {

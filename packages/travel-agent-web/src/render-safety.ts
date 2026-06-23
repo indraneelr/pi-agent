@@ -5,14 +5,20 @@ export interface DestinationImageCarrier {
 	validatedImages?: ValidatedImage[];
 }
 
+export function requireValidatedImages(): boolean {
+	return (import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES ?? "false").toLowerCase() === "true";
+}
+
 export function getRenderableDestinationImages(card: DestinationImageCarrier): ValidatedImage[] {
-	return (card.validatedImages ?? []).filter(isRenderableValidatedImage);
+	const validated = (card.validatedImages ?? []).filter(isRenderableValidatedImage);
+	if (requireValidatedImages()) return validated;
+	if (validated.length > 0) return validated;
+	return (card.imageLinks ?? []).filter(isRenderableRawImageUrl).map(toDebugImageEvidence);
 }
 
 export function canRenderMarkdownImage(_src: string | undefined): boolean {
-	// Assistant Markdown is model-generated text. Until the server can attach
-	// resource IDs/evidence to a specific Markdown image, do not render arbitrary
-	// image URLs from chat content.
+	// Assistant Markdown remains model-generated text. Even when raw destination
+	// card imageLinks are allowed for debugging, chat Markdown images stay hidden.
 	return false;
 }
 
@@ -27,4 +33,25 @@ function isRenderableValidatedImage(image: ValidatedImage): boolean {
 		image.height > 0 &&
 		(image.contentType?.toLowerCase().startsWith("image/") ?? false)
 	);
+}
+
+function isRenderableRawImageUrl(url: string): boolean {
+	return /^https?:\/\/.+\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i.test(url.trim());
+}
+
+function toDebugImageEvidence(url: string): ValidatedImage {
+	const now = new Date(0).toISOString();
+	return {
+		kind: "image",
+		url,
+		finalUrl: url,
+		provider: "debug-raw-imageLinks",
+		retrievedAt: now,
+		validatedAt: now,
+		httpStatus: 200,
+		contentType: "image/debug-unvalidated",
+		width: 1,
+		height: 1,
+		validationStatus: "valid",
+	};
 }

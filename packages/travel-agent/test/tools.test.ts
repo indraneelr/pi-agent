@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ChecklistPhaseConfig } from "../src/core/checklist.js";
 import { advanceChecklist } from "../src/core/checklist.js";
 import type { PersistenceOptions } from "../src/core/persistence.js";
@@ -53,6 +53,10 @@ describe("Travel Tools", () => {
 	beforeEach(() => {
 		state = createTravelState("tool-test", SAMPLE_CONFIG);
 		persistOpts = { dataDir: TEST_DIR };
+	});
+
+	afterEach(() => {
+		delete process.env.TRAVEL_AGENT_REQUIRE_VALIDATED_IMAGES;
 	});
 
 	describe("show_checklist", () => {
@@ -314,7 +318,8 @@ describe("Travel Tools", () => {
 			await expect(tool.execute("t6", { subDestinations: cards })).rejects.toThrow(/imageLinks/);
 		});
 
-		it("should reject destination option cards without validated image evidence", async () => {
+		it("should reject destination option cards without validated image evidence when strict toggle is on", async () => {
+			process.env.TRAVEL_AGENT_REQUIRE_VALIDATED_IMAGES = "true";
 			const tool = createSaveDestinationShortlistTool(makeDeps());
 			const cards = Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`));
 			delete (cards[2] as any).validatedImages;
