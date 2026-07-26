@@ -1,6 +1,7 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { applyInstantAction, createTravelSession, getFiller, getTravelSession, streamTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type FillerContent, type InstantActionType, type TravelState, type TravelUiBlock } from "./api.js";
+import { ConsentGate, FooterDisclaimer, HighRiskCaveat, LegalModal } from "./Legal.js";
 import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
@@ -31,6 +32,7 @@ export function App() {
 	const [narration, setNarration] = useState<string[]>([]);
 	const [streamingText, setStreamingText] = useState("");
 	const [filler, setFiller] = useState<FillerContent | null>(null);
+	const [legalOpen, setLegalOpen] = useState(false);
 
 	useEffect(() => {
 		const existingSessionId = new URLSearchParams(window.location.search).get("session");
@@ -265,6 +267,7 @@ export function App() {
 	}
 
 	return (
+		<ConsentGate onOpenLegal={() => setLegalOpen(true)}>
 		<main className="app-shell">
 				<TravelCopilotChat
 					draft={draft}
@@ -293,6 +296,8 @@ export function App() {
 					<h2>{activePhase?.label ?? "Loading"}</h2>
 					<p>{activePhase?.description ?? "Creating your planning session."}</p>
 				</div>
+
+				<HighRiskCaveat />
 
 				<PlanActions
 					state={state}
@@ -327,7 +332,10 @@ export function App() {
 					<div className="state-card">Loading checklist…</div>
 				)}
 			</aside>
+			<FooterDisclaimer onOpenLegal={() => setLegalOpen(true)} />
 		</main>
+		{legalOpen ? <LegalModal onClose={() => setLegalOpen(false)} /> : null}
+		</ConsentGate>
 	);
 }
 

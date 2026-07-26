@@ -798,3 +798,67 @@ pre {
 		min-height: 40px; /* comfortable tap target on phones */
 	}
 }
+
+/* M5 legal surface (ADR 0005) */
+.legal-footer {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.5rem;
+	font-size: 0.75rem;
+	opacity: 0.7;
+	border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.legal-link {
+	background: none;
+	border: none;
+	padding: 0;
+	text-decoration: underline;
+	cursor: pointer;
+	font: inherit;
+	color: inherit;
+}
+.high-risk-caveat {
+	font-size: 0.78rem;
+	line-height: 1.35;
+	padding: 0.5rem 0.65rem;
+	margin: 0.5rem 0;
+	border-radius: 0.5rem;
+	background: rgba(180, 83, 9, 0.08);
+	border: 1px solid rgba(180, 83, 9, 0.2);
+}
+.consent-backdrop,
+.legal-modal-backdrop {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 1rem;
+	z-index: 1000;
+}
+.consent-card,
+.legal-modal {
+	background: var(--surface, #fff);
+	color: var(--text, #111);
+	max-width: 640px;
+	width: 100%;
+	max-height: 85vh;
+	overflow-y: auto;
+	border-radius: 0.75rem;
+	padding: 1.5rem;
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+.consent-accept {
+	margin-top: 0.5rem;
+	padding: 0.6rem 1rem;
+	border-radius: 0.5rem;
+}
+.legal-modal-close {
+	float: right;
+}
+.legal-modal h3 {
+	margin-top: 1.1rem;
+}
