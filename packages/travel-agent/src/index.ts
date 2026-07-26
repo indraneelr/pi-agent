@@ -35,6 +35,14 @@ export {
 	type TravelChecklist,
 } from "./core/checklist.js";
 export {
+	AllProvidersFailedError,
+	type FailoverCandidate,
+	type FailoverEvent,
+	type FailoverOptions,
+	type FailoverReason,
+	runWithFailover,
+} from "./core/failover.js";
+export {
 	createSearxngImageSearchProvider,
 	parseSearxngCandidates,
 	type SearxngImageSearchOptions,
@@ -90,8 +98,15 @@ export {
 	type TravelSession,
 } from "./core/sdk.js";
 export { createBraveSearchProvider } from "./core/search/brave.js";
+export { createFailoverSearchProvider, type FailoverSearchOptions } from "./core/search/failover.js";
 export { createGoogleGeminiSearchProvider } from "./core/search/google-gemini.js";
-export { type DetectSearchProviderOptions, detectSearchProvider } from "./core/search/index.js";
+export {
+	type BuildWebSearchProviderOptions,
+	buildWebSearchProvider,
+	type DetectSearchProviderOptions,
+	detectSearchProvider,
+	isGeminiProvider,
+} from "./core/search/index.js";
 export { createLinkupSearchProvider } from "./core/search/linkup.js";
 export { createObscuraSearchProvider } from "./core/search/obscura.js";
 export {

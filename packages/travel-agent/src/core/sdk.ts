@@ -40,6 +40,8 @@ export interface CreateTravelSessionOptions {
 	thinkingLevel?: ThinkingLevel;
 	/** API key for the model provider. */
 	apiKey?: string;
+	/** Per-provider image-search failover timeout (ADR 0002). */
+	imageTimeoutMs?: number;
 	/** Session ID for persistence. */
 	sessionId: string;
 	/** Search provider (auto-detected from env if not provided). */
@@ -117,6 +119,7 @@ export async function createTravelSession(options: CreateTravelSessionOptions): 
 		persistOpts,
 		model: options.model,
 		getApiKey: options.apiKey ? () => options.apiKey as string : undefined,
+		imageTimeoutMs: options.imageTimeoutMs,
 		cleanImageLinks: (cards) => cleanDestinationImageLinks(cards, { refetch: true }),
 	});
 

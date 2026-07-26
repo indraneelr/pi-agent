@@ -33,6 +33,9 @@ const getImagesSchema = Type.Object({
 
 type GetImagesInput = Static<typeof getImagesSchema>;
 
+/** Default per-provider image-search timeout; a slow provider yields to the next (ADR 0002). */
+const DEFAULT_IMAGE_TIMEOUT_MS = 15_000;
+
 export interface GetImagesDetails {
 	query: string;
 	provider: ImageSearchProviderName | "none";
@@ -51,6 +54,8 @@ export interface GetImagesDeps {
 	searxng?: ImageSearchProvider | null;
 	stagehand?: ImageSearchProvider | null;
 	stagehandOptions?: StagehandImageSearchOptions;
+	/** Per-provider timeout before failing over to the next provider. Default 15s. */
+	imageTimeoutMs?: number;
 }
 
 export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getImagesSchema, GetImagesDetails> {
@@ -75,11 +80,16 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 			const providerPreference = params.provider ?? "auto";
 
 			const providers = resolveProviders(deps, providerPreference);
+			const timeoutMs = deps.imageTimeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS;
 			let lastRejected = 0;
 			const providerErrors: string[] = [];
 			for (const provider of providers) {
 				try {
-					const result = await provider.searchImages({ query: params.query, count, minHeight, maxHeight, signal });
+					const result = await searchImagesWithTimeout(
+						provider,
+						{ query: params.query, count, minHeight, maxHeight, signal },
+						timeoutMs,
+					);
 					lastRejected += result.rejectedCount;
 					if (result.images.length === 0 && providerPreference === "auto") continue;
 					const updatedDestination = params.destination_name
@@ -104,6 +114,40 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 			return formatResult(params.query, "none", minHeight, maxHeight, [], lastRejected, undefined, providerErrors);
 		},
 	};
+}
+
+/**
+ * Race an image search against a timeout, aborting the slow attempt so the
+ * caller's failover loop moves on (ADR 0002). A timeout surfaces as a thrown
+ * error, which the loop treats like any provider failure.
+ */
+async function searchImagesWithTimeout(
+	provider: ImageSearchProvider,
+	query: Parameters<ImageSearchProvider["searchImages"]>[0],
+	timeoutMs: number,
+) {
+	if (!timeoutMs || timeoutMs <= 0) return provider.searchImages(query);
+	const controller = new AbortController();
+	const onAbort = () => controller.abort();
+	query.signal?.addEventListener("abort", onAbort, { once: true });
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const attempt = provider.searchImages({ ...query, signal: controller.signal });
+	// Swallow a post-timeout rejection (from the abort) to avoid unhandled rejections.
+	void attempt.catch(() => {});
+	try {
+		return await Promise.race([
+			attempt,
+			new Promise<never>((_resolve, reject) => {
+				timer = setTimeout(() => {
+					controller.abort();
+					reject(new Error(`timeout after ${timeoutMs}ms`));
+				}, timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+		query.signal?.removeEventListener("abort", onAbort);
+	}
 }
 
 function resolveProviders(deps: GetImagesDeps, preference: "auto" | ImageSearchProviderName): ImageSearchProvider[] {

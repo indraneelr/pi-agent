@@ -22,6 +22,10 @@ export interface ServerConfig {
 	apiKey: string | undefined;
 	/** Max time to wait for one agent message before returning a timeout. */
 	messageTimeoutMs: number;
+	/** Per-provider web-search failover timeout (ADR 0002). */
+	searchTimeoutMs: number;
+	/** Per-provider image-search failover timeout (ADR 0002). */
+	imageTimeoutMs: number;
 	/** Require authenticated Google/user sessions for travel APIs. */
 	authRequired: boolean;
 	/** HMAC secret for auth session cookies. */
@@ -87,6 +91,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		modelId: env.TRAVEL_AGENT_MODEL ?? "kimi-k2.6",
 		apiKey: env.OLLAMA_API_KEY,
 		messageTimeoutMs: Number(env.TRAVEL_AGENT_MESSAGE_TIMEOUT_MS ?? "360000"),
+		searchTimeoutMs: Number(env.SEARCH_TIMEOUT_MS ?? "12000"),
+		imageTimeoutMs: Number(env.IMAGE_TIMEOUT_MS ?? "15000"),
 		authRequired: defaultAuthRequired(env),
 		authSessionSecret: env.AUTH_SESSION_SECRET ?? "dev-auth-session-secret-change-me",
 		cookieSecure: parseBoolean(env.AUTH_COOKIE_SECURE) ?? defaultAuthRequired(env),

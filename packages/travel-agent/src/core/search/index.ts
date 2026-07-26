@@ -3,6 +3,7 @@
  */
 
 export { createBraveSearchProvider } from "./brave.js";
+export { createFailoverSearchProvider, type FailoverSearchOptions } from "./failover.js";
 export { createGoogleGeminiSearchProvider } from "./google-gemini.js";
 export { createLinkupSearchProvider } from "./linkup.js";
 export { createObscuraSearchProvider } from "./obscura.js";
@@ -16,7 +17,9 @@ export {
 } from "./stagehand.js";
 export type { SearchProvider, SearchResult } from "./types.js";
 
+import type { FailoverEvent } from "../failover.js";
 import { createBraveSearchProvider } from "./brave.js";
+import { createFailoverSearchProvider } from "./failover.js";
 import { createGoogleGeminiSearchProvider } from "./google-gemini.js";
 import { createLinkupSearchProvider } from "./linkup.js";
 import { createObscuraSearchProvider } from "./obscura.js";
@@ -61,4 +64,48 @@ export function detectSearchProvider(opts: DetectSearchProviderOptions = {}): Se
 		return createObscuraSearchProvider();
 	}
 	return null;
+}
+
+/** True for pi-ai provider ids that expose a Gemini/Google-Search-grounding key. */
+export function isGeminiProvider(provider: string | undefined): boolean {
+	const p = provider?.trim().toLowerCase();
+	return p === "google" || p === "gemini" || p === "google-generative-ai";
+}
+
+export interface BuildWebSearchProviderOptions extends DetectSearchProviderOptions {
+	/**
+	 * Gemini key used for the primary Google-Search-grounding provider. Under
+	 * BYOK-Gemini this is the user's own session key, so grounding is billed to
+	 * them and rate-limited per user (ADR 0002 / spec M1).
+	 */
+	geminiApiKey?: string;
+	/** Per-provider failover timeout in ms. */
+	timeoutMs?: number;
+	/** Failover telemetry callback. */
+	onFailover?: (event: FailoverEvent) => void;
+}
+
+/**
+ * Build the web-search capability as a failover provider:
+ * primary = Gemini grounding (user's key) when a Gemini key is available;
+ * fallback = whatever `detectSearchProvider` resolves (Stagehand by default).
+ *
+ * Returns null only when neither a Gemini key nor any detected provider exists.
+ */
+export function buildWebSearchProvider(opts: BuildWebSearchProviderOptions = {}): SearchProvider | null {
+	const providers: SearchProvider[] = [];
+
+	const geminiKey = opts.geminiApiKey ?? process.env.GEMINI_API_KEY;
+	if (geminiKey) {
+		providers.push(createGoogleGeminiSearchProvider(geminiKey));
+	}
+
+	const detected = detectSearchProvider({ stagehandFallbackApiKey: opts.stagehandFallbackApiKey });
+	// Avoid listing Gemini twice if detection also resolved to it.
+	if (detected && !(providers.length > 0 && detected.name === "google-gemini")) {
+		providers.push(detected);
+	}
+
+	if (providers.length === 0) return null;
+	return createFailoverSearchProvider(providers, { timeoutMs: opts.timeoutMs, onFailover: opts.onFailover });
 }

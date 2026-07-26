@@ -43,6 +43,8 @@ export interface CreateTravelToolsOptions {
 	persistOpts: PersistenceOptions;
 	model: Model<any>;
 	getApiKey?: () => string;
+	/** Per-provider image-search failover timeout (ADR 0002). */
+	imageTimeoutMs?: number;
 	/** Optional: validate + clean destination image links (in place). Undefined = no-op. */
 	cleanImageLinks?: (
 		cards: Array<{ name?: string; imageQuery?: string; imageLinks?: string[] }>,
@@ -51,12 +53,13 @@ export interface CreateTravelToolsOptions {
 
 /** Create all travel agent tools. */
 export function createTravelTools(options: CreateTravelToolsOptions): AgentTool<any>[] {
-	const { getState, setState, searchProvider, persistOpts, model, getApiKey, cleanImageLinks } = options;
+	const { getState, setState, searchProvider, persistOpts, model, getApiKey, imageTimeoutMs, cleanImageLinks } =
+		options;
 	const stateDeps = { getState, setState, persistOpts, cleanImageLinks };
 
 	return [
 		createWebSearchTool(searchProvider, { getState }),
-		createGetImagesTool(stateDeps),
+		createGetImagesTool({ ...stateDeps, imageTimeoutMs }),
 		createUpdateStateTool(stateDeps),
 		createSaveDestinationShortlistTool(stateDeps),
 		createAdvanceChecklistTool(stateDeps),
