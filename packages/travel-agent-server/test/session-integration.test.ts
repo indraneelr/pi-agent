@@ -6,7 +6,7 @@ import { createTravelState, type TravelSession, type TravelState } from "@marioz
 import { describe, expect, it } from "vitest";
 import { loadConfig, type ServerConfig } from "../src/config.js";
 import type { TravelStreamEvent } from "../src/events.js";
-import { SessionBusyError, TravelSessionManager } from "../src/session-manager.js";
+import { SessionBusyError, SessionForbiddenError, TravelSessionManager } from "../src/session-manager.js";
 
 const CHECKLIST = [{ id: "gather_preferences", label: "Prefs", description: "" }];
 
@@ -176,5 +176,25 @@ describe("applyAction (integration, fake session)", () => {
 		).rejects.toBeInstanceOf(SessionBusyError);
 		release();
 		await running;
+	});
+});
+
+describe("session durability (M7 capacity gate)", () => {
+	it("rehydrates a persisted session in a fresh manager, preserving owner isolation", async () => {
+		const config = loadConfig({
+			TRAVEL_AGENT_DATA_DIR: mkdtempSync(join(tmpdir(), "travel-rehydrate-")),
+			AUTH_REQUIRED: "false",
+		});
+		// First process: create + persist a session owned by user-a.
+		const created = await new TravelSessionManager(config).createSession("user-a");
+
+		// Simulated restart: a brand-new manager with empty in-memory maps.
+		const restarted = new TravelSessionManager(config);
+		const loaded = await restarted.getSession(created.sessionId, "user-a");
+		expect(loaded.sessionId).toBe(created.sessionId);
+		expect(loaded.state.sessionId).toBe(created.sessionId);
+
+		// Ownership survives the restart: another user cannot read it.
+		await expect(restarted.getSession(created.sessionId, "user-b")).rejects.toBeInstanceOf(SessionForbiddenError);
 	});
 });

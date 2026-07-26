@@ -325,7 +325,9 @@ export class TravelSessionManager {
 		};
 
 		record.status = "busy";
+		const runId = randomUUID();
 		const startedAt = Date.now();
+		this.logger.info({ sessionId, runId, userId }, "Travel stream run started");
 		const mapper = new AgentEventMapper();
 		let unsubscribe: (() => void) | undefined;
 		const onAbort = () => this.activeSessions.get(sessionId)?.agent.abort();
@@ -348,8 +350,9 @@ export class TravelSessionManager {
 			saveTravelState(record.state, { dataDir: this.config.dataDir });
 			safeEmit(stateSnapshotEvent(record.state));
 			safeEmit({ type: "run_finished", assistantMessage: extractAssistantText(active.agent.state.messages) });
+			this.logger.info({ sessionId, runId, durationMs: Date.now() - startedAt }, "Travel stream run finished");
 		} catch (e) {
-			this.logger.error({ err: e, sessionId, durationMs: Date.now() - startedAt }, "Travel stream failed");
+			this.logger.error({ err: e, sessionId, runId, durationMs: Date.now() - startedAt }, "Travel stream failed");
 			safeEmit({ type: "run_error", message: safeStreamErrorMessage(e) });
 		} finally {
 			signal?.removeEventListener("abort", onAbort);
