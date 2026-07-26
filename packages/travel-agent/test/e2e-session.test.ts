@@ -8,7 +8,7 @@
 import { readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { fauxAssistantMessage, fauxText, fauxToolCall, registerFauxProvider } from "@mariozechner/pi-ai";
+import { fauxAssistantMessage, fauxText, fauxToolCall, registerFauxProvider } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTravelSession, type TravelSession } from "../src/core/sdk.js";
 import type { SearchProvider, SearchResult } from "../src/core/search/types.js";

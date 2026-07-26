@@ -4,7 +4,7 @@
  * Wraps the pluggable SearchProvider interface.
  */
 
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
 import { getActivePhase } from "../checklist.js";
 import type { SearchProvider, SearchResult } from "../search/types.js";

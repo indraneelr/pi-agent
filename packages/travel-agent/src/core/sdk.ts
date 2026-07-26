@@ -15,9 +15,9 @@ import {
 	JsonlSessionRepo,
 	type Session,
 	type ThinkingLevel,
-} from "@mariozechner/pi-agent-core";
-import { NodeExecutionEnv } from "@mariozechner/pi-agent-core/node";
-import type { ImageContent, Model, TextContent } from "@mariozechner/pi-ai";
+} from "@earendil-works/pi-agent-core";
+import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
+import type { ImageContent, Model, TextContent } from "@earendil-works/pi-ai";
 import { loadChecklistConfig } from "./checklist.js";
 import { cleanDestinationImageLinks } from "./image-validation.js";
 import { loadTravelState, type PersistenceOptions, saveTravelState } from "./persistence.js";

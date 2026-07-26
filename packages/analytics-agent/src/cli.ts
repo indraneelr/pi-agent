@@ -13,7 +13,7 @@
 import { appendFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getEnvApiKey, getModel } from "@mariozechner/pi-ai";
+import { getEnvApiKey, getModel } from "@earendil-works/pi-ai";
 import { createAnalyticsSession } from "./core/sdk.js";
 import { InteractiveMode } from "./modes/interactive.js";
 

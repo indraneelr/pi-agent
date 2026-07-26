@@ -2,7 +2,7 @@
  * show_checklist tool — Read-only view of current checklist progress.
  */
 
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { Type } from "@sinclair/typebox";
 import { formatChecklist, type TravelChecklist } from "../checklist.js";
 

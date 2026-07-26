@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getEnvApiKey, getModel } from "@mariozechner/pi-ai";
+import { getEnvApiKey, getModel } from "@earendil-works/pi-ai";
 import { createTravelSession } from "./src/core/sdk.js";
 import { detectSearchProvider } from "./src/core/search/index.js";
 import { appendFileSync } from "node:fs";

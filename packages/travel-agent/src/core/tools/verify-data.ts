@@ -1,5 +1,5 @@
-import { Agent, type AgentMessage, type AgentTool, type AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { Message, Model } from "@mariozechner/pi-ai";
+import { Agent, type AgentMessage, type AgentTool, type AgentToolResult } from "@earendil-works/pi-agent-core";
+import type { Message, Model } from "@earendil-works/pi-ai";
 import { type Static, Type } from "@sinclair/typebox";
 import type { SearchProvider } from "../search/types.js";
 import { createWebSearchTool } from "./web-search.js";

@@ -17,9 +17,9 @@
 		"travel-agent-server": "dist/index.js"
 	},
 	"dependencies": {
-		"@mariozechner/pi-agent-core": "*",
+		"@earendil-works/pi-agent-core": "*",
 		"@mariozechner/pi-travel-agent": "*",
-		"@mariozechner/pi-ai": "*",
+		"@earendil-works/pi-ai": "*",
 		"fastify": "^5.6.1",
 		"@fastify/cors": "^11.1.0"
 	},

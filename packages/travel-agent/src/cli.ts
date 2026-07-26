@@ -11,7 +11,7 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { getModel } from "@mariozechner/pi-ai";
+import { getModel } from "@earendil-works/pi-ai";
 import { createTravelSession } from "./core/sdk.js";
 import { detectSearchProvider } from "./core/search/index.js";
 import { InteractiveMode } from "./modes/interactive.js";

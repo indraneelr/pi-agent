@@ -37,23 +37,19 @@ Server:
 - `USE_STAGEHAND=0` optional; disable the slow agentic-browser search so Gemini grounding is primary
 - `CORS_ORIGINS=<web origin>`
 
-## Build reproducibility — RELEASE BLOCKER
+## Build reproducibility — RESOLVED
 
-The published `@mariozechner/pi-agent-core`, `@mariozechner/pi-ai`, and
-`@mariozechner/pi-tui` tarballs currently ship **without a `dist/` folder** and
-have **no install-time build step**. A clean `npm install` on CI/Railway therefore
-produces packages with no compiled output, and the server/web build fails. This
-was worked around locally by building those packages in place; that does **not**
-reproduce on a fresh checkout.
+Previously the travel/analytics POC packages depended on the **registry**
+`@mariozechner/pi-{agent-core,ai,tui}` packages, whose published tarballs ship no
+`dist/`, breaking clean CI/Railway installs. Fixed by **repointing those deps and
+imports to the in-repo `@earendil-works/pi-*` workspace packages** (the same
+framework at the same version, renamed). They now resolve to `packages/agent`,
+`packages/ai`, and `packages/tui` via workspace symlinks and build with the
+monorepo — no registry dependency, no missing `dist`.
 
-Before any Railway deploy, do one of:
-
-1. Publish those packages with their `dist/` included (fix their `files`/build), or
-2. Vendor them as workspace packages in this monorepo, or
-3. Add a `postinstall` that builds them (`tsgo -p tsconfig.build.json`, with a
-   `tsconfig.base.json` resolvable at `node_modules/tsconfig.base.json`).
-
-Until this is resolved, staging deploys are blocked.
+Build order for a clean deploy: build the framework (`packages/tui`, `packages/ai`,
+`packages/agent`) and `packages/travel-agent` before `travel-agent-server` /
+`travel-agent-web`.
 
 Dev/debug override:
 
@@ -123,7 +119,7 @@ Alpha minimum:
 
 Before launch, in addition to the blockers below:
 
-- **Build reproducibility** resolved (see the release-blocker section above).
+- **Build reproducibility** resolved — POC packages depend on the in-repo `@earendil-works/pi-*` framework (see section above).
 - Deterministic + integration tests green (`npm test` in each package; offline, no keys).
 - Golden-path smoke green (`npm run smoke:alpha` in `packages/travel-agent`).
 - Manual dogfood of the Greece/Japan/Portugal matrix, mobile included.
@@ -135,7 +131,6 @@ Before launch, in addition to the blockers below:
 
 Do not launch alpha if any are true:
 
-- Build reproducibility is unresolved (pi-* packages ship no `dist`)
 - `/ready` returns non-200
 - Google sign-in fails in staging
 - credential API returns plaintext key material

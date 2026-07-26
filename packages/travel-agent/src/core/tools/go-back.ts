@@ -5,7 +5,7 @@
  * The agent should use this when the user wants to revisit an earlier step.
  */
 
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
 import { formatChecklist, goBackToPhase } from "../checklist.js";
 import type { PersistenceOptions } from "../persistence.js";

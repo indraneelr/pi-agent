@@ -22,8 +22,8 @@ export { createUpdateStateTool, type UpdateStateDeps, type UpdateStateDetails } 
 export { createVerifyDataTool } from "./verify-data.js";
 export { createWebSearchTool, type WebSearchDetails } from "./web-search.js";
 
-import type { AgentTool } from "@mariozechner/pi-agent-core";
-import type { Model } from "@mariozechner/pi-ai";
+import type { AgentTool } from "@earendil-works/pi-agent-core";
+import type { Model } from "@earendil-works/pi-ai";
 import type { PersistenceOptions } from "../persistence.js";
 import type { SearchProvider } from "../search/types.js";
 import type { TravelState } from "../state.js";

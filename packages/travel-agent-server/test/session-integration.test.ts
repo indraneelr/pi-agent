@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { AgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
+import type { AgentEvent, AgentMessage } from "@earendil-works/pi-agent-core";
 import { createTravelState, type TravelSession, type TravelState } from "@mariozechner/pi-travel-agent";
 import { describe, expect, it } from "vitest";
 import { loadConfig, type ServerConfig } from "../src/config.js";

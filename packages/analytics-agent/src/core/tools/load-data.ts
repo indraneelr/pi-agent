@@ -6,7 +6,7 @@
  * Stores the DataFrame in the Python runtime registry under `name`.
  */
 
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
 import type { PythonRuntime } from "../python-runtime.js";
 

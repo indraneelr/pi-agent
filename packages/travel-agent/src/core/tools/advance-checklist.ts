@@ -5,7 +5,7 @@
  * For gather_preferences, checks all mandatory preferences are filled.
  */
 
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { Type } from "@sinclair/typebox";
 import { advanceChecklist, formatChecklist, getActivePhase, getMandatoryPendingPreferences } from "../checklist.js";
 import type { PersistenceOptions } from "../persistence.js";

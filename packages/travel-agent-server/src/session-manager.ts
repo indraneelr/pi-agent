@@ -9,9 +9,9 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
-import type { KnownProvider, Model, TextContent } from "@mariozechner/pi-ai";
-import { getModels } from "@mariozechner/pi-ai";
+import type { AgentMessage } from "@earendil-works/pi-agent-core";
+import type { KnownProvider, Model, TextContent } from "@earendil-works/pi-ai";
+import { getModels } from "@earendil-works/pi-ai";
 import {
 	applyInstantAction,
 	buildWebSearchProvider,

@@ -5,7 +5,7 @@
  * Supports page-range selection for PDFs (e.g., "1-5", "3", "1,3,5").
  */
 
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
 import type { PythonRuntime } from "../python-runtime.js";
 

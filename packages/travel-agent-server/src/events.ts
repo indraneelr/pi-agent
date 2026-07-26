@@ -7,8 +7,8 @@
  * AG-UI / CopilotKit.
  */
 
-import type { AgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
-import type { TextContent } from "@mariozechner/pi-ai";
+import type { AgentEvent, AgentMessage } from "@earendil-works/pi-agent-core";
+import type { TextContent } from "@earendil-works/pi-ai";
 import type { TravelState } from "@mariozechner/pi-travel-agent";
 import { composeTravelUiBlocks, type TravelUiBlock } from "./ui-blocks.js";
 

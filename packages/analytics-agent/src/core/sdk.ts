@@ -8,8 +8,8 @@
 import { appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Agent, type AgentMessage, type ThinkingLevel } from "@mariozechner/pi-agent-core";
-import type { Message, Model } from "@mariozechner/pi-ai";
+import { Agent, type AgentMessage, type ThinkingLevel } from "@earendil-works/pi-agent-core";
+import type { Message, Model } from "@earendil-works/pi-ai";
 import { PythonRuntime, type PythonRuntimeOptions } from "./python-runtime.js";
 import { type AnalyticsSystemPromptOptions, buildAnalyticsSystemPrompt } from "./system-prompt.js";
 import { createAnalyticsTools } from "./tools/index.js";
@@ -58,7 +58,7 @@ export interface AnalyticsSession {
  * @example
  * ```typescript
  * import { createAnalyticsSession } from "@mariozechner/pi-analytics-agent";
- * import { getModel } from "@mariozechner/pi-ai";
+ * import { getModel } from "@earendil-works/pi-ai";
  *
  * const session = await createAnalyticsSession({
  *   model: getModel("anthropic", "claude-sonnet-4-20250514"),

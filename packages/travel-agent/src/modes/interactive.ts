@@ -9,8 +9,8 @@
  */
 
 import { appendFileSync } from "node:fs";
-import type { AgentEvent, AgentMessage } from "@mariozechner/pi-agent-core";
-import type { AssistantMessage, AssistantMessageEvent } from "@mariozechner/pi-ai";
+import type { AgentEvent, AgentMessage } from "@earendil-works/pi-agent-core";
+import type { AssistantMessage, AssistantMessageEvent } from "@earendil-works/pi-ai";
 import {
 	Container,
 	Editor,
@@ -22,7 +22,7 @@ import {
 	Spacer,
 	Text,
 	TUI,
-} from "@mariozechner/pi-tui";
+} from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { formatChecklist } from "../core/checklist.js";
 import type { TravelSession } from "../core/sdk.js";

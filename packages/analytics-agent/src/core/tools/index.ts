@@ -10,6 +10,7 @@ export { createLoadDataTool, type LoadDataDetails, type LoadDataInput } from "./
 export { createQueryDataTool, type QueryDataDetails, type QueryDataInput } from "./query-data.js";
 export { createReadDocumentTool, type ReadDocumentDetails, type ReadDocumentInput } from "./read-document.js";
 
+import type { AgentTool } from "@earendil-works/pi-agent-core";
 import {
 	createBashTool,
 	createEditTool,
@@ -19,7 +20,6 @@ import {
 	createReadTool,
 	createWriteTool,
 } from "@earendil-works/pi-coding-agent";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
 import type { PythonRuntime } from "../python-runtime.js";
 import { createDescribeDataTool } from "./describe-data.js";
 import { createLoadDataTool } from "./load-data.js";
