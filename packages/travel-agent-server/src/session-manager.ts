@@ -147,6 +147,8 @@ export class TravelSessionManager {
 		private readonly config: ServerConfig,
 		private readonly logger: SessionLogger = noopLogger,
 		private readonly credentialStore?: CredentialStore,
+		/** Test seam: build a session without the real LLM/search stack (M6). */
+		private readonly sessionFactory?: (sessionId: string, userId: string) => Promise<TravelSession>,
 	) {}
 
 	/**
@@ -457,6 +459,7 @@ export class TravelSessionManager {
 	}
 
 	private async buildSession(sessionId: string, userId: string): Promise<TravelSession> {
+		if (this.sessionFactory) return this.sessionFactory(sessionId, userId);
 		const apiKey = this.resolveApiKey(userId);
 		if (!apiKey) {
 			throw new SessionConfigurationError(formatMissingApiKeyMessage(this.config.provider));
