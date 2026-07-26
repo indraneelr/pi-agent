@@ -21,6 +21,8 @@ import {
 } from "./auth.js";
 import { loadConfig, type ServerConfig } from "./config.js";
 import { CredentialNotFoundError, CredentialStore } from "./credentials.js";
+import type { TravelStreamEvent } from "./events.js";
+import { getFillerContent } from "./filler.js";
 import {
 	SessionBusyError,
 	SessionConfigurationError,
@@ -275,7 +277,82 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		}
 	});
 
+	app.get("/api/travel/sessions/:sessionId/filler", async (request, reply) => {
+		const { sessionId } = request.params as { sessionId: string };
+		const { destination } = request.query as { destination?: string };
+		const user = getRequestUser(request, config);
+		try {
+			// Validate ownership so filler is scoped like the rest of the session API.
+			await sessionManager.getSession(sessionId, user?.id);
+			return reply.send(getFillerContent(destination));
+		} catch (e) {
+			if (e instanceof SessionNotFoundError) return reply.status(404).send({ error: e.message });
+			if (e instanceof SessionForbiddenError) return reply.status(403).send({ error: e.message });
+			app.log.error(e);
+			return reply.status(500).send({ error: "Internal server error" });
+		}
+	});
+
+	app.post("/api/travel/sessions/:sessionId/messages/stream", async (request, reply) => {
+		const { sessionId } = request.params as { sessionId: string };
+		const body = request.body as { message?: string } | null;
+		if (!body?.message || body.message.trim().length === 0) {
+			return reply.status(400).send({ error: "Message must not be empty" });
+		}
+		const user = getRequestUser(request, config);
+
+		// Validate existence/ownership/busy BEFORE hijacking so these map to real
+		// HTTP statuses; once the SSE stream is open we can only signal via events.
+		try {
+			const pre = await sessionManager.getSession(sessionId, user?.id);
+			if (pre.status === "busy") return reply.status(409).send({ error: `Session is busy: ${sessionId}` });
+		} catch (e) {
+			if (e instanceof SessionNotFoundError) return reply.status(404).send({ error: e.message });
+			if (e instanceof SessionForbiddenError) return reply.status(403).send({ error: e.message });
+			app.log.error(e);
+			return reply.status(500).send({ error: "Internal server error" });
+		}
+
+		reply.raw.writeHead(200, {
+			"Content-Type": "text/event-stream",
+			"Cache-Control": "no-cache, no-transform",
+			Connection: "keep-alive",
+			// Disable proxy buffering so events flush immediately.
+			"X-Accel-Buffering": "no",
+			...corsHeadersForRaw(request.headers.origin, config),
+		});
+		reply.hijack();
+
+		const write = (event: TravelStreamEvent) => {
+			if (!reply.raw.writableEnded) reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+		};
+		const abort = new AbortController();
+		request.raw.on("close", () => abort.abort());
+
+		try {
+			await sessionManager.streamMessage(sessionId, body.message, user?.id, write, abort.signal);
+		} catch (e) {
+			// Pre-stream failures (e.g. a race into busy) surface as a stream event.
+			app.log.error({ err: e, sessionId }, "Travel stream endpoint error");
+			write({ type: "run_error", message: e instanceof SessionBusyError ? e.message : "Stream failed." });
+		} finally {
+			if (!reply.raw.writableEnded) reply.raw.end();
+		}
+	});
+
 	return app;
+}
+
+/** CORS headers for a hijacked (raw) SSE response, mirroring the cors plugin. */
+function corsHeadersForRaw(origin: string | undefined, config: ServerConfig): Record<string, string> {
+	if (!origin) return {};
+	const allowed = config.corsOrigins.includes("*") || config.corsOrigins.includes(origin);
+	if (!allowed) return {};
+	return {
+		"Access-Control-Allow-Origin": origin,
+		"Access-Control-Allow-Credentials": "true",
+		Vary: "Origin",
+	};
 }
 
 function consumeRateLimit(

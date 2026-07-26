@@ -1,6 +1,7 @@
 import { Markdown } from "@copilotkit/react-ui";
 import type { FormEvent, ReactNode } from "react";
 import { useMemo, useState } from "react";
+import type { FillerContent } from "./api.js";
 
 export interface ChatMessage {
 	role: "user" | "assistant";
@@ -18,6 +19,12 @@ interface TravelCopilotChatProps {
 	onRetry?: () => void;
 	error: string | null;
 	progressMessage: string | null;
+	/** Live tool-narration lines for the in-flight run (ADR 0003). */
+	narration: string[];
+	/** Assistant text streamed so far for the in-flight run. */
+	streamingText: string;
+	/** Static wait-filler content to keep the user engaged during the wait. */
+	filler: FillerContent | null;
 	sessionReady: boolean;
 	runStatus: RunStatus;
 }
@@ -31,6 +38,9 @@ export function TravelCopilotChat({
 	onRetry,
 	error,
 	progressMessage,
+	narration,
+	streamingText,
+	filler,
 	sessionReady,
 	runStatus,
 }: TravelCopilotChatProps) {
@@ -62,7 +72,7 @@ export function TravelCopilotChat({
 			) : null}
 
 			<div className="messages copilot-messages" aria-live="polite">
-				{messages.length === 0 ? (
+				{messages.length === 0 && runStatus !== "sending" ? (
 					<div className="empty-state copilot-empty-state">
 						<h2>Where are we going?</h2>
 						<p>
@@ -78,12 +88,7 @@ export function TravelCopilotChat({
 							</article>
 						))}
 						{runStatus === "sending" ? (
-							<article className="message assistant pending copilot-message">
-								<strong>Travel agent</strong>
-								<p>
-									<span className="typing-dot" /> Working on your request…
-								</p>
-							</article>
+							<RunProgress narration={narration} streamingText={streamingText} filler={filler} />
 						) : null}
 					</>
 				)}
@@ -102,6 +107,51 @@ export function TravelCopilotChat({
 				</button>
 			</form>
 		</section>
+	);
+}
+
+/**
+ * Live progress for an in-flight run: streamed assistant text plus a running
+ * list of tool-narration lines. This is the anti-"is it stuck?" surface — the
+ * user always sees motion during the long tool-heavy middle (ADR 0003).
+ */
+function RunProgress({ narration, streamingText, filler }: { narration: string[]; streamingText: string; filler: FillerContent | null }) {
+	return (
+		<article className="message assistant pending copilot-message">
+			<strong>Travel agent</strong>
+			{streamingText ? <CopilotMarkdown content={streamingText} /> : null}
+			{narration.length > 0 ? (
+				<ul className="narration-list" aria-live="polite" aria-label="Progress">
+					{narration.map((line, index) => {
+						const isLast = index === narration.length - 1;
+						return (
+							<li className={isLast ? "narration-step active" : "narration-step done"} key={`${index}-${line}`}>
+								{isLast ? (
+									<span className="spinner" aria-hidden="true" />
+								) : (
+									<span className="narration-check" aria-hidden="true">✓</span>
+								)}
+								<span>{line}</span>
+							</li>
+						);
+					})}
+				</ul>
+			) : streamingText ? null : (
+				<p>
+					<span className="typing-dot" /> Working on your request…
+				</p>
+			)}
+			{filler && filler.tips.length > 0 ? (
+				<aside className="wait-filler">
+					<p className="wait-filler-headline">{filler.headline}</p>
+					<ul className="wait-filler-tips">
+						{filler.tips.slice(0, 3).map((tip) => (
+							<li key={tip}>{tip}</li>
+						))}
+					</ul>
+				</aside>
+			) : null}
+		</article>
 	);
 }
 

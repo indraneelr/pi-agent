@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { createTravelSession, getTravelSession, sendTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type TravelState, type TravelUiBlock } from "./api.js";
+import { createTravelSession, getFiller, getTravelSession, streamTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type FillerContent, type TravelState, type TravelUiBlock } from "./api.js";
 import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
@@ -27,6 +27,10 @@ export function App() {
 	const [activeResearchTab, setActiveResearchTab] = useState<ResearchTab>("overview");
 	const [selectedDestinationNames, setSelectedDestinationNames] = useState<Set<string>>(new Set());
 	const [selectedActivityNames, setSelectedActivityNames] = useState<Set<string>>(new Set());
+	// Live-run responsiveness (ADR 0003): tool narration + streaming assistant text.
+	const [narration, setNarration] = useState<string[]>([]);
+	const [streamingText, setStreamingText] = useState("");
+	const [filler, setFiller] = useState<FillerContent | null>(null);
 
 	useEffect(() => {
 		const existingSessionId = new URLSearchParams(window.location.search).get("session");
@@ -77,11 +81,9 @@ export function App() {
 		if (!state) return null;
 		return state.checklist.phases[state.checklist.activePhaseIndex] ?? null;
 	}, [state]);
-	const progressMessage = runStatus === "starting"
-		? "Creating your travel planning session…"
-		: runStatus === "sending"
-			? "Message received. The agent is working — gathering requirements, researching options, and updating your plan."
-			: null;
+	// While sending, live narration replaces a static banner; keep the banner only
+	// for session creation, which has no stream.
+	const progressMessage = runStatus === "starting" ? "Creating your travel planning session…" : null;
 
 	async function startSession() {
 		setRunStatus("starting");
@@ -135,21 +137,47 @@ export function App() {
 		setError(null);
 		setMessages((current) => [...current, { role: "user", content: message }]);
 		setRunStatus("sending");
+		setNarration([]);
+		setStreamingText("");
+		// Static wait-filler (ADR 0003): fire-and-forget, keyed to what we know.
+		setFiller(null);
+		void getFiller(sessionId, deriveDestination(state))
+			.then(setFiller)
+			.catch(() => setFiller(null));
+		let runFailed = false;
 		try {
-			const response = await sendTravelMessage(sessionId, message);
-			setLastFailedMessage(null);
-			setState(response.state);
-			setUiBlocks(response.uiBlocks);
-			if (response.conversation?.length) {
-				setMessages(response.conversation);
-			} else {
-				setMessages((current) => [...current, { role: "assistant", content: response.assistantMessage || "Done." }]);
-			}
+			await streamTravelMessage(sessionId, message, (event) => {
+				switch (event.type) {
+					case "tool_start":
+						setNarration((current) => [...current, event.label]);
+						break;
+					case "text_delta":
+						setStreamingText((current) => current + event.delta);
+						break;
+					case "state_snapshot":
+						setState(event.state);
+						setUiBlocks(event.uiBlocks);
+						break;
+					case "run_finished":
+						setMessages((current) => [...current, { role: "assistant", content: event.assistantMessage || "Done." }]);
+						break;
+					case "run_error":
+						runFailed = true;
+						setLastFailedMessage(message);
+						setError(event.message);
+						break;
+				}
+			});
+			if (!runFailed) setLastFailedMessage(null);
 		} catch (e) {
+			// Pre-stream failures (network, 4xx/5xx before the stream opened).
 			setLastFailedMessage(message);
 			setError(errorMessage(e));
 		} finally {
 			setRunStatus("idle");
+			setNarration([]);
+			setStreamingText("");
+			setFiller(null);
 		}
 	}
 
@@ -201,6 +229,9 @@ export function App() {
 					draft={draft}
 					error={error}
 					messages={visibleMessages}
+					narration={narration}
+					streamingText={streamingText}
+					filler={filler}
 					onDraftChange={setDraft}
 					onNewSession={() => void startSession()}
 					onSubmit={handleSubmit}
@@ -636,6 +667,8 @@ function extractActivityResearchFallback(messages: ChatMessage[]): { block: Acti
 				version: 1,
 				title: "Activity ideas",
 				data: { activities },
+				actions: [],
+				sourceStatePath: "activitiesResearch",
 			},
 		};
 	}
@@ -732,4 +765,25 @@ function chatStorageKey(sessionId: string) {
 
 function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Best-effort destination string for wait-filler keying (ADR 0003). Reads the
+ * first selected destination, then any preference field that looks like a
+ * destination. Returns undefined when nothing is known (→ generic filler).
+ */
+function deriveDestination(state: TravelState | null): string | undefined {
+	if (!state) return undefined;
+	const selected = state.selectedDestinations?.[0];
+	if (selected && typeof selected === "object" && "name" in selected) {
+		const name = (selected as { name?: unknown }).name;
+		if (typeof name === "string" && name.trim()) return name.trim();
+	}
+	const preferences = state.preferences ?? {};
+	for (const [key, value] of Object.entries(preferences)) {
+		if (/destination|country|region|place/i.test(key) && typeof value === "string" && value.trim()) {
+			return value.trim();
+		}
+	}
+	return undefined;
 }

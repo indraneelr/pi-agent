@@ -13,11 +13,12 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { KnownProvider, Model, TextContent } from "@mariozechner/pi-ai";
 import { getModels } from "@mariozechner/pi-ai";
 import {
+	buildWebSearchProvider,
 	createTravelSession,
 	createTravelState,
 	deleteTravelState,
-	detectSearchProvider,
 	extractTravelConversation,
+	isGeminiProvider,
 	loadChecklistConfig,
 	loadTravelConversation,
 	loadTravelState,
@@ -29,6 +30,7 @@ import {
 } from "@mariozechner/pi-travel-agent";
 import type { ServerConfig } from "./config.js";
 import type { CredentialStore } from "./credentials.js";
+import { AgentEventMapper, stateSnapshotEvent, type TravelStreamEvent } from "./events.js";
 import { composeTravelUiBlocks, type TravelUiBlock } from "./ui-blocks.js";
 
 const DEFAULT_CHECKLIST_CONFIG = join(
@@ -287,6 +289,89 @@ export class TravelSessionManager {
 	}
 
 	/**
+	 * Stream a message run as normalized events (ADR 0003).
+	 *
+	 * Emits tool narration, streaming assistant text, and state snapshots via
+	 * `onEvent` as the agent works, then a terminal `run_finished` / `run_error`.
+	 * Shares the one-active-run lock with `sendMessage`. `onEvent` must not throw;
+	 * emit failures (e.g. a disconnected client) are swallowed so the agent loop
+	 * is never broken by transport errors.
+	 */
+	async streamMessage(
+		sessionId: string,
+		message: string,
+		userId = "dev-user",
+		onEvent: (event: TravelStreamEvent) => void,
+		signal?: AbortSignal,
+	): Promise<void> {
+		if (!message || message.trim().length === 0) {
+			throw new Error("Message must not be empty");
+		}
+		const record = this.loadRecord(sessionId, userId);
+		if (record.status === "busy") {
+			throw new SessionBusyError(sessionId);
+		}
+
+		const safeEmit = (event: TravelStreamEvent): void => {
+			try {
+				onEvent(event);
+			} catch (e) {
+				this.logger.warn({ err: e, sessionId }, "Travel stream consumer threw; dropping event");
+			}
+		};
+
+		record.status = "busy";
+		const startedAt = Date.now();
+		const mapper = new AgentEventMapper();
+		let unsubscribe: (() => void) | undefined;
+		const onAbort = () => this.activeSessions.get(sessionId)?.agent.abort();
+		signal?.addEventListener("abort", onAbort, { once: true });
+		try {
+			let session = this.activeSessions.get(sessionId);
+			if (!session) {
+				session = await this.buildSession(sessionId, userId);
+				this.activeSessions.set(sessionId, session);
+			}
+			const active = session;
+			unsubscribe = active.agent.subscribe((event) => {
+				for (const streamEvent of mapper.map(event)) safeEmit(streamEvent);
+				// State can change after any tool completes; push a fresh snapshot so
+				// cards update live rather than only at the end.
+				if (event.type === "tool_execution_end") safeEmit(stateSnapshotEvent(active.state));
+			});
+			await active.agent.prompt(message);
+			record.state = active.state;
+			saveTravelState(record.state, { dataDir: this.config.dataDir });
+			safeEmit(stateSnapshotEvent(record.state));
+			safeEmit({ type: "run_finished", assistantMessage: extractAssistantText(active.agent.state.messages) });
+		} catch (e) {
+			this.logger.error({ err: e, sessionId, durationMs: Date.now() - startedAt }, "Travel stream failed");
+			safeEmit({ type: "run_error", message: safeStreamErrorMessage(e) });
+		} finally {
+			signal?.removeEventListener("abort", onAbort);
+			unsubscribe?.();
+			record.status = "idle";
+		}
+	}
+
+	/** Load (or rehydrate) a session record and assert ownership. */
+	private loadRecord(sessionId: string, userId: string): SessionRecord {
+		let record = this.sessions.get(sessionId);
+		if (!record) {
+			const persistedState = loadTravelState(sessionId, { dataDir: this.config.dataDir });
+			if (!persistedState) throw new SessionNotFoundError(sessionId);
+			record = {
+				state: persistedState,
+				status: "idle",
+				userId: loadSessionOwner(this.config.dataDir, sessionId) ?? "dev-user",
+			};
+			this.sessions.set(sessionId, record);
+		}
+		this.assertSessionOwner(record, sessionId, userId);
+		return record;
+	}
+
+	/**
 	 * Build a TravelSession from config, resolving model and search provider.
 	 * Wraps all setup failures in SessionConfigurationError with a safe message.
 	 */
@@ -352,19 +437,39 @@ export class TravelSessionManager {
 			"Resolving travel model",
 		);
 		const model = this.resolveModel();
+		// Under BYOK-Gemini the resolved key IS the Gemini grounding key, so web
+		// search rides the user's key (ADR 0002). Non-Gemini providers fall back
+		// to env GEMINI_API_KEY (if any) then the detected provider (Stagehand).
+		const geminiApiKey = isGeminiProvider(this.config.provider) ? apiKey : undefined;
 		let searchProvider: SearchProvider | null | undefined;
 		try {
-			searchProvider = detectSearchProvider({ stagehandFallbackApiKey: apiKey });
+			searchProvider = buildWebSearchProvider({
+				geminiApiKey,
+				stagehandFallbackApiKey: apiKey,
+				timeoutMs: this.config.searchTimeoutMs,
+				onFailover: (event) =>
+					this.logger.warn(
+						{
+							capability: "web-search",
+							from: event.from,
+							to: event.to,
+							reason: event.reason,
+							ms: event.ms,
+							sessionId,
+						},
+						"Web-search provider failover",
+					),
+			});
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
 			throw new SessionConfigurationError(msg);
 		}
 		if (!searchProvider) {
 			throw new SessionConfigurationError(
-				"No search provider detected. Set BRAVE_API_KEY, LINKUP_API_KEY, or GEMINI_API_KEY.",
+				"No search provider detected. Provide a Gemini key, or set BRAVE_API_KEY, LINKUP_API_KEY, or GEMINI_API_KEY.",
 			);
 		}
-		this.logger.info({ sessionId }, "Detected search provider");
+		this.logger.info({ sessionId, searchProvider: searchProvider.name }, "Built web-search provider");
 		try {
 			return await createTravelSession({
 				model,
@@ -372,6 +477,7 @@ export class TravelSessionManager {
 				sessionId,
 				searchProvider,
 				dataDir: this.config.dataDir,
+				imageTimeoutMs: this.config.imageTimeoutMs,
 			});
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e);
@@ -416,6 +522,23 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorFacto
 	} finally {
 		if (timeout) clearTimeout(timeout);
 	}
+}
+
+/**
+ * Map a thrown error to a user-safe stream message. Known configuration/timeout
+ * errors carry safe text; anything else is redacted to avoid leaking internals.
+ */
+function safeStreamErrorMessage(e: unknown): string {
+	if (
+		e instanceof SessionConfigurationError ||
+		e instanceof SessionTimeoutError ||
+		e instanceof SessionBusyError ||
+		e instanceof SessionNotFoundError ||
+		e instanceof SessionForbiddenError
+	) {
+		return e.message;
+	}
+	return "The travel agent hit an unexpected error. Please try again.";
 }
 
 function formatMissingApiKeyMessage(provider: string): string {

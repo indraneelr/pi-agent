@@ -727,3 +727,49 @@ pre {
 	font-weight: 800;
 	cursor: pointer;
 }
+
+/* M2 live-run responsiveness (ADR 0003) */
+.narration-list {
+	list-style: none;
+	margin: 0.5rem 0 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+.narration-step {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.9rem;
+	opacity: 0.85;
+}
+.narration-step.done {
+	opacity: 0.55;
+}
+.narration-check {
+	color: #2e7d32;
+	font-weight: 700;
+}
+.wait-filler {
+	margin-top: 0.75rem;
+	padding: 0.75rem 0.9rem;
+	border-radius: 0.6rem;
+	background: rgba(0, 0, 0, 0.04);
+	border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.wait-filler-headline {
+	margin: 0 0 0.4rem;
+	font-weight: 600;
+	font-size: 0.85rem;
+	opacity: 0.75;
+}
+.wait-filler-tips {
+	margin: 0;
+	padding-left: 1.1rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	font-size: 0.85rem;
+	opacity: 0.8;
+}
