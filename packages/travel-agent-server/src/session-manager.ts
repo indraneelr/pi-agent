@@ -13,11 +13,13 @@ import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { KnownProvider, Model, TextContent } from "@mariozechner/pi-ai";
 import { getModels } from "@mariozechner/pi-ai";
 import {
+	applyInstantAction,
 	buildWebSearchProvider,
 	createTravelSession,
 	createTravelState,
 	deleteTravelState,
 	extractTravelConversation,
+	type InstantAction,
 	isGeminiProvider,
 	loadChecklistConfig,
 	loadTravelConversation,
@@ -352,6 +354,34 @@ export class TravelSessionManager {
 			unsubscribe?.();
 			record.status = "idle";
 		}
+	}
+
+	/**
+	 * Apply a deterministic instant action (ADR 0001): select/deselect/remove a
+	 * place or activity with no LLM run. Rejected if a generate is in flight
+	 * (409) so it can't race the agent's end-of-run snapshot — consistent with
+	 * the one-active-run lock. Mutations flow into the active session's live
+	 * state (and disk) so the agent's next turn sees them.
+	 */
+	async applyAction(
+		sessionId: string,
+		action: InstantAction,
+		userId = "dev-user",
+	): Promise<{ state: TravelState; uiBlocks: TravelUiBlock[] }> {
+		const record = this.loadRecord(sessionId, userId);
+		if (record.status === "busy") throw new SessionBusyError(sessionId);
+
+		const active = this.activeSessions.get(sessionId);
+		const current = active?.state ?? record.state;
+		const next = applyInstantAction(current, action); // throws InstantActionError on bad reference
+		if (active) {
+			active.setState(next);
+		} else {
+			saveTravelState(next, { dataDir: this.config.dataDir });
+		}
+		record.state = next;
+		this.logger.info({ sessionId, action: action.type }, "Applied instant action");
+		return { state: next, uiBlocks: composeTravelUiBlocks(next) };
 	}
 
 	/** Load (or rehydrate) a session record and assert ownership. */

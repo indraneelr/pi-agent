@@ -70,6 +70,12 @@ export {
 	type ImageLinkValidation,
 	validateImageUrls,
 } from "./core/image-validation.js";
+export {
+	applyInstantAction,
+	INSTANT_ACTION_TYPES,
+	type InstantAction,
+	InstantActionError,
+} from "./core/instant-actions.js";
 // Persistence
 export { deleteTravelState, loadTravelState, type PersistenceOptions, saveTravelState } from "./core/persistence.js";
 export {

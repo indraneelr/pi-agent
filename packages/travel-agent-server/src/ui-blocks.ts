@@ -83,6 +83,7 @@ export type ActivityCardsBlock = UiBlockEnvelope<
 			durationHours?: number;
 			tips?: string;
 			imageLinks: string[];
+			selected: boolean;
 		}>;
 	}
 >;
@@ -208,6 +209,9 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 					durationHours: activity.estimatedDurationHours,
 					tips: activity.tips,
 					imageLinks: activity.imageLinks ?? [],
+					selected: (state.selectedActivityNames ?? []).some(
+						(name) => name.trim().toLowerCase() === activity.name.trim().toLowerCase(),
+					),
 				})),
 			},
 			actions: [{ id: "select-activity", label: "Select activity", type: "placeholder" }],

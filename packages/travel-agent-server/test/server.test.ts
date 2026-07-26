@@ -547,6 +547,7 @@ describe("server with mock manager", () => {
 			conversation: mockConversation,
 			status: "idle" as const,
 		}),
+		applyAction: vi.fn().mockResolvedValue({ state: mockState, uiBlocks: mockUiBlocks }),
 	} as unknown as TravelSessionManagerType;
 
 	beforeAll(async () => {
@@ -587,6 +588,34 @@ describe("server with mock manager", () => {
 		expect(body.sessionId).toBe("mock-session");
 		expect(body.assistantMessage).toBe("I can help you plan a trip!");
 		expect(body.status).toBe("idle");
+	});
+
+	test("POST /actions applies a valid instant action", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/travel/sessions/mock-session/actions",
+			payload: { type: "select_place", name: "Naxos" },
+		});
+		expect(res.statusCode).toBe(200);
+		expect(res.json().state).toEqual(mockState);
+	});
+
+	test("POST /actions rejects an unknown action type", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/travel/sessions/mock-session/actions",
+			payload: { type: "launch_rocket", name: "Naxos" },
+		});
+		expect(res.statusCode).toBe(400);
+	});
+
+	test("POST /actions rejects a missing name", async () => {
+		const res = await app.inject({
+			method: "POST",
+			url: "/api/travel/sessions/mock-session/actions",
+			payload: { type: "select_place" },
+		});
+		expect(res.statusCode).toBe(400);
 	});
 });
 

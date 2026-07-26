@@ -1,6 +1,6 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { createTravelSession, getFiller, getTravelSession, streamTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type FillerContent, type TravelState, type TravelUiBlock } from "./api.js";
+import { applyInstantAction, createTravelSession, getFiller, getTravelSession, streamTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type FillerContent, type InstantActionType, type TravelState, type TravelUiBlock } from "./api.js";
 import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
 
@@ -46,6 +46,8 @@ export function App() {
 		saveSessionMessages(sessionId, messages);
 	}, [sessionId, messages]);
 
+	// Selection is server-owned (ADR 0001): derive both selected sets from the
+	// authoritative `selected` flags on the latest UI blocks.
 	useEffect(() => {
 		const selectedNames = new Set<string>();
 		const activityNames = new Set<string>();
@@ -56,11 +58,13 @@ export function App() {
 				}
 			}
 			if (block.kind === "activity_cards") {
-				for (const activity of block.data.activities ?? []) activityNames.add(activity.name);
+				for (const activity of block.data.activities ?? []) {
+					if (activity.selected) activityNames.add(activity.name);
+				}
 			}
 		}
 		setSelectedDestinationNames(selectedNames);
-		setSelectedActivityNames((current) => new Set([...current].filter((name) => activityNames.has(name))));
+		setSelectedActivityNames(activityNames);
 	}, [uiBlocks]);
 
 	const activityResearchFallback = useMemo(() => extractActivityResearchFallback(messages), [messages]);
@@ -181,17 +185,36 @@ export function App() {
 		}
 	}
 
+	// Deterministic instant action (ADR 0001): optimistic update, then the
+	// server's authoritative snapshot; revert by refetching on failure.
+	async function applyAction(type: InstantActionType, name: string) {
+		if (!sessionId) return;
+		try {
+			const result = await applyInstantAction(sessionId, type, name);
+			setState(result.state);
+			setUiBlocks(result.uiBlocks);
+		} catch (e) {
+			setError(errorMessage(e));
+			try {
+				const session = await getTravelSession(sessionId);
+				setState(session.state);
+				setUiBlocks(session.uiBlocks);
+			} catch {
+				// Keep the optimistic state if we can't refetch; the next run reconciles.
+			}
+		}
+	}
+
 	function handleDestinationAction(action: "select" | "images", destinationName: string, imageQuery?: string) {
 		if (action === "select") {
+			const alreadySelected = selectedDestinationNames.has(destinationName);
 			setSelectedDestinationNames((current) => {
 				const next = new Set(current);
-				if (next.has(destinationName)) {
-					next.delete(destinationName);
-				} else {
-					next.add(destinationName);
-				}
+				if (alreadySelected) next.delete(destinationName);
+				else next.add(destinationName);
 				return next;
 			});
+			void applyAction(alreadySelected ? "deselect_place" : "select_place", destinationName);
 			return;
 		}
 
@@ -206,15 +229,14 @@ export function App() {
 	}
 
 	function handleActivityToggle(activityName: string) {
+		const alreadySelected = selectedActivityNames.has(activityName);
 		setSelectedActivityNames((current) => {
 			const next = new Set(current);
-			if (next.has(activityName)) {
-				next.delete(activityName);
-			} else {
-				next.add(activityName);
-			}
+			if (alreadySelected) next.delete(activityName);
+			else next.add(activityName);
 			return next;
 		});
+		void applyAction(alreadySelected ? "deselect_activity" : "select_activity", activityName);
 	}
 
 	function handleActivitySelectionDone() {

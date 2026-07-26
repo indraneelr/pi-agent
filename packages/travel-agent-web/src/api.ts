@@ -116,6 +116,7 @@ export type ActivityCardsBlock = UiBlockEnvelope<
 			durationHours?: number;
 			tips?: string;
 			imageLinks: string[];
+			selected?: boolean;
 		}>;
 	}
 >;
@@ -175,6 +176,32 @@ export interface TravelSessionResponse {
 
 export interface SendMessageResponse extends TravelSessionResponse {
 	assistantMessage: string;
+}
+
+export type InstantActionType =
+	| "select_place"
+	| "deselect_place"
+	| "remove_place"
+	| "select_activity"
+	| "deselect_activity"
+	| "remove_activity";
+
+export interface InstantActionResult {
+	state: TravelState;
+	uiBlocks: TravelUiBlock[];
+}
+
+/** Apply a deterministic instant action (ADR 0001) — no LLM run. */
+export async function applyInstantAction(
+	sessionId: string,
+	type: InstantActionType,
+	name: string,
+): Promise<InstantActionResult> {
+	return requestJson<InstantActionResult>(`/api/travel/sessions/${sessionId}/actions`, {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ type, name }),
+	});
 }
 
 export interface FillerContent {

@@ -78,6 +78,8 @@ export interface TravelSession {
 	agent: TravelAgentFacade;
 	/** Current travel state. */
 	state: TravelState;
+	/** Replace the live travel state (for deterministic instant actions, ADR 0001). */
+	setState(next: TravelState): void;
 	/** Shut down the session. */
 	shutdown(): Promise<void>;
 }
@@ -144,6 +146,10 @@ export async function createTravelSession(options: CreateTravelSessionOptions): 
 		agent,
 		get state() {
 			return stateRef.get();
+		},
+		setState(next: TravelState) {
+			stateRef.set(next);
+			saveTravelState(next, persistOpts);
 		},
 		async shutdown() {
 			// Save final state before shutdown

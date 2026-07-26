@@ -32,6 +32,8 @@ export interface TravelState {
 	preferences: Partial<TravelPreferences>;
 	destinationResearch: DestinationResearch | null;
 	selectedDestinations: SubDestination[];
+	/** Activity names the user has selected via instant actions (ADR 0001). */
+	selectedActivityNames?: string[];
 	activitiesResearch: ActivitiesResearch | null;
 	itineraryResearch: ItineraryResearch | null;
 	accommodationResearch: AccommodationResearch | null;
@@ -46,6 +48,7 @@ export function createTravelState(sessionId: string, checklistConfig: ChecklistP
 		preferences: {},
 		destinationResearch: null,
 		selectedDestinations: [],
+		selectedActivityNames: [],
 		activitiesResearch: null,
 		itineraryResearch: null,
 		accommodationResearch: null,

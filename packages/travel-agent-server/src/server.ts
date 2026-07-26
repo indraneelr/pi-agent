@@ -8,6 +8,7 @@
 
 import { accessSync, constants, mkdirSync } from "node:fs";
 import cors from "@fastify/cors";
+import { INSTANT_ACTION_TYPES, type InstantAction, InstantActionError } from "@mariozechner/pi-travel-agent";
 import Fastify, { type FastifyInstance } from "fastify";
 import {
 	buildGoogleLoginRedirect,
@@ -272,6 +273,30 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			if (e instanceof SessionTimeoutError) {
 				return reply.status(504).send({ error: e.message });
 			}
+			app.log.error(e);
+			return reply.status(500).send({ error: "Internal server error" });
+		}
+	});
+
+	app.post("/api/travel/sessions/:sessionId/actions", async (request, reply) => {
+		const { sessionId } = request.params as { sessionId: string };
+		const body = request.body as { type?: string; name?: string } | null;
+		if (!body?.type || !INSTANT_ACTION_TYPES.includes(body.type as InstantAction["type"])) {
+			return reply.status(400).send({ error: `Unknown or missing action type: ${body?.type ?? "(none)"}` });
+		}
+		if (typeof body.name !== "string" || !body.name.trim()) {
+			return reply.status(400).send({ error: "Action 'name' is required" });
+		}
+		const user = getRequestUser(request, config);
+		try {
+			const action = { type: body.type, name: body.name } as InstantAction;
+			const result = await sessionManager.applyAction(sessionId, action, user?.id);
+			return reply.send(result);
+		} catch (e) {
+			if (e instanceof InstantActionError) return reply.status(400).send({ error: e.message });
+			if (e instanceof SessionNotFoundError) return reply.status(404).send({ error: e.message });
+			if (e instanceof SessionForbiddenError) return reply.status(403).send({ error: e.message });
+			if (e instanceof SessionBusyError) return reply.status(409).send({ error: e.message });
 			app.log.error(e);
 			return reply.status(500).send({ error: "Internal server error" });
 		}
