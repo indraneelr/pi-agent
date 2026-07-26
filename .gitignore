@@ -51,3 +51,6 @@ docs/promptfoo-stage1-intake/
 .serena/
 
 .understand-anything/
+
+# Travel agent runtime/session data
+travel-data/
