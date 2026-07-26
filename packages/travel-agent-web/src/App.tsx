@@ -205,7 +205,7 @@ export function App() {
 		}
 	}
 
-	function handleDestinationAction(action: "select" | "images", destinationName: string, imageQuery?: string) {
+	function handleDestinationAction(action: "select" | "images" | "reviews", destinationName: string, imageQuery?: string) {
 		if (action === "select") {
 			const alreadySelected = selectedDestinationNames.has(destinationName);
 			setSelectedDestinationNames((current) => {
@@ -215,6 +215,13 @@ export function App() {
 				return next;
 			});
 			void applyAction(alreadySelected ? "deselect_place" : "select_place", destinationName);
+			return;
+		}
+
+		if (action === "reviews") {
+			void sendMessageToAgent(
+				`What do travelers say about ${destinationName}? Summarize review themes from trusted sources — paraphrased, covering both the good and the honest downsides.`,
+			);
 			return;
 		}
 
@@ -243,6 +250,18 @@ export function App() {
 		if (selectedActivityNames.size === 0) return;
 		const selectedNames = Array.from(selectedActivityNames);
 		void sendMessageToAgent(`Use these selected activities for the itinerary: ${selectedNames.join(", ")}.`);
+	}
+
+	// Client-side plan export (ADR 0001: download is an instant action, no LLM).
+	function handleDownloadPlan() {
+		if (!state) return;
+		const blob = new Blob([buildPlanText(state, messages)], { type: "text/markdown" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `travel-plan-${sessionId ?? "session"}.md`;
+		link.click();
+		URL.revokeObjectURL(url);
 	}
 
 	return (
@@ -274,6 +293,13 @@ export function App() {
 					<h2>{activePhase?.label ?? "Loading"}</h2>
 					<p>{activePhase?.description ?? "Creating your planning session."}</p>
 				</div>
+
+				<PlanActions
+					state={state}
+					disabled={runStatus !== "idle"}
+					onGenerate={(prompt) => void sendMessageToAgent(prompt)}
+					onDownload={handleDownloadPlan}
+				/>
 
 				<ResearchTabs
 					activeResearchTab={activeResearchTab}
@@ -343,7 +369,7 @@ function SafeUiBlockView(props: {
 	block: TravelUiBlock;
 	onActivitySelectionDone: () => void;
 	onActivityToggle: (activityName: string) => void;
-	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
+	onDestinationAction: (action: "select" | "images" | "reviews", destinationName: string, imageQuery?: string) => void;
 	onDestinationSelectionDone: () => void;
 	disabled: boolean;
 	selectedActivityNames: Set<string>;
@@ -375,7 +401,7 @@ function UiBlockView({
 	block: TravelUiBlock;
 	onActivitySelectionDone: () => void;
 	onActivityToggle: (activityName: string) => void;
-	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
+	onDestinationAction: (action: "select" | "images" | "reviews", destinationName: string, imageQuery?: string) => void;
 	onDestinationSelectionDone: () => void;
 	disabled: boolean;
 	selectedActivityNames: Set<string>;
@@ -522,7 +548,7 @@ function DestinationCards({
 	selectedDestinationNames,
 }: {
 	block: DestinationCardsBlock;
-	onDestinationAction: (action: "select" | "images", destinationName: string, imageQuery?: string) => void;
+	onDestinationAction: (action: "select" | "images" | "reviews", destinationName: string, imageQuery?: string) => void;
 	onDestinationSelectionDone: () => void;
 	disabled: boolean;
 	selectedDestinationNames: Set<string>;
@@ -560,6 +586,7 @@ function DestinationCards({
 									{selected ? "Remove" : "Select place"}
 								</button>
 								<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
+								<button type="button" onClick={() => onDestinationAction("reviews", card.name)} disabled={disabled}>Reviews</button>
 							</div>
 						</article>
 					);
@@ -619,6 +646,81 @@ function ActivityCards({
 			</div>
 		</div>
 	);
+}
+
+/**
+ * Contextual generate-action controls (the USP: right control, not chat). Shows
+ * only the actions relevant to what's on screen. Generate actions send a
+ * templated agent message; download is instant/client-side.
+ */
+function PlanActions({
+	state,
+	disabled,
+	onGenerate,
+	onDownload,
+}: {
+	state: TravelState | null;
+	disabled: boolean;
+	onGenerate: (prompt: string) => void;
+	onDownload: () => void;
+}) {
+	if (!state) return null;
+	const hasPlaces = Boolean(state.destinationResearch);
+	const hasActivities = Boolean(state.activitiesResearch);
+	const hasSelections = (state.selectedDestinations?.length ?? 0) > 0;
+	const hasItinerary = Boolean(state.itineraryResearch);
+	if (!hasPlaces && !hasActivities && !hasSelections) return null;
+	return (
+		<div className="plan-actions" aria-label="Plan actions">
+			{hasPlaces ? (
+				<button type="button" disabled={disabled} onClick={() => onGenerate("Show me more place options — the current ones don't quite fit.")}>
+					More places
+				</button>
+			) : null}
+			{hasActivities ? (
+				<button type="button" disabled={disabled} onClick={() => onGenerate("Show me more activity options for my selected places.")}>
+					More activities
+				</button>
+			) : null}
+			{hasItinerary || hasSelections ? (
+				<button type="button" disabled={disabled} onClick={() => onGenerate("Calculate the full budget breakdown for this trip, per person and total.")}>
+					Calculate budget
+				</button>
+			) : null}
+			{hasPlaces ? (
+				<button type="button" disabled={disabled} onClick={() => onGenerate("I'd like to change my preferences and start over with new destination options.")}>
+					Start over
+				</button>
+			) : null}
+			<button type="button" onClick={onDownload}>
+				Download plan
+			</button>
+		</div>
+	);
+}
+
+/** Render the current plan to Markdown for the client-side download. */
+function buildPlanText(state: TravelState, messages: ChatMessage[]): string {
+	const lines: string[] = ["# My Travel Plan", ""];
+	const prefs = Object.entries(state.preferences ?? {}).filter(
+		([, value]) => value !== null && value !== undefined && value !== "",
+	);
+	if (prefs.length > 0) {
+		lines.push("## Preferences");
+		for (const [key, value] of prefs) lines.push(`- ${formatPreferenceLabel(key)}: ${formatPreferenceValue(value)}`);
+		lines.push("");
+	}
+	const places = (state.selectedDestinations ?? [])
+		.map((d) => (d && typeof d === "object" && "name" in d ? String((d as { name?: unknown }).name ?? "") : ""))
+		.filter(Boolean);
+	if (places.length > 0) lines.push("## Selected places", ...places.map((place) => `- ${place}`), "");
+	const lastPlan = [...messages].reverse().find((m) => m.role === "assistant" && m.content.trim().length > 200);
+	if (lastPlan) lines.push("## Itinerary", lastPlan.content.trim(), "");
+	lines.push(
+		"---",
+		"_Generated by Pi Travel Agent. AI-generated estimates only — verify visas, health rules, prices, and bookings with official sources before you commit._",
+	);
+	return lines.join("\n");
 }
 
 function buildResearchTabs(blocks: TravelUiBlock[]): Array<{ id: ResearchTab; label: string; count: number }> {

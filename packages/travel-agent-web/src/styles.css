@@ -773,3 +773,28 @@ pre {
 	font-size: 0.85rem;
 	opacity: 0.8;
 }
+
+/* M4 contextual plan actions (controls-first, mobile-friendly) */
+.plan-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin: 0.25rem 0 0.75rem;
+}
+.plan-actions button {
+	flex: 0 0 auto;
+	font-size: 0.85rem;
+	padding: 0.4rem 0.7rem;
+	border-radius: 0.5rem;
+}
+.card-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+}
+@media (max-width: 640px) {
+	.card-actions button,
+	.plan-actions button {
+		min-height: 40px; /* comfortable tap target on phones */
+	}
+}
