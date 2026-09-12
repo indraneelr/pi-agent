@@ -146,19 +146,16 @@ function validateDestinationCardsForAdvance(state: TravelState): void {
 		const key = name.toLowerCase();
 		if (seen.has(key)) throw new Error(`Cannot advance: duplicate destination option "${name}".`);
 		seen.add(key);
-		for (const field of [
-			"bestFor",
-			"why",
-			"roughDays",
-			"logisticsFit",
-			"budgetFit",
-			"seasonNote",
-			"tradeoff",
-		] as const) {
+		for (const field of ["bestFor", "why", "logisticsFit", "budgetFit", "seasonNote", "tradeoff"] as const) {
 			const value = option[field];
 			if (typeof value !== "string" || value.trim().length < 6) {
 				throw new Error(`Cannot advance: destination option "${name}" is missing ${field}.`);
 			}
+		}
+		if (typeof option.roughDays !== "string" || !/[0-9]/.test(option.roughDays.trim())) {
+			throw new Error(
+				`Cannot advance: destination option "${name}" needs a positive day count or day range in roughDays.`,
+			);
 		}
 	}
 	if (!state.destinationResearch?.nextUserAction) {

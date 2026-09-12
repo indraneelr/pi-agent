@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Value } from "@sinclair/typebox/value";
 import { afterEach, expect, test } from "vitest";
 import { SearchSources } from "../src/core/search/sources.js";
 import { createTravelState } from "../src/core/state.js";
@@ -106,22 +107,50 @@ test("reviews persist pros, cons and sourced ratings without overwriting unrelat
 });
 
 test.each(["https://www.tripadvisor.com/Tourism-Hanoi.html", "https://tripadvisor.evil.com/Hanoi"])(
-	"rejects unsupported rating evidence: %s",
+	"omits unsupported rating evidence without blocking review themes: %s",
 	async (sourceUrl) => {
 		const deps = setup();
 		const sourceId = deps.sources.add({ url: sourceUrl, title: "Hanoi", snippet: "Hanoi travel guide, no rating" });
 		const tool = createSaveDestinationReviewsTool(deps);
-		await expect(
-			tool.execute("1", {
-				destination_name: "Hanoi",
-				pros: [],
-				cons: [],
-				reviewSummary: "",
-				source_ids: [sourceId],
-				providerRatings: [{ provider: "tripadvisor", source_id: sourceId, rating: 4.5, placeName: "Hanoi" }],
-			}),
-		).rejects.toThrow("Ratings must reference");
-		expect(deps.getState().destinationResearch!.subDestinations[0].reviews.researchedAt).toBeUndefined();
+		await tool.execute("1", {
+			destination_name: "Hanoi",
+			pros: ["Local food"],
+			cons: ["Busy traffic"],
+			reviewSummary: "",
+			source_ids: [sourceId],
+			providerRatings: [{ provider: "tripadvisor", source_id: sourceId, rating: 4.5, placeName: "Hanoi" }],
+		});
+		const reviews = deps.getState().destinationResearch!.subDestinations[0].reviews;
+		expect(reviews.researchedAt).toBeTruthy();
+		expect(reviews.providerRatings).toEqual([]);
+		expect(reviews.pros).toEqual(["Local food"]);
+		expect(reviews.reviewSummary).toContain("could not be verified");
+	},
+);
+
+test.each(["Google Maps", "GOOGLE_MAPS", "google", "Tripadvisor", "TRIPADVISOR"])(
+	"normalizes live-model provider label %s and preserves verified ratings",
+	async (provider) => {
+		const deps = setup();
+		const google = provider.toLowerCase().startsWith("google");
+		const url = google ? "https://www.google.com/maps/place/Hanoi" : "https://www.tripadvisor.com/Tourism-Hanoi.html";
+		const id = deps.sources.add({ url, title: "Hanoi reviews", snippet: "Hanoi rated 4.5 out of 5" });
+		const tool = createSaveDestinationReviewsTool(deps);
+		const input = {
+			destination_name: "Hanoi",
+			pros: ["Food"],
+			cons: ["Traffic"],
+			reviewSummary: "Review themes",
+			source_ids: [id],
+			providerRatings: [{ provider, rating: 4.5, placeName: "Hanoi", source_id: id }],
+		};
+		expect(Value.Check(tool.parameters, input)).toBe(true);
+		await tool.execute("save", input);
+		expect(deps.getState().destinationResearch!.subDestinations[0].reviews.providerRatings?.[0]).toMatchObject({
+			provider: google ? "google" : "tripadvisor",
+			rating: 4.5,
+			sourceUrl: url,
+		});
 	},
 );
 

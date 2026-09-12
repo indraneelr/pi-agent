@@ -17,13 +17,38 @@ import type { TravelState } from "../state.js";
 import { normalizeDestinationResearch } from "./destination-research.js";
 
 const saveDestinationShortlistSchema = Type.Object({
-	subDestinations: Type.Array(Type.Any({ description: "A choice card object for one destination/area." }), {
-		description:
-			"The destination option cards. Each card MUST include name, description, bestFor, why, roughDays, " +
-			"logisticsFit, budgetFit, seasonNote, tradeoff, imageQuery, imageLinks, selected=false, reviews, and sources. " +
-			"imageLinks may be empty when photos are unavailable or the user wants to continue without them. Include only real URLs returned by get_images; never invent URLs. " +
-			"The tradeoff MUST be contextual to a stated user preference (logistics, kids/family, budget, season/dates, beaches, culture, food, or trip length); generic tradeoffs that map to no preference are rejected.",
-	}),
+	subDestinations: Type.Array(
+		Type.Object(
+			{
+				name: Type.String({ minLength: 1 }),
+				type: Type.Optional(Type.String()),
+				description: Type.String({ minLength: 6 }),
+				bestFor: Type.String({ minLength: 6 }),
+				why: Type.String({ minLength: 6 }),
+				roughDays: Type.Union([Type.Number({ exclusiveMinimum: 0 }), Type.String({ minLength: 1 })], {
+					description:
+						'Suggested visit duration: a positive day count such as 2 or 0.5, or a range such as "2-3 days".',
+				}),
+				logisticsFit: Type.String({ minLength: 6 }),
+				budgetFit: Type.String({ minLength: 6 }),
+				seasonNote: Type.String({ minLength: 6 }),
+				tradeoff: Type.String({ minLength: 6 }),
+				imageQuery: Type.Optional(Type.String()),
+				imageLinks: Type.Optional(Type.Array(Type.String())),
+				selected: Type.Optional(Type.Boolean()),
+				reviews: Type.Optional(Type.Object({}, { additionalProperties: true })),
+				sources: Type.Optional(Type.Array(Type.String())),
+			},
+			{ additionalProperties: true },
+		),
+		{
+			description:
+				"The destination option cards. Each card MUST include name, description, bestFor, why, roughDays, " +
+				"logisticsFit, budgetFit, seasonNote, tradeoff, imageQuery, imageLinks, selected=false, reviews, and sources. " +
+				"imageLinks may be empty when photos are unavailable or the user wants to continue without them. Include only real URLs returned by get_images; never invent URLs. " +
+				"The tradeoff MUST be contextual to a stated user preference (logistics, kids/family, budget, season/dates, beaches, culture, food, or trip length); generic tradeoffs that map to no preference are rejected.",
+		},
+	),
 	destination: Type.Optional(
 		Type.Any({
 			description:

@@ -5,6 +5,8 @@ All notable changes to `@mariozechner/pi-travel-agent` will be documented in thi
 ## [Unreleased]
 
 ### Fixed
+- Accept positive numeric shortlist durations, describe the card schema explicitly, and allow short durations when advancing to place selection.
+- Normalize review provider names and omit unverified ratings without blocking sourced review themes.
 - Save reviews using short search source IDs so opaque Google redirect URLs remain intact; allow requested review searches after the initial shortlist search budget is used.
 - Request eight images on every image search, including initial destination research and gallery expansion.
 - Append additional photos without losing gallery evidence and save structured destination review themes with source-checked provider ratings.

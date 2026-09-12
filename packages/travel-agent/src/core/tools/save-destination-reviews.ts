@@ -3,6 +3,7 @@ import { Type } from "@sinclair/typebox";
 import { type PersistenceOptions, saveTravelState } from "../persistence.js";
 import type { SearchSources } from "../search/sources.js";
 import type { TravelState } from "../state.js";
+import type { Reviews } from "../types.js";
 
 const schema = Type.Object({
 	destination_name: Type.String(),
@@ -17,7 +18,9 @@ const schema = Type.Object({
 	}),
 	providerRatings: Type.Array(
 		Type.Object({
-			provider: Type.Union([Type.Literal("google"), Type.Literal("tripadvisor")]),
+			provider: Type.String({
+				description: "Rating provider: google or tripadvisor. Google Maps and case variants are normalized.",
+			}),
 			rating: Type.Number({ minimum: 0, maximum: 5 }),
 			reviewCount: Type.Optional(Type.Integer({ minimum: 0 })),
 			source_id: Type.String({ description: "Source ID of the matching provider listing returned by web_search." }),
@@ -60,12 +63,20 @@ export function createSaveDestinationReviewsTool(deps: {
 					);
 				return source;
 			});
+			const providerRatings: NonNullable<Reviews["providerRatings"]> = [];
 			for (const rating of params.providerRatings) {
+				const providerName = rating.provider.toLowerCase().replace(/[\s_-]/g, "");
+				const provider =
+					providerName === "google" || providerName === "googlemaps"
+						? "google"
+						: providerName === "tripadvisor"
+							? "tripadvisor"
+							: undefined;
 				const source = deps.sources.get(rating.source_id);
-				if (!source) throw new Error("Unknown rating source ID. Use a Source ID from web_search.");
+				if (!source || !provider) continue;
 				const url = new URL(source.url);
 				const matchesProvider =
-					rating.provider === "google"
+					provider === "google"
 						? /(^|\.)google\.(com|[a-z]{2}|(?:com|co)\.[a-z]{2})$/i.test(url.hostname) &&
 							/\/maps\b/.test(url.pathname)
 						: /(^|\.)tripadvisor\.(com|[a-z]{2}|(?:com|co)\.[a-z]{2})$/i.test(url.hostname);
@@ -86,22 +97,28 @@ export function createSaveDestinationReviewsTool(deps: {
 					!sourceText.toLowerCase().includes(name) ||
 					rating.placeName.trim().toLowerCase() !== name
 				) {
-					throw new Error(
-						"Ratings must reference a matching place and a cited Google Maps or Tripadvisor listing. Omit ratings that cannot be verified.",
-					);
+					continue;
 				}
+				providerRatings.push({
+					provider,
+					rating: rating.rating,
+					reviewCount: rating.reviewCount,
+					placeName: rating.placeName,
+					sourceUrl: source.url,
+				});
 			}
 			if ((params.pros.length || params.cons.length) && !sources.length)
 				throw new Error("Review themes require researched source URLs.");
 			const reviews = {
 				pros: params.pros,
 				cons: params.cons,
-				reviewSummary: params.reviewSummary,
+				reviewSummary:
+					params.reviewSummary +
+					(providerRatings.length < params.providerRatings.length
+						? " Some provider ratings could not be verified from the cited listings and are unavailable."
+						: ""),
 				sources: sources.map((source) => source.url),
-				providerRatings: params.providerRatings.map(({ source_id, ...rating }) => ({
-					...rating,
-					sourceUrl: deps.sources.get(source_id)!.url,
-				})),
+				providerRatings,
 			};
 			for (const card of cards) card.reviews = { ...reviews, researchedAt: new Date().toISOString() };
 			deps.setState(state);

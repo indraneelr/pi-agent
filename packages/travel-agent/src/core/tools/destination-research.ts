@@ -63,6 +63,7 @@ export function normalizeSubDestination(item: Record<string, any>): SubDestinati
 		item.imageQuery ?? item.imageKeywords ?? (name ? `${name} travel ${bestFor ?? "highlights"}` : undefined);
 	const imageLinks = item.imageLinks ?? item.image_urls ?? item.imageUrls ?? item.images;
 	const validatedImages = item.validatedImages ?? item.validated_images;
+	const roughDays = item.roughDays ?? item.rough_days ?? item.dayAllocation ?? item.day_allocation;
 	return {
 		...item,
 		name,
@@ -70,7 +71,10 @@ export function normalizeSubDestination(item: Record<string, any>): SubDestinati
 		description: item.description,
 		bestFor,
 		why,
-		roughDays: item.roughDays ?? item.rough_days ?? item.dayAllocation ?? item.day_allocation,
+		roughDays:
+			typeof roughDays === "number" && Number.isFinite(roughDays) && roughDays > 0
+				? `${roughDays} ${roughDays === 1 ? "day" : "days"}`
+				: roughDays,
 		logisticsFit: item.logisticsFit ?? item.logistics_fit ?? item.logistics,
 		budgetFit: item.budgetFit ?? item.budget_fit ?? item.budgetNote ?? item.budget_note,
 		seasonNote: item.seasonNote ?? item.season_note ?? item.weatherNote ?? item.weather_note,
@@ -130,7 +134,9 @@ export function validateDestinationOptionCards(options: SubDestination[], state:
 		}
 		const roughDays = option.roughDays;
 		if (typeof roughDays !== "string" || !/[0-9]/.test(roughDays.trim())) {
-			throw new Error(`Destination option "${name}" is missing a useful roughDays field.`);
+			throw new Error(
+				`Destination option "${name}" needs roughDays as a positive number of days (e.g. 2) or a day range string (e.g. "2-3 days").`,
+			);
 		}
 		if (
 			requireValidatedImages() &&
