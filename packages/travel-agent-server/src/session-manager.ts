@@ -10,8 +10,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AgentMessage } from "@earendil-works/pi-agent-core";
-import type { KnownProvider, Model, TextContent } from "@earendil-works/pi-ai";
-import { getModels } from "@earendil-works/pi-ai";
+import type { TextContent } from "@earendil-works/pi-ai";
 import {
 	applyInstantAction,
 	buildWebSearchProvider,
@@ -33,6 +32,7 @@ import {
 import type { ServerConfig } from "./config.js";
 import type { CredentialStore } from "./credentials.js";
 import { AgentEventMapper, stateSnapshotEvent, type TravelStreamEvent } from "./events.js";
+import { resolveTravelModel } from "./model.js";
 import { composeTravelUiBlocks, type TravelUiBlock } from "./ui-blocks.js";
 
 const DEFAULT_CHECKLIST_CONFIG = join(
@@ -141,6 +141,7 @@ const noopLogger: SessionLogger = {
 export class TravelSessionManager {
 	private readonly sessions = new Map<string, SessionRecord>();
 	private readonly activeSessions = new Map<string, TravelSession>();
+	private readonly runControllers = new Map<string, AbortController>();
 	private readonly checklistConfig = loadChecklistConfig(DEFAULT_CHECKLIST_CONFIG);
 
 	constructor(
@@ -222,6 +223,8 @@ export class TravelSessionManager {
 			};
 		}
 		this.assertSessionOwner(record, sessionId, userId);
+		if (record.status === "busy") throw new SessionBusyError(sessionId);
+		await this.activeSessions.get(sessionId)?.shutdown();
 		this.sessions.delete(sessionId);
 		this.activeSessions.delete(sessionId);
 		deleteTravelState(sessionId, { dataDir: this.config.dataDir });
@@ -330,22 +333,47 @@ export class TravelSessionManager {
 		this.logger.info({ sessionId, runId, userId }, "Travel stream run started");
 		const mapper = new AgentEventMapper();
 		let unsubscribe: (() => void) | undefined;
-		const onAbort = () => this.activeSessions.get(sessionId)?.agent.abort();
+		const controller = new AbortController();
+		this.runControllers.set(sessionId, controller);
+		const onAbort = () => controller.abort(new Error("Generation stopped. Your completed research is saved."));
 		signal?.addEventListener("abort", onAbort, { once: true });
+		if (signal?.aborted) onAbort();
+		let stillRunning = false;
+		let work: Promise<void> | undefined;
+		const timeout = setTimeout(
+			() => controller.abort(new SessionTimeoutError(sessionId, this.config.messageTimeoutMs)),
+			this.config.messageTimeoutMs,
+		);
+		const interrupted = new Promise<never>((_resolve, reject) => {
+			const abort = () => {
+				this.activeSessions.get(sessionId)?.agent.abort();
+				reject(controller.signal.reason);
+			};
+			controller.signal.addEventListener("abort", abort, { once: true });
+			if (controller.signal.aborted) abort();
+		});
+		void interrupted.catch(() => {});
 		try {
-			let session = this.activeSessions.get(sessionId);
-			if (!session) {
-				session = await this.buildSession(sessionId, userId);
-				this.activeSessions.set(sessionId, session);
-			}
-			const active = session;
-			unsubscribe = active.agent.subscribe((event) => {
-				for (const streamEvent of mapper.map(event)) safeEmit(streamEvent);
-				// State can change after any tool completes; push a fresh snapshot so
-				// cards update live rather than only at the end.
-				if (event.type === "tool_execution_end") safeEmit(stateSnapshotEvent(active.state));
-			});
-			await active.agent.prompt(message);
+			work = (async () => {
+				controller.signal.throwIfAborted();
+				let session = this.activeSessions.get(sessionId);
+				if (!session) {
+					session = await this.buildSession(sessionId, userId);
+					this.activeSessions.set(sessionId, session);
+				}
+				controller.signal.throwIfAborted();
+				const active = session;
+				unsubscribe = active.agent.subscribe((event) => {
+					for (const streamEvent of mapper.map(event)) safeEmit(streamEvent);
+					// State can change after any tool completes; push a fresh snapshot so
+					// cards update live rather than only at the end.
+					if (event.type === "tool_execution_end") safeEmit(stateSnapshotEvent(active.state));
+				});
+				await active.agent.prompt(message);
+			})();
+			await Promise.race([work, interrupted]);
+			const active = this.activeSessions.get(sessionId)!;
+			controller.signal.throwIfAborted();
 			record.state = active.state;
 			saveTravelState(record.state, { dataDir: this.config.dataDir });
 			safeEmit(stateSnapshotEvent(record.state));
@@ -353,11 +381,62 @@ export class TravelSessionManager {
 			this.logger.info({ sessionId, runId, durationMs: Date.now() - startedAt }, "Travel stream run finished");
 		} catch (e) {
 			this.logger.error({ err: e, sessionId, runId, durationMs: Date.now() - startedAt }, "Travel stream failed");
-			safeEmit({ type: "run_error", message: safeStreamErrorMessage(e) });
+			if (work && controller.signal.aborted) {
+				stillRunning = true;
+				void work
+					.catch(() => {})
+					.finally(() => {
+						const active = this.activeSessions.get(sessionId);
+						if (active) {
+							record.state = active.state;
+							saveTravelState(record.state, { dataDir: this.config.dataDir });
+						}
+						unsubscribe?.();
+						record.status = "idle";
+						this.runControllers.delete(sessionId);
+					})
+					.catch(() => this.logger.error({ sessionId }, "Could not persist stopped run"));
+			}
+			const active = this.activeSessions.get(sessionId);
+			if (active) {
+				record.state = active.state;
+				saveTravelState(record.state, { dataDir: this.config.dataDir });
+				safeEmit(stateSnapshotEvent(record.state));
+			}
+			safeEmit({
+				type: "run_error",
+				message: controller.signal.aborted
+					? (controller.signal.reason as Error).message
+					: safeStreamErrorMessage(e),
+			});
 		} finally {
+			clearTimeout(timeout);
 			signal?.removeEventListener("abort", onAbort);
 			unsubscribe?.();
-			record.status = "idle";
+			if (!stillRunning) {
+				record.status = "idle";
+				this.runControllers.delete(sessionId);
+			}
+		}
+	}
+
+	cancelRun(sessionId: string, userId = "dev-user"): void {
+		this.loadRecord(sessionId, userId);
+		this.runControllers.get(sessionId)?.abort(new Error("Generation stopped. Your completed research is saved."));
+		this.activeSessions.get(sessionId)?.agent.abort();
+	}
+
+	async invalidateUserSessions(userId: string): Promise<void> {
+		for (const [id, record] of this.sessions) {
+			if (record.userId === userId && record.status === "busy") throw new SessionBusyError(id);
+		}
+		for (const [id, record] of this.sessions) {
+			if (record.userId !== userId) continue;
+			const active = this.activeSessions.get(id);
+			if (active) {
+				await active.shutdown();
+				this.activeSessions.delete(id);
+			}
 		}
 	}
 
@@ -481,7 +560,7 @@ export class TravelSessionManager {
 		try {
 			searchProvider = buildWebSearchProvider({
 				geminiApiKey,
-				stagehandFallbackApiKey: apiKey,
+				stagehandFallbackApiKey: this.config.provider === "ollama" ? apiKey : undefined,
 				timeoutMs: this.config.searchTimeoutMs,
 				onFailover: (event) =>
 					this.logger.warn(
@@ -496,9 +575,8 @@ export class TravelSessionManager {
 						"Web-search provider failover",
 					),
 			});
-		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			throw new SessionConfigurationError(msg);
+		} catch {
+			throw new SessionConfigurationError("Search is not configured. Check your provider key and search settings.");
 		}
 		if (!searchProvider) {
 			throw new SessionConfigurationError(
@@ -515,9 +593,10 @@ export class TravelSessionManager {
 				dataDir: this.config.dataDir,
 				imageTimeoutMs: this.config.imageTimeoutMs,
 			});
-		} catch (e) {
-			const msg = e instanceof Error ? e.message : String(e);
-			throw new SessionConfigurationError(`Failed to create travel session: ${msg}`);
+		} catch {
+			throw new SessionConfigurationError(
+				"Could not initialize the planner. Check provider settings and try again.",
+			);
 		}
 	}
 
@@ -534,15 +613,11 @@ export class TravelSessionManager {
 	 * Throws SessionConfigurationError if the provider or model is unknown.
 	 */
 	private resolveModel() {
-		const customModel = resolveCustomModel(this.config.provider, this.config.modelId);
-		if (customModel) return customModel;
-
-		const models = getModels(this.config.provider as KnownProvider);
-		const model = models.find((m) => m.id === this.config.modelId);
-		if (!model) {
+		try {
+			return resolveTravelModel(this.config.provider, this.config.modelId);
+		} catch {
 			throw new SessionConfigurationError(`Unknown model: ${this.config.provider}/${this.config.modelId}`);
 		}
-		return model;
 	}
 }
 
@@ -605,32 +680,6 @@ function loadSessionOwner(dataDir: string, sessionId: string): string | null {
 function deleteSessionOwner(dataDir: string, sessionId: string): void {
 	const filePath = sessionOwnerPath(dataDir, sessionId);
 	if (existsSync(filePath)) rmSync(filePath);
-}
-
-function resolveCustomModel(provider: string, modelId: string): Model<"openai-completions"> | undefined {
-	if (provider !== "ollama" || modelId !== "kimi-k2.6") return undefined;
-
-	return {
-		id: modelId,
-		name: "Ollama Cloud: kimi-k2.6",
-		api: "openai-completions",
-		provider: "ollama",
-		baseUrl: "https://ollama.com/v1",
-		reasoning: false,
-		input: ["text"],
-		cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-		contextWindow: 128_000,
-		maxTokens: 8_192,
-		compat: {
-			supportsStore: false,
-			supportsDeveloperRole: false,
-			supportsReasoningEffort: false,
-			supportsUsageInStreaming: true,
-			maxTokensField: "max_tokens",
-			supportsStrictMode: false,
-			supportsLongCacheRetention: false,
-		},
-	};
 }
 
 // =============================================================================

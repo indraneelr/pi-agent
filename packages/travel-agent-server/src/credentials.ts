@@ -1,7 +1,9 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { completeSimple } from "@earendil-works/pi-ai";
 import type { ServerConfig } from "./config.js";
+import { resolveTravelModel } from "./model.js";
 
 export interface CredentialMetadata {
 	id: string;
@@ -57,21 +59,45 @@ export class CredentialStore {
 			status: "untested",
 			encryptedApiKey: encrypt(apiKey, this.config.credentialEncryptionSecret),
 		};
+		file.credentials = file.credentials.filter((item) => item.provider !== provider);
 		file.credentials.push(credential);
 		this.writeFile(userId, file);
 		return toMetadata(credential);
 	}
 
-	validate(userId: string, credentialId: string): CredentialMetadata {
+	async validate(userId: string, credentialId: string): Promise<CredentialMetadata> {
 		const file = this.readFile(userId);
 		const credential = file.credentials.find((item) => item.id === credentialId);
 		if (!credential) throw new CredentialNotFoundError(credentialId);
 		const plaintext = decrypt(credential.encryptedApiKey, this.config.credentialEncryptionSecret);
 		const now = new Date().toISOString();
-		credential.status = plaintext.trim().length > 0 ? "valid" : "invalid";
+		if (credential.provider !== this.config.provider)
+			throw new Error(`This planner uses ${this.config.provider}. Add a key for that provider.`);
+		const model = resolveTravelModel(credential.provider, this.config.modelId);
+		let valid = false;
+		try {
+			const result = await completeSimple(
+				model,
+				{ messages: [{ role: "user", content: "Reply OK", timestamp: Date.now() }] },
+				{ apiKey: plaintext, maxTokens: 8, signal: AbortSignal.timeout(20_000) },
+			);
+			valid = result.stopReason !== "error" && result.stopReason !== "aborted";
+		} catch {
+			/* Provider errors can contain credentials; return only a safe message. */
+		}
+		// Read again after the network call so deletion/rotation cannot be undone.
+		const current = this.readFile(userId);
+		const saved = current.credentials.find((item) => item.id === credentialId);
+		if (!saved) throw new CredentialNotFoundError(credentialId);
+		credential.status = valid ? "valid" : "invalid";
 		credential.lastValidatedAt = now;
 		credential.updatedAt = now;
-		this.writeFile(userId, file);
+		Object.assign(saved, credential);
+		this.writeFile(userId, current);
+		if (!valid)
+			throw new Error(
+				"The provider could not complete a test request. Check the key, model access and quota, then retry.",
+			);
 		return toMetadata(credential);
 	}
 

@@ -20,7 +20,7 @@ import {
 	setSessionCookie,
 	verifyOAuthState,
 } from "./auth.js";
-import { loadConfig, type ServerConfig } from "./config.js";
+import { assertProductionConfig, loadConfig, type ServerConfig } from "./config.js";
 import { CredentialNotFoundError, CredentialStore } from "./credentials.js";
 import type { TravelStreamEvent } from "./events.js";
 import { getFillerContent } from "./filler.js";
@@ -32,6 +32,7 @@ import {
 	SessionTimeoutError,
 	TravelSessionManager,
 } from "./session-manager.js";
+import { registerWeb } from "./static-web.js";
 
 /**
  * Create a Fastify instance with all travel agent routes registered.
@@ -40,7 +41,21 @@ import {
  * @param manager Optional TravelSessionManager for dependency injection (tests).
  */
 export function createServer(config: ServerConfig = loadConfig(), manager?: TravelSessionManager): FastifyInstance {
-	const app = Fastify({ logger: true });
+	assertProductionConfig(config);
+	const app = Fastify({
+		logger: {
+			redact: [
+				"req.headers.authorization",
+				"req.headers.cookie",
+				"res.headers.set-cookie",
+				"apiKey",
+				"*.apiKey",
+				"err",
+			],
+		},
+		disableRequestLogging: true,
+		bodyLimit: 64 * 1024,
+	});
 	app.log.info(
 		{
 			provider: config.provider,
@@ -56,13 +71,13 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	const sessionManager = manager ?? new TravelSessionManager(config, app.log, credentialStore);
 	const rateLimits = new Map<string, { windowStart: number; count: number }>();
 
-	app.register(cors, { origin: config.corsOrigins });
+	app.register(cors, { origin: config.corsOrigins, credentials: true });
 
 	app.addHook("onResponse", async (request, reply) => {
 		app.log.info(
 			{
 				method: request.method,
-				url: request.url,
+				url: request.url.split("?")[0],
 				statusCode: reply.statusCode,
 			},
 			"HTTP request completed",
@@ -75,9 +90,22 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	});
 
 	app.addHook("preHandler", async (request, reply) => {
+		if (!["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+			const origin = request.headers.origin;
+			const allowed =
+				!origin || config.corsOrigins.includes(origin) || (!config.production && config.corsOrigins.includes("*"));
+			if (!allowed) return reply.status(403).send({ error: "Request origin is not allowed" });
+		}
 		const protectedApi = request.url.startsWith("/api/travel/") || request.url.startsWith("/api/credentials");
 		if (!protectedApi) return;
 		const user = getRequestUser(request, config);
+		if (
+			user &&
+			config.allowedUsers.length &&
+			!config.allowedUsers.includes(user.id.toLowerCase()) &&
+			!config.allowedUsers.includes(user.email.toLowerCase())
+		)
+			return reply.status(403).send({ error: "This account is not on the alpha allowlist" });
 		const rateKey = user?.id ?? request.ip;
 		if (!consumeRateLimit(rateLimits, rateKey, config.rateLimitPerMinute)) {
 			return reply.status(429).send({ error: "Rate limit exceeded" });
@@ -103,6 +131,13 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	app.get("/api/auth/current-user", async (request) => {
 		const user = getRequestUser(request, config);
 		return {
+			provider: config.provider,
+			modelId: config.modelId,
+			providerConfigured: Boolean(
+				user &&
+					(credentialStore.getApiKeyForProvider(user.id, config.provider) ||
+						(config.apiKey && (!config.authRequired || credentialStore.isServerKeyFallbackAllowed(user.id)))),
+			),
 			authRequired: config.authRequired,
 			authenticated: Boolean(user),
 			user,
@@ -132,8 +167,10 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			clearOAuthStateCookie(reply, config);
 			setSessionCookie(reply, user, config);
 			return reply.redirect("/");
-		} catch (e) {
-			return reply.status(401).send({ error: e instanceof Error ? e.message : "Google sign-in failed" });
+		} catch {
+			return reply
+				.status(401)
+				.send({ error: "Google sign-in failed or this account is not invited. Return to the app and try again." });
 		}
 	});
 
@@ -154,6 +191,7 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		const user = getRequestUser(request, config)!;
 		const body = request.body as { provider?: string; label?: string; apiKey?: string } | null;
 		try {
+			await sessionManager.invalidateUserSessions(user.id);
 			const credential = credentialStore.create(user.id, {
 				provider: body?.provider ?? "",
 				label: body?.label,
@@ -161,6 +199,8 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			});
 			return reply.status(201).send({ credential });
 		} catch (e) {
+			if (e instanceof SessionBusyError)
+				return reply.status(409).send({ error: "Stop the current run before changing API keys." });
 			return reply.status(400).send({ error: e instanceof Error ? e.message : "Invalid credential" });
 		}
 	});
@@ -169,7 +209,7 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		const user = getRequestUser(request, config)!;
 		const { credentialId } = request.params as { credentialId: string };
 		try {
-			return reply.send({ credential: credentialStore.validate(user.id, credentialId) });
+			return reply.send({ credential: await credentialStore.validate(user.id, credentialId) });
 		} catch (e) {
 			if (e instanceof CredentialNotFoundError) return reply.status(404).send({ error: e.message });
 			return reply.status(400).send({ error: e instanceof Error ? e.message : "Credential validation failed" });
@@ -180,9 +220,12 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		const user = getRequestUser(request, config)!;
 		const { credentialId } = request.params as { credentialId: string };
 		try {
+			await sessionManager.invalidateUserSessions(user.id);
 			credentialStore.delete(user.id, credentialId);
 			return reply.send({ ok: true });
 		} catch (e) {
+			if (e instanceof SessionBusyError)
+				return reply.status(409).send({ error: "Stop the current run before deleting API keys." });
 			if (e instanceof CredentialNotFoundError) return reply.status(404).send({ error: e.message });
 			return reply.status(500).send({ error: "Internal server error" });
 		}
@@ -230,6 +273,8 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			await sessionManager.deleteSession(sessionId, user?.id);
 			return reply.send({ ok: true });
 		} catch (e) {
+			if (e instanceof SessionBusyError)
+				return reply.status(409).send({ error: "Stop the current run before deleting this trip." });
 			if (e instanceof SessionNotFoundError) return reply.status(404).send({ error: e.message });
 			if (e instanceof SessionForbiddenError) return reply.status(403).send({ error: e.message });
 			app.log.error(e);
@@ -352,7 +397,13 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			if (!reply.raw.writableEnded) reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
 		};
 		const abort = new AbortController();
-		request.raw.on("close", () => abort.abort());
+		const onClose = () => {
+			if (!reply.raw.writableEnded) abort.abort();
+		};
+		reply.raw.on("close", onClose);
+		const heartbeat = setInterval(() => {
+			if (!reply.raw.writableEnded) reply.raw.write(": heartbeat\n\n");
+		}, 15_000);
 
 		try {
 			await sessionManager.streamMessage(sessionId, body.message, user?.id, write, abort.signal);
@@ -361,10 +412,24 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			app.log.error({ err: e, sessionId }, "Travel stream endpoint error");
 			write({ type: "run_error", message: e instanceof SessionBusyError ? e.message : "Stream failed." });
 		} finally {
+			clearInterval(heartbeat);
+			reply.raw.off("close", onClose);
 			if (!reply.raw.writableEnded) reply.raw.end();
 		}
 	});
 
+	app.post("/api/travel/sessions/:sessionId/cancel", async (request, reply) => {
+		const { sessionId } = request.params as { sessionId: string };
+		try {
+			sessionManager.cancelRun(sessionId, getRequestUser(request, config)?.id);
+			return { ok: true };
+		} catch (e) {
+			if (e instanceof SessionNotFoundError) return reply.status(404).send({ error: e.message });
+			if (e instanceof SessionForbiddenError) return reply.status(403).send({ error: e.message });
+			return reply.status(500).send({ error: "Could not stop this run" });
+		}
+	});
+	if (config.webDir) registerWeb(app, config.webDir);
 	return app;
 }
 

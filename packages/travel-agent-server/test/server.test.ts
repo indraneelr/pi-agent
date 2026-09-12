@@ -10,6 +10,7 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import * as ai from "@earendil-works/pi-ai";
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { loadConfig } from "../src/config.js";
@@ -81,7 +82,7 @@ describe("server without LLM configured", () => {
 		});
 		expect(res.statusCode).toBe(503);
 		const body = res.json();
-		expect(body.error).toContain("Ollama Cloud API key");
+		expect(body.error).toContain("API key");
 	});
 
 	test("GET unknown session returns 404", async () => {
@@ -365,7 +366,7 @@ describe("server auth feature toggle", () => {
 				method: "POST",
 				url: "/api/credentials",
 				cookies: { travel_auth: userOneCookie },
-				payload: { provider: "openai", label: "OpenAI", apiKey: "sk-secret-value" },
+				payload: { provider: "google", label: "Gemini", apiKey: "sk-secret-value" },
 			});
 			expect(createRes.statusCode).toBe(201);
 			expect(JSON.stringify(createRes.json())).not.toContain("sk-secret-value");
@@ -390,6 +391,7 @@ describe("server auth feature toggle", () => {
 			expect(listOther.json().credentials).toEqual([]);
 			expect(listOther.json().serverKeyFallbackAllowed).toBe(false);
 
+			vi.spyOn(ai, "completeSimple").mockResolvedValue({ stopReason: "stop" } as ai.AssistantMessage);
 			const validate = await app.inject({
 				method: "POST",
 				url: `/api/credentials/${credentialId}/validate`,

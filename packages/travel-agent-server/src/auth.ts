@@ -53,6 +53,7 @@ export function buildGoogleLoginRedirect(config: ServerConfig): { url: string; s
 export async function exchangeGoogleCodeForUser(code: string, config: ServerConfig): Promise<AuthUser> {
 	assertGoogleConfig(config);
 	const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+		signal: AbortSignal.timeout(15_000),
 		method: "POST",
 		headers: { "content-type": "application/x-www-form-urlencoded" },
 		body: new URLSearchParams({
@@ -70,13 +71,19 @@ export async function exchangeGoogleCodeForUser(code: string, config: ServerConf
 
 	const infoRes = await fetch(
 		`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(tokenJson.id_token)}`,
+		{ signal: AbortSignal.timeout(15_000) },
 	);
 	const info = (await infoRes.json()) as GoogleTokenInfo;
 	if (!infoRes.ok || info.error) throw new Error(info.error ?? "Google token verification failed");
 	if (info.aud !== config.googleClientId) throw new Error("Google token audience mismatch");
 	if (!info.sub || !info.email) throw new Error("Google token missing required identity claims");
-	if (info.email_verified === false || info.email_verified === "false")
-		throw new Error("Google email is not verified");
+	if (info.email_verified !== true && info.email_verified !== "true") throw new Error("Google email is not verified");
+	if (
+		config.allowedUsers.length &&
+		!config.allowedUsers.includes(info.sub.toLowerCase()) &&
+		!config.allowedUsers.includes(info.email.toLowerCase())
+	)
+		throw new Error("This account is not on the alpha allowlist");
 	return { id: info.sub, email: info.email, name: info.name, picture: info.picture };
 }
 
@@ -138,7 +145,10 @@ export function clearOAuthStateCookie(reply: FastifyReply, config: ServerConfig)
 }
 
 function signSessionToken(user: AuthUser, secret: string): string {
-	const payload = Buffer.from(JSON.stringify(user), "utf-8").toString("base64url");
+	const payload = Buffer.from(
+		JSON.stringify({ ...user, expiresAt: Date.now() + SESSION_MAX_AGE_SECONDS * 1000 }),
+		"utf-8",
+	).toString("base64url");
 	return `${payload}.${signature(payload, secret)}`;
 }
 
@@ -150,8 +160,15 @@ function verifySessionToken(token: string, secret: string): AuthUser | null {
 	const b = Buffer.from(expected);
 	if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
 	try {
-		const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8")) as AuthUser;
-		return parsed.id && parsed.email ? parsed : null;
+		const parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf-8")) as AuthUser & {
+			expiresAt?: number;
+		};
+		return typeof parsed.id === "string" &&
+			typeof parsed.email === "string" &&
+			typeof parsed.expiresAt === "number" &&
+			parsed.expiresAt > Date.now()
+			? parsed
+			: null;
 	} catch {
 		return null;
 	}
@@ -166,7 +183,11 @@ function parseCookies(header: string | undefined): Record<string, string> {
 	for (const part of header?.split(";") ?? []) {
 		const [rawName, ...rawValue] = part.trim().split("=");
 		if (!rawName || rawValue.length === 0) continue;
-		out[rawName] = decodeURIComponent(rawValue.join("="));
+		try {
+			out[rawName] = decodeURIComponent(rawValue.join("="));
+		} catch {
+			/* Malformed cookies are unauthenticated. */
+		}
 	}
 	return out;
 }
