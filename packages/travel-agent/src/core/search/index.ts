@@ -100,7 +100,13 @@ export function buildWebSearchProvider(opts: BuildWebSearchProviderOptions = {})
 		providers.push(createGoogleGeminiSearchProvider(geminiKey));
 	}
 
-	const detected = detectSearchProvider({ stagehandFallbackApiKey: opts.stagehandFallbackApiKey });
+	let detected: SearchProvider | null = null;
+	try {
+		detected = detectSearchProvider({ stagehandFallbackApiKey: opts.stagehandFallbackApiKey });
+	} catch (error) {
+		// An unconfigured optional fallback must not disable a working BYOK primary.
+		if (providers.length === 0) throw error;
+	}
 	// Avoid listing Gemini twice if detection also resolved to it.
 	if (detected && !(providers.length > 0 && detected.name === "google-gemini")) {
 		providers.push(detected);

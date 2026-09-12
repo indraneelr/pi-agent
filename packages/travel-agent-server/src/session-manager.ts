@@ -16,6 +16,7 @@ import {
 	buildWebSearchProvider,
 	createTravelSession,
 	createTravelState,
+	deleteTravelConversation,
 	deleteTravelState,
 	extractTravelConversation,
 	type InstantAction,
@@ -225,6 +226,7 @@ export class TravelSessionManager {
 		this.assertSessionOwner(record, sessionId, userId);
 		if (record.status === "busy") throw new SessionBusyError(sessionId);
 		await this.activeSessions.get(sessionId)?.shutdown();
+		await deleteTravelConversation(sessionId, this.config.dataDir);
 		this.sessions.delete(sessionId);
 		this.activeSessions.delete(sessionId);
 		deleteTravelState(sessionId, { dataDir: this.config.dataDir });
@@ -386,21 +388,28 @@ export class TravelSessionManager {
 				void work
 					.catch(() => {})
 					.finally(() => {
-						const active = this.activeSessions.get(sessionId);
-						if (active) {
-							record.state = active.state;
-							saveTravelState(record.state, { dataDir: this.config.dataDir });
+						try {
+							const active = this.activeSessions.get(sessionId);
+							if (active) {
+								record.state = active.state;
+								saveTravelState(record.state, { dataDir: this.config.dataDir });
+							}
+						} finally {
+							unsubscribe?.();
+							record.status = "idle";
+							this.runControllers.delete(sessionId);
 						}
-						unsubscribe?.();
-						record.status = "idle";
-						this.runControllers.delete(sessionId);
 					})
 					.catch(() => this.logger.error({ sessionId }, "Could not persist stopped run"));
 			}
 			const active = this.activeSessions.get(sessionId);
 			if (active) {
 				record.state = active.state;
-				saveTravelState(record.state, { dataDir: this.config.dataDir });
+				try {
+					saveTravelState(record.state, { dataDir: this.config.dataDir });
+				} catch {
+					this.logger.error({ sessionId }, "Could not persist failed run");
+				}
 				safeEmit(stateSnapshotEvent(record.state));
 			}
 			safeEmit({

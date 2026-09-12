@@ -24,6 +24,22 @@ export interface ValidImageResult {
 	height: number;
 	title?: string;
 	source?: string;
+	validation?: { finalUrl: string; httpStatus: number; contentType: string; validatedAt: string };
+}
+
+export interface ValidatedImage {
+	kind: "image";
+	url: string;
+	finalUrl: string;
+	provider: string;
+	source?: string;
+	retrievedAt: string;
+	validatedAt: string;
+	httpStatus: number;
+	contentType: string;
+	width: number;
+	height: number;
+	validationStatus: "valid";
 }
 
 export interface ImageSearchResult {

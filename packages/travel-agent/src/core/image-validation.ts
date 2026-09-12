@@ -15,6 +15,7 @@
 
 export interface ImageLinkValidation {
 	url: string;
+	finalUrl?: string;
 	ok: boolean;
 	status: number;
 	contentType: string | null;
@@ -38,6 +39,7 @@ export interface ValidateImageUrlsOptions {
 export interface ImageHttpProbeResponse {
 	status: number;
 	contentType: string | null;
+	finalUrl?: string;
 }
 
 export type ImageHttpProbe = (
@@ -66,7 +68,8 @@ export const defaultImageHttpProbe: ImageHttpProbe = async (url, { timeoutMs, si
 				redirect: "follow",
 				signal: controller.signal,
 			});
-			return { status: res.status, contentType: res.headers.get("content-type") };
+			await res.body?.cancel();
+			return { status: res.status, contentType: res.headers.get("content-type"), finalUrl: res.url };
 		} finally {
 			clearTimeout(timer);
 			signal?.removeEventListener("abort", onParentAbort);
@@ -127,6 +130,7 @@ export async function validateImageUrls(
 					res.status >= 200 && res.status < 400 && (isImageContentType(res.contentType) || looksLikeImageUrl(url));
 				results.set(url, {
 					url,
+					finalUrl: res.finalUrl ?? url,
 					ok: imageish,
 					status: res.status,
 					contentType: res.contentType,

@@ -1,22 +1,26 @@
 import { Markdown } from "@copilotkit/react-ui";
 import type { FormEvent, ReactNode } from "react";
-import { useMemo, useState } from "react";
-import type { FillerContent } from "./api.js";
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { FillerContent, ValidatedImage } from "./api.js";
+
+const ImageEvidenceContext = createContext<ValidatedImage[]>([]);
 
 export interface ChatMessage {
 	role: "user" | "assistant";
 	content: string;
 }
 
-export type RunStatus = "idle" | "starting" | "sending";
+export type RunStatus = "idle" | "starting" | "sending" | "saving";
 
 interface TravelCopilotChatProps {
 	messages: ChatMessage[];
+	approvedImages: ValidatedImage[];
 	draft: string;
 	onDraftChange: (draft: string) => void;
 	onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 	onNewSession: () => void;
 	onRetry?: () => void;
+	onStop: () => void;
 	error: string | null;
 	progressMessage: string | null;
 	/** Live tool-narration lines for the in-flight run (ADR 0003). */
@@ -31,11 +35,13 @@ interface TravelCopilotChatProps {
 
 export function TravelCopilotChat({
 	messages,
+    approvedImages,
 	draft,
 	onDraftChange,
 	onSubmit,
 	onNewSession,
 	onRetry,
+	onStop,
 	error,
 	progressMessage,
 	narration,
@@ -45,16 +51,23 @@ export function TravelCopilotChat({
 	runStatus,
 }: TravelCopilotChatProps) {
 	const disabled = !sessionReady || runStatus !== "idle";
+	const messageList = useRef<HTMLDivElement>(null);
+	const following = useRef(true);
+	useEffect(() => {
+		const list = messageList.current;
+		if (list && (following.current || messages.at(-1)?.role === "user")) list.scrollTop = list.scrollHeight;
+	}, [messages, streamingText, narration]);
 	return (
+        <ImageEvidenceContext.Provider value={approvedImages}>
 		<section className="chat-column copilot-rest-chat" aria-label="Travel chat">
 			<header className="app-header">
 				<div>
-					<p className="eyebrow">Pi Travel Agent</p>
-					<h1>Plan the trip, keep the choices visible.</h1>
-					<p className="copilot-shell-label">CopilotKit shell · Travel REST adapter</p>
+					<p className="eyebrow">Wander</p>
+					<h1>Plan your next trip.</h1>
+					<p className="copilot-shell-label">Discover places. Choose experiences. Make it yours.</p>
 				</div>
 				<button type="button" className="secondary-button" onClick={onNewSession} disabled={runStatus !== "idle"}>
-					New session
+					New trip
 				</button>
 			</header>
 
@@ -71,12 +84,15 @@ export function TravelCopilotChat({
 				</div>
 			) : null}
 
-			<div className="messages copilot-messages" aria-live="polite">
+			<div className="messages copilot-messages" aria-live="polite" ref={messageList} onScroll={(event) => {
+				const list = event.currentTarget;
+				following.current = list.scrollHeight - list.scrollTop - list.clientHeight < 120;
+			}}>
 				{messages.length === 0 && runStatus !== "sending" ? (
 					<div className="empty-state copilot-empty-state">
 						<h2>Where are we going?</h2>
 						<p>
-							Start with dates, origin, budget, vibe, or a rough destination. I’ll keep the planning state visible on the right.
+							Start with dates, origin, budget, interests, or a rough destination. Your choices and itinerary appear in My plan.
 						</p>
 					</div>
 				) : (
@@ -102,11 +118,12 @@ export function TravelCopilotChat({
 					onChange={(event) => onDraftChange(event.target.value)}
 					disabled={disabled}
 				/>
-				<button type="submit" disabled={disabled || !draft.trim()}>
-					{runStatus === "sending" ? "Sending…" : "Send"}
-				</button>
+                {runStatus === "sending" ? <button type="button" onClick={onStop}>Stop</button> : <button type="submit" disabled={disabled || !draft.trim()}>
+					Send
+				</button>}
 			</form>
 		</section>
+        </ImageEvidenceContext.Provider>
 	);
 }
 
@@ -157,7 +174,10 @@ function RunProgress({ narration, streamingText, filler }: { narration: string[]
 
 function CopilotMarkdown({ content }: { content: string }) {
 	const [expandedImage, setExpandedImage] = useState<MarkdownImage | null>(null);
-	const { contentWithoutImages, images } = useMemo(() => extractMarkdownImages(content), [content]);
+    const evidence = useContext(ImageEvidenceContext);
+    const { contentWithoutImages, images: candidates } = useMemo(() => extractMarkdownImages(content), [content]);
+    const images = candidates.filter((image) => evidence.some((item) => item.validationStatus === "valid" && /^https:\/\//i.test(item.finalUrl) && (item.url === image.src || item.finalUrl === image.src)));
+    const approved = images.map((image) => ({ ...image, src: evidence.find((item) => item.url === image.src || item.finalUrl === image.src)!.finalUrl }));
 	return (
 		<div className="markdown-content copilot-markdown-content">
 			<Markdown
@@ -166,7 +186,7 @@ function CopilotMarkdown({ content }: { content: string }) {
 					img: ({ src, alt }) => <SafeMarkdownImage src={typeof src === "string" ? src : undefined} alt={alt ?? "Travel image"} />,
 				}}
 			/>
-			{images.length > 0 ? <ImageGallery images={images} onImageClick={setExpandedImage} /> : null}
+			{images.length > 0 ? <ImageGallery images={approved} onImageClick={setExpandedImage} /> : null}
 			{expandedImage ? <ImageModal image={expandedImage} onClose={() => setExpandedImage(null)} /> : null}
 		</div>
 	);
@@ -178,11 +198,12 @@ interface MarkdownImage {
 }
 
 function ImageGallery({ images, onImageClick }: { images: MarkdownImage[]; onImageClick: (image: MarkdownImage) => void }) {
+    const evidence = useContext(ImageEvidenceContext);
 	return (
 		<div className="assistant-image-gallery" aria-label="Travel images">
 			{images.map((image) => (
 				<button type="button" key={`${image.src}-${image.alt}`} onClick={() => onImageClick(image)}>
-					<img src={image.src} alt={image.alt} loading="lazy" />
+					<img src={image.src} alt={image.alt} loading="lazy" /><span className="photo-credit">Photo via {evidence.find((item) => item.finalUrl === image.src)?.provider ?? "search"}</span>
 				</button>
 			))}
 		</div>
@@ -210,7 +231,8 @@ function extractMarkdownImages(content: string): { contentWithoutImages: string;
 }
 
 function SafeMarkdownImage({ src, alt }: { src?: string; alt?: ReactNode }) {
-	if (!src) return null;
+    const evidence = useContext(ImageEvidenceContext);
+	if (!src || !evidence.some((image) => image.validationStatus === "valid" && image.finalUrl === src && /^https:\/\//i.test(src))) return null;
 	return (
 		<span className="markdown-safe-image-wrap">
 			<img

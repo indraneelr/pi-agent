@@ -58,6 +58,7 @@ export type {
 	ImageSearchProviderName,
 	ImageSearchQuery,
 	ImageSearchResult,
+	ValidatedImage,
 	ValidImageResult,
 } from "./core/image-search/types.js";
 export { type ImageDimensions, parseImageDimensions, validateImageCandidates } from "./core/image-search/validate.js";
@@ -98,6 +99,7 @@ export {
 export {
 	type CreateTravelSessionOptions,
 	createTravelSession,
+	deleteTravelConversation,
 	extractTravelConversation,
 	loadTravelConversation,
 	type TravelConversationMessage,

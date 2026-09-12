@@ -6,7 +6,7 @@ export interface DestinationImageCarrier {
 }
 
 export function requireValidatedImages(): boolean {
-	return (import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES ?? "false").toLowerCase() === "true";
+	return import.meta.env.PROD || (import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES ?? "true").toLowerCase() === "true";
 }
 
 export function getRenderableDestinationImages(card: DestinationImageCarrier): ValidatedImage[] {

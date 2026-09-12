@@ -12,6 +12,7 @@ import {
 	getActivePhase,
 	type TravelChecklist,
 } from "./checklist.js";
+import type { ValidatedImage } from "./image-search/types.js";
 import type {
 	AccommodationResearch,
 	ActivitiesResearch,
@@ -27,6 +28,8 @@ import type {
 // =============================================================================
 
 export interface TravelState {
+	/** Tool-owned evidence; model state updates cannot supply this field. */
+	validatedImages?: Record<string, ValidatedImage[]>;
 	sessionId: string;
 	checklist: TravelChecklist;
 	preferences: Partial<TravelPreferences>;
@@ -103,6 +106,7 @@ function clearField(state: TravelState, field: keyof TravelState): void {
 			break;
 		case "activitiesResearch":
 			state.activitiesResearch = null;
+			state.selectedActivityNames = [];
 			break;
 		case "itineraryResearch":
 			state.itineraryResearch = null;
@@ -151,6 +155,8 @@ export function formatStateForPrompt(state: TravelState): string {
 		sections.push("\n# Activities Research\n");
 		sections.push(formatActivitiesResearch(state.activitiesResearch));
 	}
+	if (state.selectedActivityNames?.length)
+		sections.push(`\n# User-selected activities\n${state.selectedActivityNames.join("\n")}`);
 
 	if (state.itineraryResearch) {
 		sections.push("\n# Itinerary\n");

@@ -4,6 +4,11 @@ All notable changes to `@mariozechner/pi-travel-agent` will be documented in thi
 
 ## [Unreleased]
 
+### Fixed
+- Keep Gemini grounding available when an optional browser-search fallback is unconfigured.
+- Persist validated image evidence for destination and activity rendering.
+- Surface provider failures from the agent harness; find saved conversations after deployment-directory changes and support deleting trip transcripts.
+
 ### Added
 - Preference-fit scoring module (`src/core/preference-fit.ts`) that scores Stage 2 destination cards against the actual run preferences across eight axes (beaches, culture, food, easy logistics, family/kids, budget, season/dates, trip length). Derives relevant axes from preferences, computes per-card fit, requires each tradeoff to map to at least one relevant axis, and checks menu-level theme coverage. Exported from the package public API.
 - Tradeoff severity classification (`classifyTradeoffSeverity`, `TradeoffSeverity`, `SEVERITY_LABEL`) that labels each card's tradeoff as low/medium/high from keyword cues (strong negatives → high; softeners → low; mitigated negatives and neutral → medium). Surfaced per-card and aggregated in the preference-fit report. Exported from the package public API.

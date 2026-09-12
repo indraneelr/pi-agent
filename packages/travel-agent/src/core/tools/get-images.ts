@@ -92,6 +92,30 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 					);
 					lastRejected += result.rejectedCount;
 					if (result.images.length === 0 && providerPreference === "auto") continue;
+					const state = deps.getState();
+					const key = (params.destination_name ?? params.query).trim().toLowerCase();
+					state.validatedImages = {
+						...state.validatedImages,
+						[key]: result.images.flatMap((image) =>
+							image.validation
+								? [
+										{
+											kind: "image" as const,
+											url: image.url,
+											...image.validation,
+											provider: result.provider,
+											source: image.source,
+											width: image.width,
+											height: image.height,
+											retrievedAt: image.validation.validatedAt,
+											validationStatus: "valid" as const,
+										},
+									]
+								: [],
+						),
+					};
+					deps.setState(state);
+					saveTravelState(state, deps.persistOpts);
 					const updatedDestination = params.destination_name
 						? updateDestinationImages(deps, params.destination_name, result.images)
 						: undefined;
@@ -181,6 +205,9 @@ function updateDestinationImages(
 	}
 	for (const destination of state.selectedDestinations ?? []) {
 		if (normalizeName(destination.name) === normalized) matched = destination;
+	}
+	for (const activity of state.activitiesResearch?.activities ?? []) {
+		if (normalizeName(activity.name) === normalized) matched = activity;
 	}
 	if (!matched) return undefined;
 	matched.imageLinks = images.map((image) => image.url);

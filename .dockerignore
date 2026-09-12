@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+**/dist
+.git
+.env
+**/.env
+**/travel-data
+.claude
+.codex
+.serena
+docs/*-evals
+*.log

@@ -1,139 +1,130 @@
-# Travel Agent Railway Alpha Runbook
+# Wander deployment and verification
 
-Status: alpha staging/production checklist
+Updated: 2026-09-12. The application is packaged for a private alpha. Live provider,
+Google sign-in and hosted deployment verification still require operator credentials.
+Capacity work is outside this change.
 
-## Railway services
+## Run locally
 
-Use Railway as the primary alpha target.
+Use Node 22.12 or newer. From the repository root:
 
-Recommended services:
-
-1. `travel-agent-server` Node service
-2. `travel-agent-web` static/Vite service or bundled frontend service, depending on final Railway layout
-3. Railway Postgres plugin for app/session/credential persistence when DB migration is added
-4. SearXNG service or externally hosted SearXNG endpoint
-
-## Required environment variables
-
-Server:
-
-- `NODE_ENV=production`
-- `RAILWAY_ENVIRONMENT=staging` or `production`
-- `AUTH_REQUIRED=true`
-- `AUTH_SESSION_SECRET=<strong random secret>`
-- `AUTH_COOKIE_SECURE=true`
-- `GOOGLE_CLIENT_ID=<google oauth client id>`
-- `GOOGLE_CLIENT_SECRET=<google oauth client secret>`
-- `GOOGLE_REDIRECT_URI=https://<railway-domain>/api/auth/callback`
-- `CREDENTIAL_ENCRYPTION_SECRET=<strong random encryption secret>`
-- `SEARXNG_BASE_URL=<https://searxng endpoint>`
-- `SERVER_KEY_FALLBACK_ALLOWLIST=<comma-separated user ids/emails>` only for approved fallback users
-- `TRAVEL_AGENT_PROVIDER=google` (Gemini is the standard BYOK stack; `ollama`/`kimi-k2.6` is the server fallback)
-- `TRAVEL_AGENT_MODEL=gemini-2.5-flash` unless changed
-- `GEMINI_API_KEY=<server fallback grounding key>` optional; web search uses the user's BYOK Gemini key (grounding) first
-- `OLLAMA_API_KEY=<server fallback key>` only if fallback allowlist is approved
-- `SEARCH_TIMEOUT_MS=12000` per-provider web-search failover timeout (ADR 0002)
-- `IMAGE_TIMEOUT_MS=15000` per-provider image-search failover timeout (ADR 0002)
-- `USE_STAGEHAND=0` optional; disable the slow agentic-browser search so Gemini grounding is primary
-- `CORS_ORIGINS=<web origin>`
-
-## Build reproducibility — RESOLVED
-
-Previously the travel/analytics POC packages depended on the **registry**
-`@mariozechner/pi-{agent-core,ai,tui}` packages, whose published tarballs ship no
-`dist/`, breaking clean CI/Railway installs. Fixed by **repointing those deps and
-imports to the in-repo `@earendil-works/pi-*` workspace packages** (the same
-framework at the same version, renamed). They now resolve to `packages/agent`,
-`packages/ai`, and `packages/tui` via workspace symlinks and build with the
-monorepo — no registry dependency, no missing `dist`.
-
-Build order for a clean deploy: build the framework (`packages/tui`, `packages/ai`,
-`packages/agent`) and `packages/travel-agent` before `travel-agent-server` /
-`travel-agent-web`.
-
-Dev/debug override:
-
-- `AUTH_REQUIRED=false` is allowed only for local/dev/debug deployments.
-
-## Health and readiness
-
-- `/health` returns a lightweight liveness response.
-- `/ready` is the alpha release gate. It checks:
-  - storage path readable/writable
-  - credential encryption secret configured
-  - SearXNG base URL configured
-  - Google OAuth config present when auth is required
-
-Railway should use `/health` for basic liveness and `/ready` for release/smoke validation.
-
-## Alpha smoke commands
-
-Run before launch:
-
-```bash
-cd packages/travel-agent
-npm run smoke:alpha
-
-cd ../travel-agent-server
-npm run check
-npm test
-
-cd ../travel-agent-web
-npm run check
-npm test
+```sh
+npm ci --ignore-scripts
+node scripts/prepare-travel.mjs
+cp .env.example .env
+node --env-file=.env packages/travel-agent-server/dist/index.js
 ```
 
-From repo root:
+Open http://127.0.0.1:3001. Accept the alpha notice and enter a Gemini API key in
+the app. The key check makes a small provider request. Invalid keys stay on the
+setup screen; keys are encrypted server-side and can be replaced or deleted in
+**API key & account**. The default model is `google/gemini-2.5-flash`.
 
-```bash
+Web search uses Gemini grounding with the user's key. Set `SEARXNG_BASE_URL` to a
+reachable SearXNG instance with JSON image search enabled for photos. Without a
+working image provider, the planner can return text but must not invent photos.
+`USE_STAGEHAND=0` avoids requiring a local browser or a second provider key.
+
+The web bundle and API share one origin. The preparation script compiles the
+checked-in model catalog and required workspace packages, then bundles the web
+app. It does not run online model discovery. Vite reports a large vendor chunk
+from the existing Markdown renderer; packaging succeeds.
+
+## Deploy to Railway
+
+Configure one service using `Dockerfile.travel` (set
+`RAILWAY_DOCKERFILE_PATH=Dockerfile.travel` if needed). Mount a persistent volume
+at `/data`. Use the service's HTTPS domain for both UI and API. Do not run multiple
+replicas against these file stores. A database migration is not required for this
+private alpha.
+
+Set these environment variables before starting production:
+
+```text
+NODE_ENV=production
+HOST=0.0.0.0
+AUTH_REQUIRED=true
+AUTH_COOKIE_SECURE=true
+AUTH_SESSION_SECRET=<unique random secret, at least 32 characters>
+CREDENTIAL_ENCRYPTION_SECRET=<different random secret, at least 32 characters>
+GOOGLE_CLIENT_ID=<Google OAuth web client>
+GOOGLE_CLIENT_SECRET=<Google OAuth secret>
+GOOGLE_REDIRECT_URI=https://<app-domain>/api/auth/callback
+CORS_ORIGINS=https://<app-domain>
+ALPHA_USER_ALLOWLIST=<comma-separated invited Google emails or user IDs>
+TRAVEL_AGENT_DATA_DIR=/data
+TRAVEL_AGENT_PROVIDER=google
+TRAVEL_AGENT_MODEL=gemini-2.5-flash
+USE_STAGEHAND=0
+SEARXNG_BASE_URL=<image search endpoint>
+TRAVEL_AGENT_MESSAGE_TIMEOUT_MS=360000
+SEARCH_TIMEOUT_MS=12000
+IMAGE_TIMEOUT_MS=15000
+```
+
+Register the exact callback URI in the Google OAuth client and invite the alpha
+users in its consent configuration. Keep encryption secrets stable across releases
+so saved keys remain decryptable. Server-funded keys are optional; for that path
+set `GEMINI_API_KEY` and put approved Google **user IDs** in
+`SERVER_KEY_FALLBACK_ALLOWLIST`.
+
+The server refuses unsafe production authentication, cookies, missing Google
+configuration, default/short secrets, wildcard CORS and an empty alpha allowlist.
+`/health` is liveness. `/ready` checks local storage access and required configuration;
+it does **not** prove external provider access. Use `/health` as the host health
+check and verify `/ready` plus the real journey before admitting users.
+
+## Verification
+
+From the repository root:
+
+```sh
 npm run check
 ```
 
-## No-backup alpha policy
+From `packages/travel-agent-server`:
 
-For alpha, we are not doing a backup/restore rehearsal. Alpha users should be told:
+```sh
+npm run check
+npx tsx ../../node_modules/vitest/dist/cli.js --run test/server.test.ts test/working-alpha.test.ts test/session-integration.test.ts test/ui-blocks.test.ts test/events.test.ts
+```
 
-- data may be reset during alpha
-- do not rely on alpha as permanent trip storage
-- user LLM keys can be deleted/rotated from the app
+From `packages/travel-agent-web`:
 
-Before beta/GA, replace this with a real backup/restore and deletion rehearsal.
+```sh
+npm run check
+npx tsx ../../node_modules/vitest/dist/cli.js --run test/api.test.ts test/render-safety.test.ts test/plan-export.test.ts
+```
 
-## Rollback
+From `packages/travel-agent`, after preparing the web bundle:
 
-Railway rollback should use the previous successful deployment. After rollback:
+```sh
+npx tsx ../../node_modules/vitest/dist/cli.js --run test/e2e-session.test.ts test/get-images.test.ts test/image-validation.test.ts test/failover.test.ts test/state.test.ts test/tools.test.ts test/instant-actions.test.ts test/eval-guardrails.test.ts
+npx tsx ../../node_modules/vitest/dist/cli.js --run test/web-journey.test.ts
+```
 
-1. Check `/health`.
-2. Check `/ready`.
-3. Run the alpha smoke flow.
-4. Verify Google sign-in and credential listing with a test user.
+The browser test needs Playwright Chromium. Alternatively set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE` to an installed Chrome executable. Set
+`TRAVEL_TEST_ARTIFACTS` to retain screenshots. It uses a deterministic session
+fixture and mocked credential probes; the SDK test separately exercises the real
+agent harness with the faux provider. Neither establishes live AI quality.
 
-## Data deletion
+Before inviting users, perform this journey with real credentials on HTTPS:
 
-Alpha minimum:
+1. Google sign-in; reject an uninvited account.
+2. Add a Gemini key and verify it; check a rejected key and a rotated key.
+3. Plan a trip, choose places, explore activities, choose experiences, build the
+   itinerary and download it. Check citations, dates, estimates and all activities.
+4. Repeat on a phone, interrupt a run, reload and continue; verify the saved trip
+   also survives a server restart.
+5. Delete the trip and key, then verify a second user cannot access either.
+6. Verify photos come from stored validation evidence and the SearXNG endpoint works.
 
-- credential delete endpoint removes stored encrypted key records
-- trip/session deletion endpoint is still pending and must be added before broader beta
+## Data and rollback
 
-## Launch gate (M7)
-
-Before launch, in addition to the blockers below:
-
-- **Build reproducibility** resolved — POC packages depend on the in-repo `@earendil-works/pi-*` framework (see section above).
-- Deterministic + integration tests green (`npm test` in each package; offline, no keys).
-- Golden-path smoke green (`npm run smoke:alpha` in `packages/travel-agent`).
-- Manual dogfood of the Greece/Japan/Portugal matrix, mobile included.
-- **Observability:** `runId`/`sessionId` in logs (done); error alerting (e.g. Sentry log drain) wired — *operational, not yet configured*.
-- **Security:** run `/security-review` over auth/creds/isolation/CORS/cookies; resolve findings — *operational, not yet run*.
-- **Capacity:** session rehydrate-on-restart verified (integration test); pick a concurrent-user target and size the Railway service.
-
-## Release blockers
-
-Do not launch alpha if any are true:
-
-- `/ready` returns non-200
-- Google sign-in fails in staging
-- credential API returns plaintext key material
-- cross-user session/credential isolation tests fail
-- rendered images are not backed by validation evidence
-- SearXNG is unavailable and no approved fallback exists
+Trips save their state, ownership and harness conversation beneath `/data`.
+The delete-trip action removes all three. Encrypted credentials are separate and
+have their own delete action. Keep the volume and secrets when rolling back to a
+previous successful deployment. Recheck health, readiness, login and a real trip.
+Alpha users should download important itineraries; a backup/restore rehearsal
+has not been performed. Hotel/flight booking is outside the current alpha UI.

@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { applyInstantAction, createTravelSession, getFiller, getTravelSession, streamTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type FillerContent, type InstantActionType, type TravelState, type TravelUiBlock } from "./api.js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { applyInstantAction, cancelTravelRun, deleteTravelSession, createTravelSession, getFiller, getTravelSession, streamTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type FillerContent, type InstantActionType, type TravelState, type TravelUiBlock } from "./api.js";
+import { AccountGate } from "./AccountGate.js";
+import { buildPlanText, formatPlanValue } from "./plan-export.js";
 import { ConsentGate, FooterDisclaimer, HighRiskCaveat, LegalModal } from "./Legal.js";
 import { getRenderableDestinationImages } from "./render-safety.js";
 import { type ChatMessage, type RunStatus, TravelCopilotChat } from "./TravelCopilotChat.js";
@@ -17,6 +19,11 @@ const RESEARCH_TABS: Array<{ id: ResearchTab; label: string }> = [
 ];
 
 export function App() {
+    const [legalOpen, setLegalOpen] = useState(false);
+    return <><ConsentGate onOpenLegal={() => setLegalOpen(true)}><AccountGate><TravelPlanner onOpenLegal={() => setLegalOpen(true)} /></AccountGate></ConsentGate>{legalOpen ? <LegalModal onClose={() => setLegalOpen(false)} /> : null}</>;
+}
+
+function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 	const [sessionId, setSessionId] = useState<string | null>(null);
 	const [state, setState] = useState<TravelState | null>(null);
 	const [uiBlocks, setUiBlocks] = useState<TravelUiBlock[]>([]);
@@ -32,9 +39,16 @@ export function App() {
 	const [narration, setNarration] = useState<string[]>([]);
 	const [streamingText, setStreamingText] = useState("");
 	const [filler, setFiller] = useState<FillerContent | null>(null);
-	const [legalOpen, setLegalOpen] = useState(false);
+    const initialized = useRef(false);
+    const activeRun = useRef<AbortController | null>(null);
+    const actionPending = useRef(false);
+    const [recovering, setRecovering] = useState(false);
+    const [mobilePanel, setMobilePanel] = useState<"chat" | "plan">("chat");
+    const [confirmDelete, setConfirmDelete] = useState(false);
 
 	useEffect(() => {
+        if (initialized.current) return;
+        initialized.current = true;
 		const existingSessionId = new URLSearchParams(window.location.search).get("session");
 		if (existingSessionId) {
 			void resumeSession(existingSessionId);
@@ -42,6 +56,21 @@ export function App() {
 			void startSession();
 		}
 	}, []);
+
+    useEffect(() => () => { activeRun.current?.abort(); }, []);
+    useEffect(() => {
+        if (!recovering || !sessionId) return;
+        let disposed = false;
+        const timer = setInterval(() => {
+            void getTravelSession(sessionId).then((session) => {
+                if (disposed) return;
+                setState(session.state); setUiBlocks(session.uiBlocks);
+                if (session.conversation.length) setMessages(session.conversation);
+                if (session.status === "idle") setRecovering(false);
+            }).catch((e) => { if (!disposed) { setError(errorMessage(e)); setRecovering(false); } });
+        }, 2000);
+        return () => { disposed = true; clearInterval(timer); };
+    }, [recovering, sessionId]);
 
 	useEffect(() => {
 		if (!sessionId) return;
@@ -70,7 +99,7 @@ export function App() {
 	}, [uiBlocks]);
 
 	const activityResearchFallback = useMemo(() => extractActivityResearchFallback(messages), [messages]);
-	const visibleMessages = useMemo(() => messages.filter((message) => !isResearchMessage(message)), [messages]);
+	const visibleMessages = messages;
 	const visibleUiBlocks = useMemo(() => {
 		if (!activityResearchFallback || uiBlocks.some((block) => block.kind === "activity_cards")) return uiBlocks;
 		const destinationIndex = uiBlocks.findLastIndex((block) => block.kind === "destination_cards");
@@ -93,11 +122,14 @@ export function App() {
 
 	async function startSession() {
 		setRunStatus("starting");
+        setRecovering(false);
 		setError(null);
 		try {
 			const session = await createTravelSession();
 			setSession(session.sessionId, session.state, session.uiBlocks);
 			setMessages([]);
+            setLastFailedMessage(null);
+            setActiveResearchTab("overview");
 			saveSessionMessages(session.sessionId, []);
 		} catch (e) {
 			setError(errorMessage(e));
@@ -108,11 +140,13 @@ export function App() {
 
 	async function resumeSession(id: string) {
 		setRunStatus("starting");
+        setRecovering(false);
 		setError(null);
 		try {
 			const session = await getTravelSession(id);
 			setSession(session.sessionId, session.state, session.uiBlocks);
 			setMessages(session.conversation?.length ? session.conversation : loadSessionMessages(session.sessionId));
+            setRecovering(session.status === "busy");
 		} catch (e) {
 			setError(errorMessage(e));
 		} finally {
@@ -139,7 +173,9 @@ export function App() {
 	}
 
 	async function sendMessageToAgent(message: string) {
-		if (!sessionId || runStatus !== "idle") return;
+		if (!sessionId || runStatus !== "idle" || activeRun.current || actionPending.current || recovering) return;
+        const controller = new AbortController();
+        activeRun.current = controller;
 		setError(null);
 		setMessages((current) => [...current, { role: "user", content: message }]);
 		setRunStatus("sending");
@@ -148,7 +184,7 @@ export function App() {
 		// Static wait-filler (ADR 0003): fire-and-forget, keyed to what we know.
 		setFiller(null);
 		void getFiller(sessionId, deriveDestination(state))
-			.then(setFiller)
+			.then((content) => { if (!controller.signal.aborted && activeRun.current === controller) setFiller(content); })
 			.catch(() => setFiller(null));
 		let runFailed = false;
 		try {
@@ -173,13 +209,20 @@ export function App() {
 						setError(event.message);
 						break;
 				}
-			});
+			}, controller.signal);
 			if (!runFailed) setLastFailedMessage(null);
 		} catch (e) {
 			// Pre-stream failures (network, 4xx/5xx before the stream opened).
 			setLastFailedMessage(message);
 			setError(errorMessage(e));
 		} finally {
+            activeRun.current = null;
+            try {
+                const saved = await getTravelSession(sessionId);
+                setState(saved.state); setUiBlocks(saved.uiBlocks);
+                if (saved.conversation.length) setMessages(saved.conversation);
+                setRecovering(saved.status === "busy");
+            } catch { /* Keep visible progress and the retry control if offline. */ }
 			setRunStatus("idle");
 			setNarration([]);
 			setStreamingText("");
@@ -190,7 +233,10 @@ export function App() {
 	// Deterministic instant action (ADR 0001): optimistic update, then the
 	// server's authoritative snapshot; revert by refetching on failure.
 	async function applyAction(type: InstantActionType, name: string) {
-		if (!sessionId) return;
+		if (!sessionId || actionPending.current || runStatus !== "idle" || recovering) return;
+        actionPending.current = true;
+        setRunStatus("saving");
+        setError(null);
 		try {
 			const result = await applyInstantAction(sessionId, type, name);
 			setState(result.state);
@@ -202,12 +248,14 @@ export function App() {
 				setState(session.state);
 				setUiBlocks(session.uiBlocks);
 			} catch {
-				// Keep the optimistic state if we can't refetch; the next run reconciles.
+                // Restore the last confirmed selection when the server is unreachable.
+                setUiBlocks((current) => [...current]);
 			}
-		}
+		} finally { actionPending.current = false; setRunStatus("idle"); }
 	}
 
 	function handleDestinationAction(action: "select" | "images" | "reviews", destinationName: string, imageQuery?: string) {
+        if (runStatus !== "idle" || actionPending.current || recovering) return;
 		if (action === "select") {
 			const alreadySelected = selectedDestinationNames.has(destinationName);
 			setSelectedDestinationNames((current) => {
@@ -238,6 +286,7 @@ export function App() {
 	}
 
 	function handleActivityToggle(activityName: string) {
+        if (runStatus !== "idle" || actionPending.current || recovering) return;
 		const alreadySelected = selectedActivityNames.has(activityName);
 		setSelectedActivityNames((current) => {
 			const next = new Set(current);
@@ -257,22 +306,24 @@ export function App() {
 	// Client-side plan export (ADR 0001: download is an instant action, no LLM).
 	function handleDownloadPlan() {
 		if (!state) return;
-		const blob = new Blob([buildPlanText(state, messages)], { type: "text/markdown" });
+		const blob = new Blob([buildPlanText(state, uiBlocks)], { type: "text/markdown" });
 		const url = URL.createObjectURL(blob);
 		const link = document.createElement("a");
 		link.href = url;
 		link.download = `travel-plan-${sessionId ?? "session"}.md`;
 		link.click();
-		URL.revokeObjectURL(url);
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
 	}
 
 	return (
-		<ConsentGate onOpenLegal={() => setLegalOpen(true)}>
-		<main className="app-shell">
+        <>
+        <nav className="mobile-panels" aria-label="Planner view"><button type="button" aria-pressed={mobilePanel === "chat"} onClick={() => setMobilePanel("chat")}>Chat</button><button type="button" aria-pressed={mobilePanel === "plan"} onClick={() => setMobilePanel("plan")}>My plan</button></nav>
+		<main className={`app-shell mobile-${mobilePanel}`}>
 				<TravelCopilotChat
 					draft={draft}
 					error={error}
 					messages={visibleMessages}
+                    approvedImages={Object.values(state?.validatedImages ?? {}).flat()}
 					narration={narration}
 					streamingText={streamingText}
 					filler={filler}
@@ -280,15 +331,18 @@ export function App() {
 					onNewSession={() => void startSession()}
 					onSubmit={handleSubmit}
 					progressMessage={progressMessage}
-					runStatus={runStatus}
+					runStatus={recovering ? "sending" : runStatus}
 					sessionReady={Boolean(sessionId)}
+                    onStop={() => { if (sessionId) void cancelTravelRun(sessionId).then(() => activeRun.current?.abort()).catch((e) => setError(errorMessage(e))); }}
 					onRetry={lastFailedMessage ? () => sendMessageToAgent(lastFailedMessage) : undefined}
 				/>
 
 				<aside className="sidebar" aria-label="Travel state">
 				<div className="session-card">
 					<p className="eyebrow">Session</p>
-					<code>{sessionId ?? (runStatus === "starting" ? "Creating…" : "Not started")}</code>
+                    <p>Your trip is saved automatically. Bookmark this page to return.</p>
+                    <button type="button" disabled={runStatus !== "idle" || recovering || !sessionId} onClick={() => setConfirmDelete(true)}>Delete trip</button>
+                    {confirmDelete ? <div role="alert"><p>Delete this trip permanently?</p><button type="button" onClick={async () => { if (!sessionId) return; try { await deleteTravelSession(sessionId); window.localStorage.removeItem(chatStorageKey(sessionId)); setConfirmDelete(false); await startSession(); } catch (e) { setError(errorMessage(e)); } }}>Delete permanently</button><button type="button" onClick={() => setConfirmDelete(false)}>Keep trip</button></div> : null}
 				</div>
 
 				<div className="state-card">
@@ -301,7 +355,7 @@ export function App() {
 
 				<PlanActions
 					state={state}
-					disabled={runStatus !== "idle"}
+					disabled={runStatus !== "idle" || recovering}
 					onGenerate={(prompt) => void sendMessageToAgent(prompt)}
 					onDownload={handleDownloadPlan}
 				/>
@@ -316,7 +370,7 @@ export function App() {
 					displayedUiBlocks.map((block, index) => (
 						<SafeUiBlockView
 							block={block}
-							disabled={runStatus !== "idle"}
+							disabled={runStatus !== "idle" || recovering}
 							key={block.id ?? `${block.kind}-${index}`}
 							onActivitySelectionDone={handleActivitySelectionDone}
 							onActivityToggle={handleActivityToggle}
@@ -332,10 +386,9 @@ export function App() {
 					<div className="state-card">Loading checklist…</div>
 				)}
 			</aside>
-			<FooterDisclaimer onOpenLegal={() => setLegalOpen(true)} />
+			<FooterDisclaimer onOpenLegal={onOpenLegal} />
 		</main>
-		{legalOpen ? <LegalModal onClose={() => setLegalOpen(false)} /> : null}
-		</ConsentGate>
+        </>
 	);
 }
 
@@ -449,14 +502,14 @@ function UiBlockView({
 			return (
 				<div className="state-card">
 					<p className="eyebrow">{block.title}</p>
-					<p>{String(block.data.budget ?? "Not set")}</p>
+					<p>{formatPlanValue(block.data.budget ?? "Not set")}</p>
 				</div>
 			);
 		case "activity_cards":
 			return (
 				<ActivityCards
 					block={block}
-					disabled={disabled}
+					disabled={disabled || block.id === "activity-cards-from-chat"}
 					onActivitySelectionDone={onActivitySelectionDone}
 					onActivityToggle={onActivityToggle}
 					selectedActivityNames={selectedActivityNames}
@@ -569,7 +622,7 @@ function DestinationCards({
 					<h3>{block.data.destinationName}</h3>
 				</div>
 				<button type="button" className="done-button" onClick={onDestinationSelectionDone} disabled={disabled || selectedDestinationNames.size === 0}>
-					Done{selectedDestinationNames.size > 0 ? ` (${selectedDestinationNames.size})` : ""}
+					Explore activities{selectedDestinationNames.size > 0 ? ` (${selectedDestinationNames.size})` : ""}
 				</button>
 			</div>
 			<p>{block.data.overallSummary}</p>
@@ -586,9 +639,9 @@ function DestinationCards({
 							{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
 							{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
 							{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
-							{(card.imageLinks ?? []).length > 0 ? (
-								<div className="image-strip">{(card.imageLinks ?? []).slice(0, 3).map((src) => <SafeImage src={src} alt={card.name} key={src} />)}</div>
-							) : null}
+							{getRenderableDestinationImages(card).length > 0 ? (
+                                <div className="image-strip">{getRenderableDestinationImages(card).slice(0, 3).map((image) => <figure key={image.finalUrl}><SafeImage src={image.finalUrl} alt={card.name} /><figcaption><a href={/^https:\/\//i.test(image.source ?? "") ? image.source : image.finalUrl} target="_blank" rel="noreferrer">Photo source · {image.provider}</a></figcaption></figure>)}</div>
+                            ) : <small>Photos appear here once verified. Use “See images” to find photos.</small>}
 							<div className="card-actions">
 								<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled}>
 									{selected ? "Remove" : "Select place"}
@@ -625,7 +678,7 @@ function ActivityCards({
 					<h3>Choose activities</h3>
 				</div>
 				<button type="button" className="done-button" onClick={onActivitySelectionDone} disabled={disabled || selectedActivityNames.size === 0}>
-					Done{selectedActivityNames.size > 0 ? ` (${selectedActivityNames.size})` : ""}
+					Build itinerary{selectedActivityNames.size > 0 ? ` (${selectedActivityNames.size})` : ""}
 				</button>
 			</div>
 			<div className="destination-cards activity-cards">
@@ -640,9 +693,9 @@ function ActivityCards({
 							<p>{activity.summary}</p>
 							<small>{activity.location}{activity.durationHours ? ` · ${activity.durationHours}h` : ""}{activity.cost ? ` · ${activity.cost}` : ""}</small>
 							{activity.tips ? <small>Tip: {activity.tips}</small> : null}
-							{activity.imageLinks.length > 0 ? (
-								<div className="image-strip">{activity.imageLinks.slice(0, 3).map((src) => <SafeImage src={src} alt={activity.name} key={src} />)}</div>
-							) : null}
+							{getRenderableDestinationImages(activity).length > 0 ? (
+                                <div className="image-strip">{getRenderableDestinationImages(activity).slice(0, 3).map((image) => <figure key={image.finalUrl}><SafeImage src={image.finalUrl} alt={activity.name} /><figcaption><a href={/^https:\/\//i.test(image.source ?? "") ? image.source : image.finalUrl} target="_blank" rel="noreferrer">Photo source · {image.provider}</a></figcaption></figure>)}</div>
+                            ) : null}
 							<div className="card-actions">
 								<button type="button" onClick={() => onActivityToggle(activity.name)} disabled={disabled}>
 									{selected ? "Remove" : "Select activity"}
@@ -690,6 +743,8 @@ function PlanActions({
 					More activities
 				</button>
 			) : null}
+            {hasSelections && !hasActivities ? <button type="button" disabled={disabled} onClick={() => onGenerate("Research activities for my selected places and save the activity options in the trip state.")}>Explore activities</button> : null}
+            {hasActivities ? <button type="button" disabled={disabled} onClick={() => onGenerate("Build and save a complete day-by-day itinerary using my selected activities. Include a budget estimate. Do not research bookings unless I request them.")}>{hasItinerary ? "Update itinerary" : "Build itinerary"}</button> : null}
 			{hasItinerary || hasSelections ? (
 				<button type="button" disabled={disabled} onClick={() => onGenerate("Calculate the full budget breakdown for this trip, per person and total.")}>
 					Calculate budget
@@ -707,32 +762,8 @@ function PlanActions({
 	);
 }
 
-/** Render the current plan to Markdown for the client-side download. */
-function buildPlanText(state: TravelState, messages: ChatMessage[]): string {
-	const lines: string[] = ["# My Travel Plan", ""];
-	const prefs = Object.entries(state.preferences ?? {}).filter(
-		([, value]) => value !== null && value !== undefined && value !== "",
-	);
-	if (prefs.length > 0) {
-		lines.push("## Preferences");
-		for (const [key, value] of prefs) lines.push(`- ${formatPreferenceLabel(key)}: ${formatPreferenceValue(value)}`);
-		lines.push("");
-	}
-	const places = (state.selectedDestinations ?? [])
-		.map((d) => (d && typeof d === "object" && "name" in d ? String((d as { name?: unknown }).name ?? "") : ""))
-		.filter(Boolean);
-	if (places.length > 0) lines.push("## Selected places", ...places.map((place) => `- ${place}`), "");
-	const lastPlan = [...messages].reverse().find((m) => m.role === "assistant" && m.content.trim().length > 200);
-	if (lastPlan) lines.push("## Itinerary", lastPlan.content.trim(), "");
-	lines.push(
-		"---",
-		"_Generated by Pi Travel Agent. AI-generated estimates only — verify visas, health rules, prices, and bookings with official sources before you commit._",
-	);
-	return lines.join("\n");
-}
-
 function buildResearchTabs(blocks: TravelUiBlock[]): Array<{ id: ResearchTab; label: string; count: number }> {
-	return RESEARCH_TABS.map((tab) => ({
+	return RESEARCH_TABS.filter((tab) => !["stays", "flights"].includes(tab.id) || countBlocksForResearchTab(blocks, tab.id) > 0).map((tab) => ({
 		...tab,
 		count: countBlocksForResearchTab(blocks, tab.id),
 	}));

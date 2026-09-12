@@ -10,7 +10,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fauxAssistantMessage, fauxText, fauxToolCall, registerFauxProvider } from "@earendil-works/pi-ai";
 import { afterEach, describe, expect, it } from "vitest";
-import { createTravelSession, type TravelSession } from "../src/core/sdk.js";
+import { advanceChecklist } from "../src/core/checklist.js";
+import {
+	createTravelSession,
+	deleteTravelConversation,
+	loadTravelConversation,
+	type TravelSession,
+} from "../src/core/sdk.js";
 import type { SearchProvider, SearchResult } from "../src/core/search/types.js";
 
 const TEST_DIR = join(tmpdir(), `travel-e2e-test-${Date.now()}`);
@@ -163,7 +169,6 @@ describe("Travel Session E2E", () => {
 		state.selectedDestinations = [{ name: "Shibuya", type: "area", description: "d", reviews: {}, sources: [] }];
 
 		// Manually advance checklist to phase 3 (research_experiences)
-		const { advanceChecklist } = await import("../src/core/checklist.js");
 		state.checklist = advanceChecklist(state.checklist); // -> shortlist
 		state.checklist = advanceChecklist(state.checklist); // -> select
 		state.checklist = advanceChecklist(state.checklist); // -> experiences
@@ -206,5 +211,31 @@ describe("Travel Session E2E", () => {
 		expect(session.state.preferences.destination).toBe("Tokyo");
 
 		faux.unregister();
+	});
+
+	it("surfaces provider failures and removes the saved transcript when a trip is deleted", async () => {
+		const faux = registerFauxProvider();
+		try {
+			faux.setResponses([
+				fauxAssistantMessage([fauxText("Partial response")], {
+					stopReason: "error",
+					errorMessage: "Provider quota exhausted",
+				}),
+			]);
+			session = await createTravelSession({
+				model: faux.getModel(),
+				sessionId: "failed-trip",
+				searchProvider: createFakeSearchProvider(),
+				dataDir: TEST_DIR,
+			});
+			await expect(session.agent.prompt("Plan Japan")).rejects.toThrow("AI provider");
+			expect((await loadTravelConversation("failed-trip", TEST_DIR)).length).toBeGreaterThan(0);
+			await session.shutdown();
+			session = null;
+			await deleteTravelConversation("failed-trip", TEST_DIR);
+			expect(await loadTravelConversation("failed-trip", TEST_DIR)).toEqual([]);
+		} finally {
+			faux.unregister();
+		}
 	});
 });

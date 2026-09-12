@@ -23,6 +23,7 @@ afterEach(() => {
 
 describe("render safety", () => {
 	test("can render raw destination imageLinks when strict validation toggle is off", () => {
+		import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES = "false";
 		const images = getRenderableDestinationImages({ imageLinks: ["https://fake.example/image.jpg"] });
 		expect(images[0]).toMatchObject({
 			finalUrl: "https://fake.example/image.jpg",

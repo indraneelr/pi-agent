@@ -6,6 +6,7 @@ export interface ChecklistPhase {
 }
 
 export interface TravelState {
+	validatedImages?: Record<string, ValidatedImage[]>;
 	sessionId: string;
 	checklist: {
 		phases: ChecklistPhase[];
@@ -92,6 +93,7 @@ export type DestinationCardsBlock = UiBlockEnvelope<
 			logisticsFit?: string;
 			imageQuery?: string;
 			imageLinks: string[];
+			validatedImages?: ValidatedImage[];
 			selected: boolean;
 		}>;
 	}
@@ -116,6 +118,7 @@ export type ActivityCardsBlock = UiBlockEnvelope<
 			durationHours?: number;
 			tips?: string;
 			imageLinks: string[];
+			validatedImages?: ValidatedImage[];
 			selected?: boolean;
 		}>;
 	}
@@ -269,10 +272,17 @@ export async function streamTravelMessage(
 	const reader = response.body.getReader();
 	const decoder = new TextDecoder();
 	let buffer = "";
+	let terminal = false;
 	try {
 		while (true) {
 			const { done, value } = await reader.read();
-			if (done) break;
+			if (done) {
+				if (!terminal)
+					throw new Error(
+						"Connection interrupted before the plan finished. Refresh the trip to recover saved progress.",
+					);
+				break;
+			}
 			buffer += decoder.decode(value, { stream: true });
 			let boundary = buffer.indexOf("\n\n");
 			while (boundary !== -1) {
@@ -281,18 +291,69 @@ export async function streamTravelMessage(
 				const dataLine = frame.split("\n").find((line) => line.startsWith("data:"));
 				const json = dataLine?.slice("data:".length).trim();
 				if (json) {
-					try {
-						onEvent(JSON.parse(json) as TravelStreamEvent);
-					} catch {
-						// Ignore a malformed frame rather than aborting the whole stream.
-					}
+					const event = JSON.parse(json) as TravelStreamEvent;
+					terminal ||= event.type === "run_finished" || event.type === "run_error";
+					onEvent(event);
 				}
 				boundary = buffer.indexOf("\n\n");
 			}
 		}
 	} finally {
+		await reader.cancel().catch(() => undefined);
 		reader.releaseLock();
 	}
+}
+
+export interface Account {
+	authRequired: boolean;
+	authenticated: boolean;
+	user: { id: string; email: string; name?: string } | null;
+	provider: string;
+	modelId: string;
+	providerConfigured: boolean;
+}
+
+export interface Credential {
+	id: string;
+	provider: string;
+	label: string;
+	status: "untested" | "valid" | "invalid";
+}
+
+export async function getAccount(): Promise<Account> {
+	return requestJson<Account>("/api/auth/current-user");
+}
+
+export async function listCredentials(): Promise<{ credentials: Credential[] }> {
+	return requestJson<{ credentials: Credential[] }>("/api/credentials");
+}
+
+export async function saveCredential(provider: string, apiKey: string): Promise<{ credential: Credential }> {
+	return requestJson<{ credential: Credential }>("/api/credentials", {
+		method: "POST",
+		headers: { "content-type": "application/json" },
+		body: JSON.stringify({ provider, apiKey }),
+	});
+}
+
+export async function validateCredential(id: string): Promise<{ credential: Credential }> {
+	return requestJson<{ credential: Credential }>(`/api/credentials/${id}/validate`, { method: "POST" });
+}
+
+export async function deleteCredential(id: string): Promise<void> {
+	await requestJson(`/api/credentials/${id}`, { method: "DELETE" });
+}
+
+export async function logout(): Promise<void> {
+	await requestJson("/api/auth/logout", { method: "POST" });
+}
+
+export async function cancelTravelRun(sessionId: string): Promise<void> {
+	await requestJson(`/api/travel/sessions/${sessionId}/cancel`, { method: "POST" });
+}
+
+export async function deleteTravelSession(sessionId: string): Promise<void> {
+	await requestJson(`/api/travel/sessions/${sessionId}`, { method: "DELETE" });
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {

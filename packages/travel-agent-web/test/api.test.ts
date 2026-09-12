@@ -1,11 +1,25 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { createTravelSession, getTravelSession, sendTravelMessage } from "../src/api.js";
+import { createTravelSession, getTravelSession, sendTravelMessage, streamTravelMessage } from "../src/api.js";
 
 afterEach(() => {
 	vi.restoreAllMocks();
 });
 
 describe("travel API client", () => {
+	test("rejects a truncated stream instead of silently reporting success", async () => {
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response('data: {"type":"text_delta","delta":"Partial"}\n\n'),
+		);
+		await expect(streamTravelMessage("s1", "Plan", () => {})).rejects.toThrow("Connection interrupted");
+	});
+	test("handles heartbeat frames and a completed stream", async () => {
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(': heartbeat\n\ndata: {"type":"run_finished","assistantMessage":"Complete"}\n\n'),
+		);
+		const events: string[] = [];
+		await streamTravelMessage("s1", "Plan", (event) => events.push(event.type));
+		expect(events).toEqual(["run_finished"]);
+	});
 	test("creates a session and returns state", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(
 			jsonResponse({ sessionId: "s1", state: { sessionId: "s1" }, uiBlocks: [], conversation: [], status: "idle" }),

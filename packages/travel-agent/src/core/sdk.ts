@@ -198,6 +198,10 @@ class TravelAgentHarnessFacade implements TravelAgentFacade {
 		try {
 			await this.harness.prompt(input, images ? { images } : undefined);
 			await this.refreshMessages();
+			const last = this.state.messages.at(-1);
+			if (last?.role === "assistant" && (last.stopReason === "error" || last.stopReason === "aborted")) {
+				throw new Error("The AI provider could not finish this request. Check the API key and quota, then retry.");
+			}
 		} catch (e) {
 			this.state.errorMessage = e instanceof Error ? e.message : String(e);
 			throw e;
@@ -241,7 +245,16 @@ async function findHarnessSession(
 	sessionId: string,
 ): Promise<JsonlSessionMetadata | undefined> {
 	const repo = new JsonlSessionRepo({ fs: env, sessionsRoot: join(dataDir, "sessions") });
-	return (await repo.list({ cwd: process.cwd() })).find((metadata: JsonlSessionMetadata) => metadata.id === sessionId);
+	return (await repo.list()).find((metadata: JsonlSessionMetadata) => metadata.id === sessionId);
+}
+
+/** Remove a trip's transcripts, including those created from an earlier deployment directory. */
+export async function deleteTravelConversation(sessionId: string, dataDir: string): Promise<void> {
+	const env = new NodeExecutionEnv({ cwd: process.cwd() });
+	const repo = new JsonlSessionRepo({ fs: env, sessionsRoot: join(dataDir, "sessions") });
+	for (const metadata of await repo.list()) {
+		if (metadata.id === sessionId) await repo.delete(metadata);
+	}
 }
 
 export function extractTravelConversation(messages: readonly AgentMessage[]): TravelConversationMessage[] {

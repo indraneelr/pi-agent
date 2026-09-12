@@ -1,4 +1,4 @@
-import type { TravelState } from "@mariozechner/pi-travel-agent";
+import type { TravelState, ValidatedImage } from "@mariozechner/pi-travel-agent";
 
 const ALPHA_SHOW_BOOKING_BLOCKS = false;
 
@@ -61,6 +61,7 @@ export interface DestinationCard {
 	logisticsFit?: string;
 	imageQuery?: string;
 	imageLinks: string[];
+	validatedImages: ValidatedImage[];
 	selected: boolean;
 }
 
@@ -83,6 +84,7 @@ export type ActivityCardsBlock = UiBlockEnvelope<
 			durationHours?: number;
 			tips?: string;
 			imageLinks: string[];
+			validatedImages: ValidatedImage[];
 			selected: boolean;
 		}>;
 	}
@@ -180,6 +182,7 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 					logisticsFit: destination.logisticsFit,
 					imageQuery: destination.imageQuery ?? destination.imageKeywords,
 					imageLinks: destination.imageLinks ?? [],
+					validatedImages: state.validatedImages?.[destination.name.trim().toLowerCase()] ?? [],
 					selected: state.selectedDestinations.some(
 						(selected) => selectedDestinationName(selected) === destination.name,
 					),
@@ -209,6 +212,7 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 					durationHours: activity.estimatedDurationHours,
 					tips: activity.tips,
 					imageLinks: activity.imageLinks ?? [],
+					validatedImages: state.validatedImages?.[activity.name.trim().toLowerCase()] ?? [],
 					selected: (state.selectedActivityNames ?? []).some(
 						(name) => name.trim().toLowerCase() === activity.name.trim().toLowerCase(),
 					),
@@ -262,7 +266,11 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 					date: day.date,
 					place: day.place,
 					activityCount: day.activities.length,
-					activities: day.activities.slice(0, 4).map((activity) => activity.name),
+					activities: day.activities.map((activity) =>
+						[activity.approxStartTime ?? activity.timeSlot, activity.name, activity.description]
+							.filter(Boolean)
+							.join(" — "),
+					),
 				})),
 			},
 			actions: [],

@@ -39,7 +39,14 @@ describe("get_images", () => {
 				},
 			},
 		);
-		expect(result.images).toEqual([{ url: "https://example.com/ok.jpg", width: 1280, height: 720 }]);
+		expect(result.images).toMatchObject([
+			{
+				url: "https://example.com/ok.jpg",
+				width: 1280,
+				height: 720,
+				validation: { httpStatus: 200, contentType: "image/jpeg" },
+			},
+		]);
 		expect(result.rejectedCount).toBe(2);
 	});
 

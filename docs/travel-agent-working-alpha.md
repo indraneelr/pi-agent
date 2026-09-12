@@ -37,3 +37,21 @@ Use the existing React UI, Fastify server, pi harness, Google BYOK and search to
 Private alpha only. Production deployment needs the operator's Google OAuth
 configuration, encryption secrets, search endpoint and durable volume. Capacity
 qualification and public-launch legal review remain outside this change.
+
+## Verified result — 2026-09-12
+
+- Clean `npm ci --ignore-scripts` followed by `node scripts/prepare-travel.mjs` passed.
+- Root `npm run check` and the server/web TypeScript checks passed.
+- 133 targeted tests passed: 76 core/browser, 45 server and 12 frontend.
+- Real agent harness tested with the faux provider: tool calls, state updates,
+  persisted transcripts, provider-error propagation and transcript deletion.
+- Real HTTP SSE regression passed. Browser verification covered consent/legal,
+  invalid/valid key onboarding, places, activities, itinerary, complete download,
+  reload, phone navigation and cancellation. Desktop and 390px phone screenshots
+  were inspected; chat scrolling was corrected.
+- Live Gemini grounding, SearXNG, real Google sign-in and a hosted deployment have
+  not been verified. No provider credentials were available in this checkout or
+  current environment. `/ready` remains a configuration check, not a live-provider
+  test. The Docker definition is prepared; it was not built/run in Docker here.
+- Vite packaging succeeds with a size warning for the existing Markdown vendor
+  bundle. No capacity changes were included.
