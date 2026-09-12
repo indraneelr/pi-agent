@@ -346,6 +346,29 @@ input:disabled {
 	overscroll-behavior: contain;
 }
 
+.sidebar > * { flex-shrink: 0; min-width: 0; }
+.sticky-plan-toolbar { position: sticky; top: -1rem; z-index: 5; margin: 0 -1rem; padding: 0.65rem 1rem; background: #161619; border-bottom: 1px solid #ffffff25; }
+.plan-actions .explore-activities { background: #fbbf24; color: #17130a; font-weight: 800; order: -1; }
+.activity-progress, .card-feedback { display: flex; align-items: center; gap: 0.65rem; padding: 0.65rem 0; font-size: 0.9rem; flex-wrap: wrap; }
+.spinner { flex-shrink: 0; display: inline-block; }
+.destination-carousel { margin: 1rem 0; max-width: 100%; }
+.destination-carousel figure { margin: 0; }
+.destination-carousel img, .destination-carousel .image-placeholder { width: 100%; height: clamp(180px, 27vw, 360px); object-fit: cover; border-radius: 14px; }
+.destination-carousel figcaption { font-size: 0.75rem; margin-top: 0.4rem; }
+.destination-carousel a, .destination-reviews a { color: #fbbf24; overflow-wrap: anywhere; }
+.carousel-controls { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 0.5rem; }
+.carousel-controls button, .destination-reviews button, .activity-progress button { background: #292b32; color: #faf6ee; border: 1px solid #ffffff35; border-radius: 12px; padding: 0.5rem 0.8rem; cursor: pointer; }
+.destination-reviews { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #ffffff25; }
+.review-ratings, .review-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0.5rem 0 1rem; }
+.review-ratings > div { background: #ffffff08; border-radius: 12px; padding: 0.75rem; }
+.star-rating { color: #fbbf24; margin: 0.4rem 0; }
+.rating-stars { display: inline-block; position: relative; color: #ffffff45; letter-spacing: 0.08em; }
+.rating-stars > span { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: #fbbf24; }
+.review-themes h5 { font-size: 1rem; margin: 0.75rem 0; }
+.review-themes ul { padding-left: 1.2rem; line-height: 1.6; }
+.review-sources { margin: 0.75rem 0; }
+@media (max-width: 640px) { .review-ratings, .review-themes { grid-template-columns: 1fr; } }
+
 .session-card,
 .state-card {
 	padding: 1rem;
@@ -892,6 +915,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .consent-card p { margin: 0.8rem 0; line-height: 1.6; }
 @media (max-width: 900px) {
 	body { overflow: hidden; }
+	.plan-actions { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.3rem; }
+	.plan-actions button { white-space: nowrap; }
+	.plan-actions .explore-activities { position: sticky; left: 0; z-index: 1; }
 	.account-bar { padding: 0.5rem 0.75rem; flex-wrap: wrap; gap: 0.4rem; font-size: 0.8rem; }
 	.account-bar span { flex: 1 1 45%; }
 	.mobile-panels { display: flex; gap: 0.5rem; padding: 0.5rem 0.75rem 0; }

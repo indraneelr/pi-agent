@@ -84,6 +84,7 @@ export type DestinationCardsBlock = UiBlockEnvelope<
 		destinationName: string;
 		overallSummary: string;
 		cards: Array<{
+			reviews?: DestinationReviews;
 			name: string;
 			summary: string;
 			whyItFits?: string;
@@ -98,6 +99,23 @@ export type DestinationCardsBlock = UiBlockEnvelope<
 		}>;
 	}
 >;
+
+export interface DestinationReviews {
+	pros?: string[];
+	cons?: string[];
+	reviewSummary?: string;
+	sources?: string[];
+	providerRatings?: Array<{
+		provider: "google" | "tripadvisor";
+		rating: number;
+		reviewCount?: number;
+		sourceUrl: string;
+		placeName: string;
+	}>;
+	researchedAt?: string;
+}
+
+export type PlannerAction = { type: "images" | "reviews"; destinationName: string } | { type: "activities" };
 
 export type SelectedDestinationsBlock = UiBlockEnvelope<
 	"selected_destinations",
@@ -256,11 +274,12 @@ export async function streamTravelMessage(
 	message: string,
 	onEvent: (event: TravelStreamEvent) => void,
 	signal?: AbortSignal,
+	action?: PlannerAction,
 ): Promise<void> {
 	const response = await fetch(`/api/travel/sessions/${sessionId}/messages/stream`, {
 		method: "POST",
 		headers: { "content-type": "application/json" },
-		body: JSON.stringify({ message }),
+		body: JSON.stringify({ message, action }),
 		signal,
 	});
 	if (!response.ok || !response.body) {

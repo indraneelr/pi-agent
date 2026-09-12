@@ -1,4 +1,4 @@
-import type { TravelState, ValidatedImage } from "@mariozechner/pi-travel-agent";
+import type { Reviews, TravelState, ValidatedImage } from "@mariozechner/pi-travel-agent";
 
 const ALPHA_SHOW_BOOKING_BLOCKS = false;
 
@@ -52,6 +52,7 @@ export type DestinationCardsBlock = UiBlockEnvelope<
 >;
 
 export interface DestinationCard {
+	reviews?: Reviews;
 	name: string;
 	summary: string;
 	whyItFits?: string;
@@ -173,6 +174,7 @@ export function composeTravelUiBlocks(state: TravelState): TravelUiBlock[] {
 					"Destination",
 				overallSummary: state.destinationResearch.overallSummary ?? "",
 				cards: state.destinationResearch.subDestinations.map((destination) => ({
+					reviews: destination.reviews,
 					name: destination.name,
 					summary: destination.description,
 					whyItFits: destination.why ?? destination.bestFor,

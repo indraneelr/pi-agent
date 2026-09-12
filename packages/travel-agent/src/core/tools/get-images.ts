@@ -81,6 +81,8 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 			const providerPreference = params.provider ?? "auto";
 
 			const providers = resolveProviders(deps, providerPreference);
+			const key = (params.destination_name ?? params.query).trim().toLowerCase();
+			const existing = deps.getState().validatedImages?.[key] ?? [];
 			const timeoutMs = deps.imageTimeoutMs ?? DEFAULT_IMAGE_TIMEOUT_MS;
 			let lastRejected = 0;
 			const providerErrors: string[] = [];
@@ -88,31 +90,43 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 				try {
 					const result = await searchImagesWithTimeout(
 						provider,
-						{ query: params.query, count, minHeight, maxHeight, signal },
+						{
+							query: params.query,
+							count,
+							minHeight,
+							maxHeight,
+							signal,
+							excludeUrls: existing.flatMap((image) => [image.url, image.finalUrl]),
+						},
 						timeoutMs,
 					);
 					lastRejected += result.rejectedCount;
 					if (result.images.length === 0 && providerPreference === "auto") continue;
 					const state = deps.getState();
-					const key = (params.destination_name ?? params.query).trim().toLowerCase();
+					signal?.throwIfAborted();
 					state.validatedImages = {
 						...state.validatedImages,
-						[key]: result.images.flatMap((image) =>
-							image.validation
-								? [
-										{
-											kind: "image" as const,
-											url: image.url,
-											...image.validation,
-											provider: result.provider,
-											source: image.source,
-											width: image.width,
-											height: image.height,
-											retrievedAt: image.validation.validatedAt,
-											validationStatus: "valid" as const,
-										},
-									]
-								: [],
+						[key]: [
+							...existing,
+							...result.images.flatMap((image) =>
+								image.validation
+									? [
+											{
+												kind: "image" as const,
+												url: image.url,
+												...image.validation,
+												provider: result.provider,
+												source: image.source,
+												width: image.width,
+												height: image.height,
+												retrievedAt: image.validation.validatedAt,
+												validationStatus: "valid" as const,
+											},
+										]
+									: [],
+							),
+						].filter(
+							(image, index, all) => all.findIndex((entry) => entry.finalUrl === image.finalUrl) === index,
 						),
 					};
 					deps.setState(state);
@@ -200,22 +214,17 @@ function updateDestinationImages(
 	if (images.length === 0) return undefined;
 	const normalized = normalizeName(destinationName);
 	const state = deps.getState();
-	let matched: { imageLinks?: string[]; name?: string } | undefined;
-
-	for (const destination of state.destinationResearch?.subDestinations ?? []) {
-		if (normalizeName(destination.name) === normalized) matched = destination;
-	}
-	for (const destination of state.selectedDestinations ?? []) {
-		if (normalizeName(destination.name) === normalized) matched = destination;
-	}
-	for (const activity of state.activitiesResearch?.activities ?? []) {
-		if (normalizeName(activity.name) === normalized) matched = activity;
-	}
-	if (!matched) return undefined;
-	matched.imageLinks = images.map((image) => image.url);
+	const matches = [
+		...(state.destinationResearch?.subDestinations ?? []),
+		...state.selectedDestinations,
+		...(state.activitiesResearch?.activities ?? []),
+	].filter((card) => normalizeName(card.name) === normalized);
+	if (!matches.length) return undefined;
+	for (const card of matches)
+		card.imageLinks = [...new Set([...(card.imageLinks ?? []), ...images.map((image) => image.url)])];
 	deps.setState(state);
 	saveTravelState(state, deps.persistOpts);
-	return matched.name ?? destinationName;
+	return destinationName;
 }
 
 function formatResult(

@@ -4,6 +4,8 @@ import { type ValidateImageUrlsOptions, validateImageUrls } from "../image-valid
 import type { ImageCandidate, ValidImageResult } from "./types.js";
 
 export interface ValidateImageCandidatesOptions {
+	/** Return already-validated photos when the search time budget is exhausted. */
+	maxDurationMs?: number;
 	minHeight: number;
 	maxHeight: number | null;
 	limit: number;
@@ -34,6 +36,7 @@ export async function validateImageCandidates(
 	const deduped = dedupeCandidates(candidates);
 	const probe = options.dimensionProbe ?? defaultImageDimensionProbe;
 	const timeoutMs = options.validate?.timeoutMs ?? 12_000;
+	const deadline = options.maxDurationMs === undefined ? Number.POSITIVE_INFINITY : Date.now() + options.maxDurationMs;
 
 	const images: ValidImageResult[] = [];
 	let rejectedCount = 0;
@@ -41,10 +44,12 @@ export async function validateImageCandidates(
 	for (const candidate of deduped) {
 		if (images.length >= options.limit) break;
 		options.signal?.throwIfAborted();
+		if (Date.now() >= deadline) break;
 		// Stop probing once the requested photos are found. Previously even one
 		// photo waited for every search result, including unrelated slow hosts.
 		const [result] = await validateImageUrls([candidate.url], {
 			...(options.validate ?? {}),
+			timeoutMs: Math.min(timeoutMs, Math.max(1, deadline - Date.now())),
 			signal: options.signal,
 		});
 		if (!result?.ok || !result.contentType?.toLowerCase().startsWith("image/")) {
@@ -55,7 +60,11 @@ export async function validateImageCandidates(
 		let width = finitePositive(candidate.width) ? Math.round(candidate.width!) : undefined;
 		let height = finitePositive(candidate.height) ? Math.round(candidate.height!) : undefined;
 		if (!width || !height) {
-			const probed = await probe(candidate.url, { timeoutMs, signal: options.signal });
+			if (Date.now() >= deadline) break;
+			const probed = await probe(candidate.url, {
+				timeoutMs: Math.min(timeoutMs, deadline - Date.now()),
+				signal: options.signal,
+			});
 			width = probed?.width;
 			height = probed?.height;
 		}

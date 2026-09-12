@@ -26,6 +26,7 @@ export interface WebSearchDetails {
 }
 
 export interface WebSearchOptions {
+	onResults?: (results: SearchResult[]) => void;
 	getState?: () => TravelState;
 	/** Hard cap for shortlist_destinations research. Default: 2. */
 	shortlistSearchLimit?: number;
@@ -75,6 +76,7 @@ export function createWebSearchTool(
 
 			const numResults = Math.min(params.num_results ?? 5, 10);
 			const results = await searchProvider.search(params.query, numResults, signal);
+			options.onResults?.(results);
 			const formatted = formatSearchResults(results);
 
 			return {

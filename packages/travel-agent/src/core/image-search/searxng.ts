@@ -38,6 +38,7 @@ export function createSearxngImageSearchProvider(options: SearxngImageSearchOpti
 	return {
 		name: "searxng",
 		async searchImages(query: ImageSearchQuery): Promise<ImageSearchResult> {
+			const started = Date.now();
 			const url = new URL("/search", baseUrl.replace(/\/$/, ""));
 			url.searchParams.set("q", query.query);
 			url.searchParams.set("categories", "images");
@@ -45,12 +46,15 @@ export function createSearxngImageSearchProvider(options: SearxngImageSearchOpti
 			url.searchParams.set("safesearch", "1");
 
 			const raw = await fetchJson(url.toString(), { timeoutMs: options.timeoutMs ?? 15_000, signal: query.signal });
-			const candidates = parseSearxngCandidates(raw);
+			const candidates = parseSearxngCandidates(raw).filter(
+				(candidate) => !query.excludeUrls?.includes(candidate.url),
+			);
 			const validated = await validateImageCandidates(candidates, {
+				maxDurationMs: Math.max(0, 13_000 - (Date.now() - started)),
 				minHeight: query.minHeight,
 				maxHeight: query.maxHeight,
 				limit: query.count,
-				validate: options.validate,
+				validate: { timeoutMs: 2_000, ...options.validate },
 				dimensionProbe: options.dimensionProbe,
 				signal: query.signal,
 			});

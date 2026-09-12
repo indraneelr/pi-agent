@@ -30,6 +30,7 @@ import type { TravelState } from "../state.js";
 import { createAdvanceChecklistTool } from "./advance-checklist.js";
 import { createGetImagesTool } from "./get-images.js";
 import { createGoBackTool } from "./go-back.js";
+import { createSaveDestinationReviewsTool } from "./save-destination-reviews.js";
 import { createSaveDestinationShortlistTool } from "./save-destination-shortlist.js";
 import { createShowChecklistTool } from "./show-checklist.js";
 import { createUpdateStateTool } from "./update-state.js";
@@ -56,12 +57,20 @@ export function createTravelTools(options: CreateTravelToolsOptions): AgentTool<
 	const { getState, setState, searchProvider, persistOpts, model, getApiKey, imageTimeoutMs, cleanImageLinks } =
 		options;
 	const stateDeps = { getState, setState, persistOpts, cleanImageLinks };
+	const reviewSources = new Map<string, string>();
 
 	return [
-		createWebSearchTool(searchProvider, { getState }),
+		createWebSearchTool(searchProvider, {
+			getState,
+			onResults: (results) => {
+				for (const result of results)
+					reviewSources.set(result.url, `${result.title} ${result.snippet} ${result.content ?? ""}`);
+			},
+		}),
 		createGetImagesTool({ ...stateDeps, imageTimeoutMs }),
 		createUpdateStateTool(stateDeps),
 		createSaveDestinationShortlistTool(stateDeps),
+		createSaveDestinationReviewsTool({ ...stateDeps, getSourceText: (url) => reviewSources.get(url) }),
 		createAdvanceChecklistTool(stateDeps),
 		createGoBackTool(stateDeps),
 		createShowChecklistTool(() => getState().checklist),

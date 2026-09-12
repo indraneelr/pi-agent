@@ -8,6 +8,7 @@ import { loadConfig } from "../../travel-agent-server/src/config.js";
 import { createServer } from "../../travel-agent-server/src/server.js";
 import { TravelSessionManager } from "../../travel-agent-server/src/session-manager.js";
 import { createScriptedSession } from "../../travel-agent-server/test/scripted-session.js";
+import { createSaveDestinationReviewsTool } from "../src/core/tools/save-destination-reviews.js";
 
 test("browser: consent, places, activities, itinerary, export, reload and mobile navigation", async () => {
 	const dir = mkdtempSync(join(tmpdir(), "wander-browser-"));
@@ -16,7 +17,59 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		TRAVEL_AGENT_DATA_DIR: dir,
 		TRAVEL_AGENT_WEB_DIR: resolve("../travel-agent-web/dist"),
 	});
-	const manager = new TravelSessionManager(config, undefined, undefined, createScriptedSession);
+	let activityAttempts = 0;
+	const manager = new TravelSessionManager(config, undefined, undefined, async (id) => {
+		const session = await createScriptedSession(id);
+		const prompt = session.agent.prompt.bind(session.agent);
+		session.agent.prompt = async (input) => {
+			if (input.startsWith("[Planner action: reviews]")) {
+				const sourceUrl = "https://www.tripadvisor.com/Tourism-Kyoto.html";
+				await createSaveDestinationReviewsTool({
+					getState: () => session.state,
+					setState: session.setState,
+					persistOpts: { dataDir: dir },
+					getSourceText: () => "Kyoto rating: 4.5 out of 5",
+				}).execute("review", {
+					destination_name: "Kyoto",
+					pros: ["Beautiful gardens and food"],
+					cons: ["Crowded temples"],
+					reviewSummary: "Sourced review summary for the card",
+					sources: [sourceUrl],
+					providerRatings: [{ provider: "tripadvisor", rating: 4.5, sourceUrl, placeName: "Kyoto" }],
+				});
+				return;
+			}
+			if (input.startsWith("[Planner action: activities]")) {
+				activityAttempts++;
+				await new Promise((resolve) => setTimeout(resolve, 300));
+				if (activityAttempts <= 2) return;
+			}
+			await prompt(input);
+		};
+		return session;
+	});
+	vi.stubEnv("USE_STAGEHAND", "0");
+	vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+		const url = String(input);
+		if (new URL(url).pathname === "/search")
+			return new Response(
+				JSON.stringify({
+					results: Array.from({ length: 6 }, (_, i) => ({
+						img_src: `https://photos.example/${i}.png`,
+						width: 1280,
+						height: 720,
+						url: "https://photos.example/source",
+					})),
+				}),
+				{ headers: { "content-type": "application/json" } },
+			);
+		if (url.startsWith("https://photos.example/")) {
+			const response = new Response(null, { headers: { "content-type": "image/png" } });
+			Object.defineProperty(response, "url", { value: url });
+			return response;
+		}
+		throw new Error(`Offline test blocked unexpected request: ${new URL(url).hostname}`);
+	});
 	const app = createServer(config, manager);
 	app.log.level = "silent";
 	const probe = vi.spyOn(ai, "completeSimple").mockResolvedValue({ stopReason: "error" } as ai.AssistantMessage);
@@ -29,6 +82,15 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 	try {
 		const address = await app.listen({ host: "127.0.0.1", port: 0 });
 		const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+		await page.route("https://**/*", (route) =>
+			route.fulfill({
+				contentType: "image/png",
+				body: Buffer.from(
+					"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lH0AAAAASUVORK5CYII=",
+					"base64",
+				),
+			}),
+		);
 		const errors: string[] = [];
 		page.on("pageerror", (error) => errors.push(error.message));
 		await page.goto(address);
@@ -46,7 +108,37 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		await input.fill("Plan five days in Japan from Jakarta for two, USD 2000.");
 		await page.getByRole("button", { name: "Send", exact: true }).click();
 		await page.getByRole("button", { name: "Select place", exact: true }).first().click();
+		const card = page.getByRole("article", { name: "Kyoto", exact: true });
+		await card.getByRole("button", { name: "See images", exact: true }).click();
+		await card.getByText("1 / 3", { exact: true }).waitFor();
+		await card.getByRole("button", { name: "See more images", exact: true }).click();
+		await card.getByText("1 / 6", { exact: true }).waitFor();
+		await card.getByRole("button", { name: "Next photo of Kyoto" }).click();
+		await card.getByText("2 / 6", { exact: true }).waitFor();
+		await card.getByRole("button", { name: "Reviews", exact: false }).click();
+		await card.getByText("Beautiful gardens and food").waitFor();
+		await card.getByText("Crowded temples").waitFor();
+		await card.getByLabel("4.5 out of 5 stars").waitFor();
+		expect(await card.getByText("Rating unavailable — not verified").count()).toBe(1);
+		expect(await page.locator(".messages").getByText("Sourced review summary for the card").count()).toBe(0);
+		await page.screenshot({ path: join(artifacts, "destination-details.png"), fullPage: true });
+		await card.getByRole("button", { name: "Reviews", exact: false }).first().click();
+		expect(await card.getByRole("region", { name: "Kyoto reviews" }).count()).toBe(0);
+		await page.locator(".sidebar").evaluate((element) => {
+			element.scrollTop = element.scrollHeight;
+		});
+		const exploreBounds = await page
+			.getByRole("button", { name: "Explore activities (1)", exact: true })
+			.boundingBox();
+		const paneBounds = await page.locator(".sidebar").boundingBox();
+		expect(exploreBounds!.y).toBeGreaterThanOrEqual(paneBounds!.y);
+		expect(exploreBounds!.y + exploreBounds!.height).toBeLessThan(paneBounds!.y + paneBounds!.height);
 		await page.getByRole("button", { name: "Explore activities (1)", exact: true }).click();
+		await page.getByText("Researching activities for your selected places…", { exact: true }).first().waitFor();
+		await page.getByRole("button", { name: "Retry activity research", exact: true }).waitFor();
+		expect(await page.locator(".activity-progress").textContent()).toContain("Nothing is running in the background");
+		await page.screenshot({ path: join(artifacts, "activity-retry.png"), fullPage: true });
+		await page.getByRole("button", { name: "Retry activity research", exact: true }).click();
 		await page.getByRole("button", { name: "Select activity", exact: true }).first().click();
 		await page.getByRole("button", { name: "Build itinerary (1)", exact: true }).click();
 		await page.getByText("Your itinerary is ready.", { exact: false }).waitFor();
@@ -77,6 +169,8 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		expect(errors).toEqual([]);
 	} finally {
 		probe.mockRestore();
+		vi.restoreAllMocks();
+		vi.unstubAllEnvs();
 		await browser.close();
 		await app.close();
 		rmSync(dir, { recursive: true, force: true });

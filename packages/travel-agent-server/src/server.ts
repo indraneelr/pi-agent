@@ -24,6 +24,7 @@ import { assertProductionConfig, loadConfig, type ServerConfig } from "./config.
 import { CredentialNotFoundError, CredentialStore } from "./credentials.js";
 import type { TravelStreamEvent } from "./events.js";
 import { getFillerContent } from "./filler.js";
+import { isPlannerAction } from "./planner-actions.js";
 import {
 	SessionBusyError,
 	SessionConfigurationError,
@@ -365,10 +366,12 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 
 	app.post("/api/travel/sessions/:sessionId/messages/stream", async (request, reply) => {
 		const { sessionId } = request.params as { sessionId: string };
-		const body = request.body as { message?: string } | null;
-		if (!body?.message || body.message.trim().length === 0) {
+		const body = request.body as { message?: string; action?: unknown } | null;
+		if (typeof body?.message !== "string" || body.message.trim().length === 0) {
 			return reply.status(400).send({ error: "Message must not be empty" });
 		}
+		if (body.action !== undefined && !isPlannerAction(body.action))
+			return reply.status(400).send({ error: "Invalid planner action" });
 		const user = getRequestUser(request, config);
 
 		// Validate existence/ownership/busy BEFORE hijacking so these map to real
@@ -406,7 +409,14 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 		}, 15_000);
 
 		try {
-			await sessionManager.streamMessage(sessionId, body.message, user?.id, write, abort.signal);
+			await sessionManager.streamMessage(
+				sessionId,
+				body.message,
+				user?.id,
+				write,
+				abort.signal,
+				isPlannerAction(body.action) ? body.action : undefined,
+			);
 		} catch (e) {
 			// Pre-stream failures (e.g. a race into busy) surface as a stream event.
 			app.log.error({ err: e, sessionId }, "Travel stream endpoint error");

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ChecklistPhaseConfig } from "../src/core/checklist.js";
 import { parseSearxngCandidates } from "../src/core/image-search/searxng.js";
 import type { ImageSearchProvider } from "../src/core/image-search/types.js";
@@ -9,6 +9,39 @@ import { createGetImagesTool } from "../src/core/tools/get-images.js";
 const checklist: ChecklistPhaseConfig[] = [{ id: "shortlist_destinations", label: "Shortlist", description: "" }];
 
 describe("get_images", () => {
+	it("keeps verified photos when the remaining candidates exhaust the time budget", async () => {
+		let now = 0;
+		const clock = vi.spyOn(Date, "now").mockImplementation(() => now);
+		try {
+			const result = await validateImageCandidates(
+				[
+					{ url: "https://example.com/good.jpg", width: 1280, height: 720 },
+					{ url: "https://example.com/slow.jpg", width: 1280, height: 720 },
+					{ url: "https://example.com/unused.jpg", width: 1280, height: 720 },
+				],
+				{
+					minHeight: 720,
+					maxHeight: null,
+					limit: 3,
+					maxDurationMs: 1000,
+					validate: {
+						http: async (url) => {
+							if (url.includes("unused")) throw new Error("Budget exhausted");
+							if (url.includes("slow")) {
+								now = 1000;
+								return { status: 504, contentType: null };
+							}
+							return { status: 200, contentType: "image/jpeg" };
+						},
+					},
+				},
+			);
+			expect(result.images.map((image) => image.url)).toEqual(["https://example.com/good.jpg"]);
+			expect(result.rejectedCount).toBe(1);
+		} finally {
+			clock.mockRestore();
+		}
+	});
 	it("returns the requested image without probing unused slow candidates", async () => {
 		const checked: string[] = [];
 		const result = await validateImageCandidates(

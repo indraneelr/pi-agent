@@ -11,6 +11,16 @@
 // =============================================================================
 
 export interface Reviews {
+	pros?: string[];
+	cons?: string[];
+	providerRatings?: Array<{
+		provider: "google" | "tripadvisor";
+		rating: number;
+		reviewCount?: number;
+		sourceUrl: string;
+		placeName: string;
+	}>;
+	researchedAt?: string;
 	rating?: number;
 	reviewSummary?: string;
 	sources?: string[];

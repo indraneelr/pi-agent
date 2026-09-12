@@ -135,6 +135,7 @@ export { buildTravelSystemPrompt, type TravelSystemPromptOptions } from "./core/
 // Tools
 export {
 	type AdvanceChecklistDetails,
+	createGetImagesTool,
 	createTravelTools,
 	type GetImagesDetails,
 	type GoBackDetails,

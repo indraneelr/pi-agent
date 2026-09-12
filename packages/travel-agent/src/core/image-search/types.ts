@@ -3,6 +3,7 @@
 export type ImageSearchProviderName = "searxng" | "stagehand";
 
 export interface ImageSearchQuery {
+	excludeUrls?: string[];
 	query: string;
 	count: number;
 	minHeight: number;

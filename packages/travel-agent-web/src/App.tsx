@@ -1,6 +1,8 @@
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { applyInstantAction, cancelTravelRun, deleteTravelSession, createTravelSession, getFiller, getTravelSession, streamTravelMessage, type ActivityCardsBlock, type ChecklistPhase, type DestinationCardsBlock, type FillerContent, type InstantActionType, type TravelState, type TravelUiBlock } from "./api.js";
+import { DestinationCard, PlannerActionContext, type ActionFeedback } from "./DestinationCard.js";
+import type { PlannerAction } from "./api.js";
 import { AccountGate } from "./AccountGate.js";
 import { buildPlanText, formatPlanValue } from "./plan-export.js";
 import { ConsentGate, FooterDisclaimer, HighRiskCaveat, LegalModal } from "./Legal.js";
@@ -45,6 +47,9 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
     const [recovering, setRecovering] = useState(false);
     const [mobilePanel, setMobilePanel] = useState<"chat" | "plan">("chat");
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
+    const [lastFailedAction, setLastFailedAction] = useState<PlannerAction | undefined>();
+    const sidebarRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
         if (initialized.current) return;
@@ -99,7 +104,11 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 	}, [uiBlocks]);
 
 	const activityResearchFallback = useMemo(() => extractActivityResearchFallback(messages), [messages]);
-	const visibleMessages = messages;
+	let hideActionReply = false;
+    const visibleMessages = messages.filter((message) => {
+        if (message.role === "user") hideActionReply = message.content.startsWith("[Planner action:");
+        return !hideActionReply;
+    });
 	const visibleUiBlocks = useMemo(() => {
 		if (!activityResearchFallback || uiBlocks.some((block) => block.kind === "activity_cards")) return uiBlocks;
 		const destinationIndex = uiBlocks.findLastIndex((block) => block.kind === "destination_cards");
@@ -128,6 +137,7 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 			const session = await createTravelSession();
 			setSession(session.sessionId, session.state, session.uiBlocks);
 			setMessages([]);
+            setActionFeedback(null);
             setLastFailedMessage(null);
             setActiveResearchTab("overview");
 			saveSessionMessages(session.sessionId, []);
@@ -172,12 +182,14 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 		await sendMessageToAgent(message);
 	}
 
-	async function sendMessageToAgent(message: string) {
+	async function sendMessageToAgent(message: string, action?: PlannerAction) {
 		if (!sessionId || runStatus !== "idle" || activeRun.current || actionPending.current || recovering) return;
         const controller = new AbortController();
         activeRun.current = controller;
 		setError(null);
-		setMessages((current) => [...current, { role: "user", content: message }]);
+		if (!action) setMessages((current) => [...current, { role: "user", content: message }]);
+        setLastFailedAction(action);
+        setActionFeedback(action ? { action, status: "busy", message: action.type === "activities" ? "Researching activity options…" : action.type === "reviews" ? "Researching traveler reviews…" : "Finding more photos…" } : null);
 		setRunStatus("sending");
 		setNarration([]);
 		setStreamingText("");
@@ -192,27 +204,34 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 				switch (event.type) {
 					case "tool_start":
 						setNarration((current) => [...current, event.label]);
+                        if (action) setActionFeedback({ action, status: "busy", message: event.label });
 						break;
 					case "text_delta":
-						setStreamingText((current) => current + event.delta);
+						if (!action) setStreamingText((current) => current + event.delta);
 						break;
 					case "state_snapshot":
 						setState(event.state);
 						setUiBlocks(event.uiBlocks);
 						break;
 					case "run_finished":
-						setMessages((current) => [...current, { role: "assistant", content: event.assistantMessage || "Done." }]);
+						if (!action) setMessages((current) => [...current, { role: "assistant", content: event.assistantMessage || "Done." }]);
+                        if (action) {
+                            setActionFeedback({ action, status: "done", message: action.type === "activities" ? "Activity options are ready. Choose your favorites below." : action.type === "reviews" ? "Reviews updated below." : event.assistantMessage });
+                            if (action.type === "activities") { setActiveResearchTab("activities"); sidebarRef.current?.querySelector(".sticky-plan-toolbar")?.scrollIntoView({ block: "start" }); }
+                        }
 						break;
 					case "run_error":
 						runFailed = true;
 						setLastFailedMessage(message);
 						setError(event.message);
+                        if (action) setActionFeedback({ action, status: "error", message: event.message });
 						break;
 				}
-			}, controller.signal);
+			}, controller.signal, action);
 			if (!runFailed) setLastFailedMessage(null);
 		} catch (e) {
 			// Pre-stream failures (network, 4xx/5xx before the stream opened).
+            if (action) setActionFeedback({ action, status: "error", message: errorMessage(e) });
 			setLastFailedMessage(message);
 			setError(errorMessage(e));
 		} finally {
@@ -268,21 +287,17 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 			return;
 		}
 
-		if (action === "reviews") {
-			void sendMessageToAgent(
-				`What do travelers say about ${destinationName}? Summarize review themes from trusted sources — paraphrased, covering both the good and the honest downsides.`,
-			);
-			return;
-		}
-
-		const message = `Fetch and show images for ${destinationName}${imageQuery ? ` using this image query: ${imageQuery}` : ""}.`;
-		void sendMessageToAgent(message);
+		runPlannerAction({ type: action, destinationName });
 	}
+
+    function runPlannerAction(action: PlannerAction) {
+        if (action.type === "activities") { setActiveResearchTab("activities"); setMobilePanel("plan"); sidebarRef.current?.querySelector(".sticky-plan-toolbar")?.scrollIntoView({ block: "start" }); }
+        void sendMessageToAgent(action.type === "activities" ? "Explore activities for my selected places." : `${action.type === "images" ? "Find more photos" : "Research reviews"} for ${action.destinationName}.`, action);
+    }
 
 	function handleDestinationSelectionDone() {
 		if (selectedDestinationNames.size === 0) return;
-		const selectedNames = Array.from(selectedDestinationNames);
-		void sendMessageToAgent(`Use these selected places for this trip: ${selectedNames.join(", ")}.`);
+        runPlannerAction({ type: "activities" });
 	}
 
 	function handleActivityToggle(activityName: string) {
@@ -317,6 +332,7 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 
 	return (
         <>
+        <PlannerActionContext.Provider value={{ feedback: actionFeedback, run: runPlannerAction }}>
         <nav className="mobile-panels" aria-label="Planner view"><button type="button" aria-pressed={mobilePanel === "chat"} onClick={() => setMobilePanel("chat")}>Chat</button><button type="button" aria-pressed={mobilePanel === "plan"} onClick={() => setMobilePanel("plan")}>My plan</button></nav>
 		<main className={`app-shell mobile-${mobilePanel}`}>
 				<TravelCopilotChat
@@ -334,10 +350,10 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 					runStatus={recovering ? "sending" : runStatus}
 					sessionReady={Boolean(sessionId)}
                     onStop={() => { if (sessionId) void cancelTravelRun(sessionId).then(() => activeRun.current?.abort()).catch((e) => setError(errorMessage(e))); }}
-					onRetry={lastFailedMessage ? () => sendMessageToAgent(lastFailedMessage) : undefined}
+					onRetry={lastFailedMessage ? () => sendMessageToAgent(lastFailedMessage, lastFailedAction) : undefined}
 				/>
 
-				<aside className="sidebar" aria-label="Travel state">
+				<aside ref={sidebarRef} className="sidebar" aria-label="Travel state">
 				<div className="session-card">
 					<p className="eyebrow">Session</p>
                     <p>Your trip is saved automatically. Bookmark this page to return.</p>
@@ -353,11 +369,14 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 
 				<HighRiskCaveat />
 
-				<PlanActions
+				<div className="sticky-plan-toolbar">
+                <PlanActions
 					state={state}
 					disabled={runStatus !== "idle" || recovering}
 					onGenerate={(prompt) => void sendMessageToAgent(prompt)}
 					onDownload={handleDownloadPlan}
+                    onExploreActivities={handleDestinationSelectionDone}
+                    selectionCount={selectedDestinationNames.size}
 				/>
 
 				<ResearchTabs
@@ -365,6 +384,14 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 					onResearchTabChange={setActiveResearchTab}
 					researchTabs={researchTabs}
 				/>
+
+                {actionFeedback?.action.type === "activities" || recovering ? <div className="activity-progress" role="status" aria-live="polite">
+                    {recovering || actionFeedback?.status === "busy" ? <span className="spinner" /> : null}
+                    <span>{recovering ? "Research is still running. Reconnecting to saved progress…" : actionFeedback?.message}</span>
+                    {actionFeedback?.status === "error" && !recovering ? <button type="button" disabled={runStatus !== "idle"} onClick={handleDestinationSelectionDone}>Retry activity research</button> : null}
+                </div> : null}
+                </div>
+                {activeResearchTab === "activities" && !visibleUiBlocks.some((block) => block.kind === "activity_cards") && !actionFeedback && !recovering ? <div className="state-card"><p>No activity research has been saved yet. Select places, then choose Explore activities.</p></div> : null}
 
 				{displayedUiBlocks.length > 0 ? (
 					displayedUiBlocks.map((block, index) => (
@@ -388,6 +415,7 @@ function TravelPlanner({ onOpenLegal }: { onOpenLegal: () => void }) {
 			</aside>
 			<FooterDisclaimer onOpenLegal={onOpenLegal} />
 		</main>
+        </PlannerActionContext.Provider>
         </>
 	);
 }
@@ -621,37 +649,11 @@ function DestinationCards({
 					<p className="eyebrow">{block.title}</p>
 					<h3>{block.data.destinationName}</h3>
 				</div>
-				<button type="button" className="done-button" onClick={onDestinationSelectionDone} disabled={disabled || selectedDestinationNames.size === 0}>
-					Explore activities{selectedDestinationNames.size > 0 ? ` (${selectedDestinationNames.size})` : ""}
-				</button>
+
 			</div>
 			<p>{block.data.overallSummary}</p>
 			<div className="destination-cards">
-				{(block.data.cards ?? []).map((card) => {
-					const selected = selectedDestinationNames.has(card.name);
-					return (
-						<article className={selected ? "destination-card selected" : "destination-card"} key={card.name}>
-							<div className="card-header">
-								<h4>{card.name}</h4>
-								{selected ? <span>Selected</span> : null}
-							</div>
-							<p>{card.summary}</p>
-							{card.whyItFits ? <small>Fit: {card.whyItFits}</small> : null}
-							{card.tradeoff ? <small>Trade-off: {card.tradeoff}</small> : null}
-							{card.seasonality ? <small>Season: {card.seasonality}</small> : null}
-							{getRenderableDestinationImages(card).length > 0 ? (
-                                <div className="image-strip">{getRenderableDestinationImages(card).slice(0, 3).map((image) => <figure key={image.finalUrl}><SafeImage src={image.finalUrl} alt={card.name} /><figcaption><a href={/^https:\/\//i.test(image.source ?? "") ? image.source : image.finalUrl} target="_blank" rel="noreferrer">Photo source · {image.provider}</a></figcaption></figure>)}</div>
-                            ) : <small>Photos appear here once verified. Use “See images” to find photos.</small>}
-							<div className="card-actions">
-								<button type="button" onClick={() => onDestinationAction("select", card.name, card.imageQuery)} disabled={disabled}>
-									{selected ? "Remove" : "Select place"}
-								</button>
-								<button type="button" onClick={() => onDestinationAction("images", card.name, card.imageQuery)} disabled={disabled}>See images</button>
-								<button type="button" onClick={() => onDestinationAction("reviews", card.name)} disabled={disabled}>Reviews</button>
-							</div>
-						</article>
-					);
-				})}
+				{(block.data.cards ?? []).map((card) => <DestinationCard key={card.name} card={card} selected={selectedDestinationNames.has(card.name)} disabled={disabled} onSelect={() => onDestinationAction("select", card.name, card.imageQuery)} />)}
 			</div>
 		</div>
 	);
@@ -719,11 +721,15 @@ function PlanActions({
 	disabled,
 	onGenerate,
 	onDownload,
+    onExploreActivities,
+    selectionCount,
 }: {
 	state: TravelState | null;
 	disabled: boolean;
 	onGenerate: (prompt: string) => void;
 	onDownload: () => void;
+    onExploreActivities: () => void;
+    selectionCount: number;
 }) {
 	if (!state) return null;
 	const hasPlaces = Boolean(state.destinationResearch);
@@ -739,11 +745,11 @@ function PlanActions({
 				</button>
 			) : null}
 			{hasActivities ? (
-				<button type="button" disabled={disabled} onClick={() => onGenerate("Show me more activity options for my selected places.")}>
+				<button type="button" disabled={disabled} onClick={onExploreActivities}>
 					More activities
 				</button>
 			) : null}
-            {hasSelections && !hasActivities ? <button type="button" disabled={disabled} onClick={() => onGenerate("Research activities for my selected places and save the activity options in the trip state.")}>Explore activities</button> : null}
+            {hasPlaces ? <button type="button" className="explore-activities" disabled={disabled || !selectionCount} onClick={onExploreActivities}>Explore activities{selectionCount ? ` (${selectionCount})` : ""}</button> : null}
             {hasActivities ? <button type="button" disabled={disabled} onClick={() => onGenerate("Build and save a complete day-by-day itinerary using my selected activities. Include a budget estimate. Do not research bookings unless I request them.")}>{hasItinerary ? "Update itinerary" : "Build itinerary"}</button> : null}
 			{hasItinerary || hasSelections ? (
 				<button type="button" disabled={disabled} onClick={() => onGenerate("Calculate the full budget breakdown for this trip, per person and total.")}>
@@ -893,7 +899,7 @@ function formatPreferenceLabel(key: string) {
 }
 
 function formatPreferenceValue(value: unknown): string {
-	if (Array.isArray(value)) return value.map(formatPreferenceValue).join(", ");
+	if (Array.isArray(value)) return value.map((item) => item === null ? "Not specified" : formatPreferenceValue(item)).join(", ");
 	if (typeof value === "object" && value !== null) {
 		return Object.entries(value)
 			.filter(([, nestedValue]) => nestedValue !== null && nestedValue !== undefined && nestedValue !== "")

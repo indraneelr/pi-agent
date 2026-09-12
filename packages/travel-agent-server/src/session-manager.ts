@@ -14,6 +14,7 @@ import type { TextContent } from "@earendil-works/pi-ai";
 import {
 	applyInstantAction,
 	buildWebSearchProvider,
+	createGetImagesTool,
 	createTravelSession,
 	createTravelState,
 	deleteTravelConversation,
@@ -35,6 +36,7 @@ import type { ServerConfig } from "./config.js";
 import type { CredentialStore } from "./credentials.js";
 import { AgentEventMapper, stateSnapshotEvent, type TravelStreamEvent } from "./events.js";
 import { resolveTravelModel } from "./model.js";
+import { type PlannerAction, PlannerActionError, requireDestination, runResearchAction } from "./planner-actions.js";
 import { composeTravelUiBlocks, type TravelUiBlock } from "./ui-blocks.js";
 
 const DEFAULT_CHECKLIST_CONFIG = join(
@@ -313,6 +315,7 @@ export class TravelSessionManager {
 		userId = "dev-user",
 		onEvent: (event: TravelStreamEvent) => void,
 		signal?: AbortSignal,
+		action?: PlannerAction,
 	): Promise<void> {
 		if (!message || message.trim().length === 0) {
 			throw new Error("Message must not be empty");
@@ -343,6 +346,7 @@ export class TravelSessionManager {
 		if (signal?.aborted) onAbort();
 		let stillRunning = false;
 		let work: Promise<void> | undefined;
+		let actionMessage: string | undefined;
 		const timeout = setTimeout(
 			() => controller.abort(new SessionTimeoutError(sessionId, this.config.messageTimeoutMs)),
 			this.config.messageTimeoutMs,
@@ -359,6 +363,39 @@ export class TravelSessionManager {
 		try {
 			work = (async () => {
 				controller.signal.throwIfAborted();
+				if (action?.type === "images") {
+					const getState = () => this.activeSessions.get(sessionId)?.state ?? record.state;
+					const card = requireDestination(getState(), action.destinationName);
+					const key = card.name.trim().toLowerCase();
+					const previous = getState().validatedImages?.[key]?.length ?? 0;
+					safeEmit({ type: "tool_start", tool: "get_images", label: `Finding more photos for ${card.name}…` });
+					const tool = createGetImagesTool({
+						getState,
+						setState: (next) => {
+							controller.signal.throwIfAborted();
+							record.state = next;
+							this.activeSessions.get(sessionId)?.setState(next);
+						},
+						persistOpts: { dataDir: this.config.dataDir },
+						imageTimeoutMs: this.config.imageTimeoutMs,
+					});
+					await tool.execute(
+						runId,
+						{
+							query: card.imageQuery ?? card.imageKeywords ?? `${card.name} travel scenery`,
+							destination_name: card.name,
+							count: 3,
+						},
+						controller.signal,
+					);
+					const added = (getState().validatedImages?.[key]?.length ?? 0) - previous;
+					if (!added)
+						throw new PlannerActionError(
+							"No additional verified photos were found. Your existing gallery is kept. Try again later.",
+						);
+					actionMessage = `Added ${added} photos to the gallery.`;
+					return;
+				}
 				let session = this.activeSessions.get(sessionId);
 				if (!session) {
 					session = await this.buildSession(sessionId, userId);
@@ -372,15 +409,19 @@ export class TravelSessionManager {
 					// cards update live rather than only at the end.
 					if (event.type === "tool_execution_end") safeEmit(stateSnapshotEvent(active.state));
 				});
-				await active.agent.prompt(message);
+				if (action) await runResearchAction(active, action, safeEmit, controller.signal);
+				else await active.agent.prompt(message);
 			})();
 			await Promise.race([work, interrupted]);
-			const active = this.activeSessions.get(sessionId)!;
+			const active = this.activeSessions.get(sessionId);
 			controller.signal.throwIfAborted();
-			record.state = active.state;
+			record.state = active?.state ?? record.state;
 			saveTravelState(record.state, { dataDir: this.config.dataDir });
 			safeEmit(stateSnapshotEvent(record.state));
-			safeEmit({ type: "run_finished", assistantMessage: extractAssistantText(active.agent.state.messages) });
+			safeEmit({
+				type: "run_finished",
+				assistantMessage: actionMessage ?? (active ? extractAssistantText(active.agent.state.messages) : "Done."),
+			});
 			this.logger.info({ sessionId, runId, durationMs: Date.now() - startedAt }, "Travel stream run finished");
 		} catch (e) {
 			this.logger.error(
@@ -661,6 +702,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorFacto
 function safeStreamErrorMessage(e: unknown): string {
 	if (
 		e instanceof TravelProviderError ||
+		e instanceof PlannerActionError ||
 		e instanceof SessionConfigurationError ||
 		e instanceof SessionTimeoutError ||
 		e instanceof SessionBusyError ||
