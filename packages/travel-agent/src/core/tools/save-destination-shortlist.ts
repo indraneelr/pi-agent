@@ -21,7 +21,7 @@ const saveDestinationShortlistSchema = Type.Object({
 		description:
 			"The destination option cards. Each card MUST include name, description, bestFor, why, roughDays, " +
 			"logisticsFit, budgetFit, seasonNote, tradeoff, imageQuery, imageLinks, selected=false, reviews, and sources. " +
-			"imageLinks MUST contain at least one valid direct http(s) .jpg/.jpeg/.png/.webp URL; imageQuery alone is not enough. " +
+			"imageLinks may be empty when photos are unavailable or the user wants to continue without them. Include only real URLs returned by get_images; never invent URLs. " +
 			"The tradeoff MUST be contextual to a stated user preference (logistics, kids/family, budget, season/dates, beaches, culture, food, or trip length); generic tradeoffs that map to no preference are rejected.",
 	}),
 	destination: Type.Optional(
@@ -73,7 +73,7 @@ export function createSaveDestinationShortlistTool(
 		description:
 			"Save the destination shortlist / choice cards for the shortlist_destinations phase. " +
 			"Call this BEFORE presenting the shortlist to the user; do not merely say you will save it. " +
-			"Pass the complete subDestinations option cards plus nextUserAction; every card must include imageLinks with at least one valid direct image URL. " +
+			"Pass the complete subDestinations option cards plus nextUserAction; use empty imageLinks when photos are unavailable. " +
 			'This is the dedicated tool for destination research — prefer it over update_travel_state with field="destination_research".',
 		parameters: saveDestinationShortlistSchema,
 		async execute(

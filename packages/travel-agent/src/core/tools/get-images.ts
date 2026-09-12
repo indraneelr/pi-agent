@@ -45,6 +45,7 @@ export interface GetImagesDetails {
 	rejectedCount: number;
 	updatedDestination?: string;
 	providerErrors?: string[];
+	notice?: string;
 }
 
 export interface GetImagesDeps {
@@ -183,6 +184,7 @@ function resolveProviders(deps: GetImagesDeps, preference: "auto" | ImageSearchP
 }
 
 function maybeCreateStagehand(options?: StagehandImageSearchOptions): ImageSearchProvider | null {
+	if (["0", "false"].includes((process.env.USE_STAGEHAND ?? "").toLowerCase())) return null;
 	try {
 		return createStagehandImageSearchProvider(options);
 	} catch {
@@ -226,7 +228,21 @@ function formatResult(
 	updatedDestination?: string,
 	providerErrors?: string[],
 ): AgentToolResult<GetImagesDetails> {
-	const details = { query, provider, minHeight, maxHeight, images, rejectedCount, updatedDestination, providerErrors };
+	const notice =
+		images.length === 0
+			? "No photos available. Continue planning and save the option cards with imageLinks: []. Do not retry an unavailable provider with different queries or ask the user to wait for photos. Never invent image URLs."
+			: undefined;
+	const details = {
+		query,
+		provider,
+		minHeight,
+		maxHeight,
+		images,
+		rejectedCount,
+		updatedDestination,
+		providerErrors,
+		notice,
+	};
 	return {
 		content: [
 			{
@@ -241,6 +257,7 @@ function formatResult(
 						rejectedCount,
 						updatedDestination,
 						providerErrors,
+						notice,
 					},
 					null,
 					2,

@@ -9,6 +9,7 @@ import { loadTravelState } from "../src/core/persistence.js";
 import type { TravelState } from "../src/core/state.js";
 import { createTravelState } from "../src/core/state.js";
 import { createAdvanceChecklistTool } from "../src/core/tools/advance-checklist.js";
+import { createGetImagesTool } from "../src/core/tools/get-images.js";
 import { createGoBackTool } from "../src/core/tools/go-back.js";
 import { createSaveDestinationShortlistTool } from "../src/core/tools/save-destination-shortlist.js";
 import { createShowChecklistTool } from "../src/core/tools/show-checklist.js";
@@ -325,11 +326,37 @@ describe("Travel Tools", () => {
 			await expect(tool.execute("t5", { subDestinations: cards })).rejects.toThrow(/missing.*tradeoff/);
 		});
 
-		it("should reject destination option cards without image links", async () => {
+		it("saves and advances a text-only shortlist after image service failure", async () => {
+			state.checklist = advanceChecklist(state.checklist);
+			const images = createGetImagesTool({
+				...makeDeps(),
+				stagehand: null,
+				searxng: {
+					name: "searxng",
+					async searchImages() {
+						throw new Error("fetch failed");
+					},
+				},
+			});
+			const result = await images.execute("images", { query: "Hanoi", destination_name: "Hanoi" });
+			expect(result.details.images).toEqual([]);
+			expect(result.details.notice).toContain("Continue planning");
+			const tool = createSaveDestinationShortlistTool(makeDeps());
+			const cards = Array.from({ length: 8 }, (_, i) => ({
+				...makeSubDestination(`Place ${i}`),
+				imageLinks: [],
+				validatedImages: [],
+			}));
+			await tool.execute("t6", { subDestinations: cards });
+			expect(loadTravelState("tool-test", persistOpts)?.destinationResearch?.subDestinations).toHaveLength(8);
+			await createAdvanceChecklistTool(makeDeps()).execute("next", {});
+			expect(state.checklist.phases[state.checklist.activePhaseIndex].id).toBe("select_destinations");
+		});
+
+		it("still rejects invalid nonempty image links", async () => {
 			const tool = createSaveDestinationShortlistTool(makeDeps());
 			const cards = Array.from({ length: 8 }, (_, i) => makeSubDestination(`Place ${i}`));
-			delete (cards[2] as any).imageLinks;
-
+			cards[2].imageLinks = ["javascript:bad"];
 			await expect(tool.execute("t6", { subDestinations: cards })).rejects.toThrow(/imageLinks/);
 		});
 

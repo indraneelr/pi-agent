@@ -140,7 +140,9 @@ export function validateDestinationOptionCards(options: SubDestination[], state:
 				`Destination option "${name}" must include validatedImages returned by get_images; raw imageLinks are not enough when TRAVEL_AGENT_REQUIRE_VALIDATED_IMAGES=true.`,
 			);
 		}
-		if (!hasUsefulImageLinks(option.imageLinks)) {
+		// Photos are optional. Keep validating supplied links without making an
+		// unavailable image provider block the user's destination choices.
+		if (option.imageLinks?.length && !hasUsefulImageLinks(option.imageLinks)) {
 			throw new Error(
 				`Destination option "${name}" must include imageLinks with at least one valid .jpg/.jpeg/.png/.webp URL.`,
 			);
