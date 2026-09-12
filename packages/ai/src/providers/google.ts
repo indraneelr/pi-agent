@@ -204,7 +204,9 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 
 				if (candidate?.finishReason) {
 					output.stopReason = mapStopReason(candidate.finishReason);
-					if (output.content.some((b) => b.type === "toolCall")) {
+					if (output.stopReason === "error") {
+						output.errorMessage = `Google generation stopped: ${candidate.finishReason}`;
+					} else if (output.content.some((b) => b.type === "toolCall")) {
 						output.stopReason = "toolUse";
 					}
 				}
@@ -253,7 +255,7 @@ export const streamGoogle: StreamFunction<"google-generative-ai", GoogleOptions>
 			}
 
 			if (output.stopReason === "aborted" || output.stopReason === "error") {
-				throw new Error("An unknown error occurred");
+				throw new Error(output.errorMessage ?? "Google generation failed without a finish reason");
 			}
 
 			stream.push({ type: "done", reason: output.stopReason, message: output });

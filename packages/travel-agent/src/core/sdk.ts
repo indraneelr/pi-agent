@@ -21,6 +21,7 @@ import type { ImageContent, Model, TextContent } from "@earendil-works/pi-ai";
 import { loadChecklistConfig } from "./checklist.js";
 import { cleanDestinationImageLinks } from "./image-validation.js";
 import { loadTravelState, type PersistenceOptions, saveTravelState } from "./persistence.js";
+import { TravelProviderError } from "./provider-error.js";
 import type { SearchProvider } from "./search/types.js";
 import { createTravelState, type TravelState } from "./state.js";
 import { buildTravelSystemPrompt, type TravelSystemPromptOptions } from "./system-prompt.js";
@@ -200,7 +201,7 @@ class TravelAgentHarnessFacade implements TravelAgentFacade {
 			await this.refreshMessages();
 			const last = this.state.messages.at(-1);
 			if (last?.role === "assistant" && (last.stopReason === "error" || last.stopReason === "aborted")) {
-				throw new Error("The AI provider could not finish this request. Check the API key and quota, then retry.");
+				throw new TravelProviderError(last.errorMessage);
 			}
 		} catch (e) {
 			this.state.errorMessage = e instanceof Error ? e.message : String(e);

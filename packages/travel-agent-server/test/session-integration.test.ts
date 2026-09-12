@@ -2,7 +2,12 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentEvent, AgentMessage } from "@earendil-works/pi-agent-core";
-import { createTravelState, type TravelSession, type TravelState } from "@mariozechner/pi-travel-agent";
+import {
+	createTravelState,
+	TravelProviderError,
+	type TravelSession,
+	type TravelState,
+} from "@mariozechner/pi-travel-agent";
 import { describe, expect, it } from "vitest";
 import { loadConfig, type ServerConfig } from "../src/config.js";
 import type { TravelStreamEvent } from "../src/events.js";
@@ -98,6 +103,17 @@ const GENERATE_SCRIPT: AgentEvent[] = [
 ];
 
 describe("streamMessage (integration, fake session)", () => {
+	it("sends actionable provider errors without leaking the provider payload", async () => {
+		const failure = new TravelProviderError("Google generation stopped: MALFORMED_FUNCTION_CALL secret=private-key");
+		const { manager } = makeManager(async (id) => createFakeSession(id, { throwError: failure }).session);
+		const created = await manager.createSession();
+		const events: TravelStreamEvent[] = [];
+		await manager.streamMessage(created.sessionId, "continue", "dev-user", (event) => events.push(event));
+		expect(events.at(-1)).toEqual({ type: "run_error", message: failure.message });
+		expect(failure.message).toContain("invalid planning action");
+		expect(JSON.stringify(events)).not.toContain("private-key");
+		expect((await manager.getSession(created.sessionId)).status).toBe("idle");
+	});
 	it("emits normalized events in order and finishes", async () => {
 		const { manager } = makeManager(
 			async (id) => createFakeSession(id, { script: GENERATE_SCRIPT, finalText: "Here are some islands" }).session,

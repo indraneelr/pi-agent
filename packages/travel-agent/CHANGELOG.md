@@ -5,6 +5,7 @@ All notable changes to `@mariozechner/pi-travel-agent` will be documented in thi
 ## [Unreleased]
 
 ### Fixed
+- Stop validating unused image candidates once enough photos are found; classify provider failures into safe, actionable errors.
 - Continue saving destination choices when image search is unavailable, with empty photo lists and clear tool guidance; honor the disabled browser-search setting for images.
 - Keep Gemini grounding available when an optional browser-search fallback is unconfigured.
 - Persist validated image evidence for destination and activity rendering.

@@ -228,7 +228,10 @@ describe("Travel Session E2E", () => {
 				searchProvider: createFakeSearchProvider(),
 				dataDir: TEST_DIR,
 			});
-			await expect(session.agent.prompt("Plan Japan")).rejects.toThrow("AI provider");
+			await expect(session.agent.prompt("Plan Japan")).rejects.toMatchObject({
+				name: "TravelProviderError",
+				code: "quota",
+			});
 			expect((await loadTravelConversation("failed-trip", TEST_DIR)).length).toBeGreaterThan(0);
 			await session.shutdown();
 			session = null;

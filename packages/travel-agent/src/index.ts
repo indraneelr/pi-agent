@@ -95,6 +95,7 @@ export {
 	scoreShortlistPreferenceFit,
 	type TradeoffSeverity,
 } from "./core/preference-fit.js";
+export { TravelProviderError } from "./core/provider-error.js";
 // SDK
 export {
 	type CreateTravelSessionOptions,

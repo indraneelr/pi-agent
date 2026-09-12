@@ -32,9 +32,6 @@ export async function validateImageCandidates(
 	options: ValidateImageCandidatesOptions,
 ): Promise<ValidateImageCandidatesResult> {
 	const deduped = dedupeCandidates(candidates);
-	const urls = deduped.map((c) => c.url);
-	const validation = await validateImageUrls(urls, { ...(options.validate ?? {}), signal: options.signal });
-	const byUrl = new Map(validation.map((r) => [r.url, r]));
 	const probe = options.dimensionProbe ?? defaultImageDimensionProbe;
 	const timeoutMs = options.validate?.timeoutMs ?? 12_000;
 
@@ -43,7 +40,13 @@ export async function validateImageCandidates(
 
 	for (const candidate of deduped) {
 		if (images.length >= options.limit) break;
-		const result = byUrl.get(candidate.url);
+		options.signal?.throwIfAborted();
+		// Stop probing once the requested photos are found. Previously even one
+		// photo waited for every search result, including unrelated slow hosts.
+		const [result] = await validateImageUrls([candidate.url], {
+			...(options.validate ?? {}),
+			signal: options.signal,
+		});
 		if (!result?.ok || !result.contentType?.toLowerCase().startsWith("image/")) {
 			rejectedCount++;
 			continue;
@@ -85,8 +88,6 @@ export async function validateImageCandidates(
 		});
 	}
 
-	// Count valid-but-over-limit as rejected because they were not returned.
-	rejectedCount += Math.max(0, deduped.length - validation.length);
 	return { images, rejectedCount };
 }
 

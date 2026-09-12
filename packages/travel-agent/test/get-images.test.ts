@@ -9,6 +9,29 @@ import { createGetImagesTool } from "../src/core/tools/get-images.js";
 const checklist: ChecklistPhaseConfig[] = [{ id: "shortlist_destinations", label: "Shortlist", description: "" }];
 
 describe("get_images", () => {
+	it("returns the requested image without probing unused slow candidates", async () => {
+		const checked: string[] = [];
+		const result = await validateImageCandidates(
+			[
+				{ url: "https://example.com/valid.jpg", width: 1280, height: 720 },
+				{ url: "https://example.com/slow.jpg", width: 1280, height: 720 },
+			],
+			{
+				minHeight: 720,
+				maxHeight: null,
+				limit: 1,
+				validate: {
+					http: async (url) => {
+						checked.push(url);
+						if (url.includes("slow")) throw new Error("Unused host must not be contacted");
+						return { status: 200, contentType: "image/jpeg" };
+					},
+				},
+			},
+		);
+		expect(result.images).toHaveLength(1);
+		expect(checked).toEqual(["https://example.com/valid.jpg"]);
+	});
 	it("parses SearXNG image candidates including dimensions", () => {
 		const candidates = parseSearxngCandidates({
 			results: [

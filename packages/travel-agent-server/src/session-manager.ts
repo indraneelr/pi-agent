@@ -27,6 +27,7 @@ import {
 	type SearchProvider,
 	saveTravelState,
 	type TravelConversationMessage,
+	TravelProviderError,
 	type TravelSession,
 	type TravelState,
 } from "@mariozechner/pi-travel-agent";
@@ -382,7 +383,16 @@ export class TravelSessionManager {
 			safeEmit({ type: "run_finished", assistantMessage: extractAssistantText(active.agent.state.messages) });
 			this.logger.info({ sessionId, runId, durationMs: Date.now() - startedAt }, "Travel stream run finished");
 		} catch (e) {
-			this.logger.error({ err: e, sessionId, runId, durationMs: Date.now() - startedAt }, "Travel stream failed");
+			this.logger.error(
+				{
+					err: e,
+					errorCode: e instanceof TravelProviderError ? e.code : "unexpected",
+					sessionId,
+					runId,
+					durationMs: Date.now() - startedAt,
+				},
+				"Travel stream failed",
+			);
 			if (work && controller.signal.aborted) {
 				stillRunning = true;
 				void work
@@ -650,6 +660,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorFacto
  */
 function safeStreamErrorMessage(e: unknown): string {
 	if (
+		e instanceof TravelProviderError ||
 		e instanceof SessionConfigurationError ||
 		e instanceof SessionTimeoutError ||
 		e instanceof SessionBusyError ||
