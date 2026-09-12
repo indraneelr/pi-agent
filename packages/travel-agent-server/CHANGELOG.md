@@ -7,6 +7,7 @@
 - Expiring auth sessions, verified-email allowlisting, origin checks and real provider key validation.
 
 ### Fixed
+- Use source IDs for review citations and request eight photos when expanding destination galleries.
 - Execute photo requests directly and require activity/review actions to save card data; retry acknowledgements once and report incomplete research explicitly.
 - Show actionable provider failures in the planner and log their safe error categories instead of hiding them as unexpected errors.
 - Keep SSE connections open after request-body completion; bound generation, support cancellation and retain the run lock until work settles.

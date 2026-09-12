@@ -22,7 +22,7 @@ export interface TravelSystemPromptOptions {
 	accommodationWebsites?: string[];
 	/** Websites to use for flight research. Default: ["Skyscanner", "Google Flights"] */
 	flightWebsites?: string[];
-	/** Desired image count when photos are available. Never a planning prerequisite. Default: 5 */
+	/** Desired image count when photos are available. Never a planning prerequisite. Default: 8 */
 	minImageLinks?: number;
 	/** Travel research websites. Default: ["TripAdvisor", "Viator", "Lonely Planet", "Nomadic Matt", "The Points Guy", "Conde Nast Traveler"] */
 	researchWebsites?: string[];
@@ -60,7 +60,8 @@ function buildToolsSection(): string {
 	return `# Available Tools
 
 - web_search: Search the web for travel information (destinations, activities, hotels, flights, reviews)
-- get_images: Search for real, validated image URLs with width/height for structured state only. Use this whenever the user asks to see images or before saving imageLinks. Never invent image URLs. Never place image URLs in conversational Markdown; the UI renders validated image galleries from saved state.
+- get_images: Request count=8 on every image search, including the initial shortlist. Search for real, validated image URLs with width/height for structured state only. Use this whenever the user asks to see images or before saving imageLinks. Never invent image URLs. Never place image URLs in conversational Markdown; the UI renders validated image galleries from saved state.
+- save_destination_reviews: Save review pros, cons and ratings to a destination card. Cite short Source IDs from web_search using source_ids; the tool resolves the exact URLs.
 - save_destination_shortlist: Save the destination shortlist / choice cards (destination research). Use this — NOT update_travel_state — for destination_research.
 - update_travel_state: Save other structured data to the session (preferences, activities, itinerary, accommodation, flights, selections)
 - advance_checklist: Mark the current phase as complete and move to the next
@@ -123,7 +124,7 @@ Once all mandatory preferences are gathered, confirm with the user and advance t
 }
 
 function buildShortlistInstructions(options: TravelSystemPromptOptions): string {
-	const minImageLinks = options.minImageLinks ?? 5;
+	const minImageLinks = options.minImageLinks ?? 8;
 	return `Research and shortlist destinations (sub-destinations/areas) that match the user's preferences.
 
 **Mandatory execution rule:** Before writing a user-facing shortlist, you MUST call save_destination_shortlist with a complete option-card payload that satisfies the counts below. Do not say "I'll save" or "I'll compile"; actually call the tool. Do NOT use update_travel_state for destination research — use save_destination_shortlist instead. If a web search is thin, use your travel knowledge, label live/current claims as estimates, and still save the option cards.
@@ -148,7 +149,7 @@ Every card's 'tradeoff' field MUST be contextual to a preference the traveler ac
 
 Steps:
 1. Use web_search briefly to research destinations matching the preferences. Limit shortlist research to 1-2 web_search calls unless the user explicitly asks for deeper research.
-2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. When the user wants photos, use get_images with min_height 720 and destination_name for tool-owned validation evidence. Aim for ${minImageLinks} images when available. If image search fails or the user asks to proceed without photos, stop image retries and immediately save all cards with empty imageLinks. Do not include image Markdown in your user-facing prose.
+2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. When the user wants photos, use get_images with count=8, min_height 720 and destination_name for tool-owned validation evidence. Aim for ${minImageLinks} images when available. If image search fails or the user asks to proceed without photos, stop image retries and immediately save all cards with empty imageLinks. Do not include image Markdown in your user-facing prose.
 3. Score each destination against the user's preferences.
 4. Immediately save the research using save_destination_shortlist.
 5. Present the saved shortlist to the user with fit reasons and clear, contextual tradeoffs (each tied to a stated preference axis).
@@ -174,7 +175,7 @@ IMPORTANT: Only proceed after the user has made a clear choice.`;
 }
 
 function buildExperiencesInstructions(options: TravelSystemPromptOptions): string {
-	const minImageLinks = options.minImageLinks ?? 5;
+	const minImageLinks = options.minImageLinks ?? 8;
 	return `Research activities and experiences at the selected destinations that match the user's preferences.
 
 **Mandatory execution rule:** Before writing any user-facing prose about activities, you MUST call update_travel_state with field="activities_research" and a complete payload that satisfies the counts below. Do not say "I'll save" or "I'll compile"; actually call the tool first, then present the results. If web_search results are thin or unavailable, use your own travel knowledge, label any prices/durations as estimates, and STILL save — an incomplete save is always better than no save.
@@ -199,7 +200,7 @@ IMPORTANT: Avoid stuffing more than 1-2 major activities per day unless the user
 }
 
 function buildItineraryInstructions(options: TravelSystemPromptOptions): string {
-	const minImageLinks = options.minImageLinks ?? 5;
+	const minImageLinks = options.minImageLinks ?? 8;
 	return `Build a day-by-day itinerary slotting the selected places and activities.
 
 Steps:
@@ -215,7 +216,7 @@ Steps:
 function buildAccommodationFlightsInstructions(options: TravelSystemPromptOptions): string {
 	const flightSites = options.flightWebsites ?? ["Skyscanner", "Google Flights"];
 	const accomSites = options.accommodationWebsites ?? ["Booking.com"];
-	const minImageLinks = options.minImageLinks ?? 5;
+	const minImageLinks = options.minImageLinks ?? 8;
 
 	return `Research accommodation areas and flight options for the trip.
 

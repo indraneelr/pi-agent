@@ -5,6 +5,8 @@ All notable changes to `@mariozechner/pi-travel-agent` will be documented in thi
 ## [Unreleased]
 
 ### Fixed
+- Save reviews using short search source IDs so opaque Google redirect URLs remain intact; allow requested review searches after the initial shortlist search budget is used.
+- Request eight images on every image search, including initial destination research and gallery expansion.
 - Append additional photos without losing gallery evidence and save structured destination review themes with source-checked provider ratings.
 - Stop validating unused image candidates once enough photos are found; classify provider failures into safe, actionable errors.
 - Continue saving destination choices when image search is unavailable, with empty photo lists and clear tool guidance; honor the disabled browser-search setting for images.

@@ -8,6 +8,7 @@ import { loadConfig } from "../../travel-agent-server/src/config.js";
 import { createServer } from "../../travel-agent-server/src/server.js";
 import { TravelSessionManager } from "../../travel-agent-server/src/session-manager.js";
 import { createScriptedSession } from "../../travel-agent-server/test/scripted-session.js";
+import { SearchSources } from "../src/core/search/sources.js";
 import { createSaveDestinationReviewsTool } from "../src/core/tools/save-destination-reviews.js";
 
 test("browser: consent, places, activities, itinerary, export, reload and mobile navigation", async () => {
@@ -24,18 +25,20 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		session.agent.prompt = async (input) => {
 			if (input.startsWith("[Planner action: reviews]")) {
 				const sourceUrl = "https://www.tripadvisor.com/Tourism-Kyoto.html";
+				const sources = new SearchSources();
+				const sourceId = sources.add({ url: sourceUrl, title: "Kyoto", snippet: "Kyoto rating: 4.5 out of 5" });
 				await createSaveDestinationReviewsTool({
 					getState: () => session.state,
 					setState: session.setState,
 					persistOpts: { dataDir: dir },
-					getSourceText: () => "Kyoto rating: 4.5 out of 5",
+					sources,
 				}).execute("review", {
 					destination_name: "Kyoto",
 					pros: ["Beautiful gardens and food"],
 					cons: ["Crowded temples"],
 					reviewSummary: "Sourced review summary for the card",
-					sources: [sourceUrl],
-					providerRatings: [{ provider: "tripadvisor", rating: 4.5, sourceUrl, placeName: "Kyoto" }],
+					source_ids: [sourceId],
+					providerRatings: [{ provider: "tripadvisor", rating: 4.5, source_id: sourceId, placeName: "Kyoto" }],
 				});
 				return;
 			}
@@ -54,7 +57,7 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		if (new URL(url).pathname === "/search")
 			return new Response(
 				JSON.stringify({
-					results: Array.from({ length: 6 }, (_, i) => ({
+					results: Array.from({ length: 16 }, (_, i) => ({
 						img_src: `https://photos.example/${i}.png`,
 						width: 1280,
 						height: 720,
@@ -110,11 +113,11 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		await page.getByRole("button", { name: "Select place", exact: true }).first().click();
 		const card = page.getByRole("article", { name: "Kyoto", exact: true });
 		await card.getByRole("button", { name: "See images", exact: true }).click();
-		await card.getByText("1 / 3", { exact: true }).waitFor();
+		await card.getByText("1 / 8", { exact: true }).waitFor();
 		await card.getByRole("button", { name: "See more images", exact: true }).click();
-		await card.getByText("1 / 6", { exact: true }).waitFor();
+		await card.getByText("1 / 16", { exact: true }).waitFor();
 		await card.getByRole("button", { name: "Next photo of Kyoto" }).click();
-		await card.getByText("2 / 6", { exact: true }).waitFor();
+		await card.getByText("2 / 16", { exact: true }).waitFor();
 		await card.getByRole("button", { name: "Reviews", exact: false }).click();
 		await card.getByText("Beautiful gardens and food").waitFor();
 		await card.getByText("Crowded temples").waitFor();

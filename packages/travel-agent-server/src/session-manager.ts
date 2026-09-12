@@ -384,7 +384,7 @@ export class TravelSessionManager {
 						{
 							query: card.imageQuery ?? card.imageKeywords ?? `${card.name} travel scenery`,
 							destination_name: card.name,
-							count: 3,
+							count: 8,
 						},
 						controller.signal,
 					);

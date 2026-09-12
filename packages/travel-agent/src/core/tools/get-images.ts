@@ -17,7 +17,12 @@ const getImagesSchema = Type.Object({
 	destination_name: Type.Optional(
 		Type.String({ description: "Optional destination/card name whose imageLinks should be updated." }),
 	),
-	count: Type.Optional(Type.Number({ description: "Number of images to return. Default 6, max 10." })),
+	count: Type.Optional(
+		Type.Number({
+			description:
+				"Request 8 images per call. The service normalizes this value to 8; fewer may be returned if unavailable.",
+		}),
+	),
 	provider: Type.Optional(
 		Type.Union([Type.Literal("auto"), Type.Literal("searxng"), Type.Literal("stagehand")], {
 			description: "Image provider. Default auto.",
@@ -72,7 +77,7 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 			params: GetImagesInput,
 			signal?: AbortSignal,
 		): Promise<AgentToolResult<GetImagesDetails>> {
-			const count = Math.min(Math.max(Math.round(params.count ?? 6), 1), 10);
+			const count = 8;
 			const minHeight = Math.max(1, Math.round(params.min_height ?? 720));
 			const maxHeight =
 				params.max_height === undefined || params.max_height === null

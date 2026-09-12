@@ -25,6 +25,7 @@ export { createWebSearchTool, type WebSearchDetails } from "./web-search.js";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { Model } from "@earendil-works/pi-ai";
 import type { PersistenceOptions } from "../persistence.js";
+import { SearchSources } from "../search/sources.js";
 import type { SearchProvider } from "../search/types.js";
 import type { TravelState } from "../state.js";
 import { createAdvanceChecklistTool } from "./advance-checklist.js";
@@ -57,20 +58,17 @@ export function createTravelTools(options: CreateTravelToolsOptions): AgentTool<
 	const { getState, setState, searchProvider, persistOpts, model, getApiKey, imageTimeoutMs, cleanImageLinks } =
 		options;
 	const stateDeps = { getState, setState, persistOpts, cleanImageLinks };
-	const reviewSources = new Map<string, string>();
+	const reviewSources = new SearchSources();
 
 	return [
 		createWebSearchTool(searchProvider, {
 			getState,
-			onResults: (results) => {
-				for (const result of results)
-					reviewSources.set(result.url, `${result.title} ${result.snippet} ${result.content ?? ""}`);
-			},
+			sources: reviewSources,
 		}),
 		createGetImagesTool({ ...stateDeps, imageTimeoutMs }),
 		createUpdateStateTool(stateDeps),
 		createSaveDestinationShortlistTool(stateDeps),
-		createSaveDestinationReviewsTool({ ...stateDeps, getSourceText: (url) => reviewSources.get(url) }),
+		createSaveDestinationReviewsTool({ ...stateDeps, sources: reviewSources }),
 		createAdvanceChecklistTool(stateDeps),
 		createGoBackTool(stateDeps),
 		createShowChecklistTool(() => getState().checklist),

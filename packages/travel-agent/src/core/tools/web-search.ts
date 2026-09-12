@@ -7,6 +7,7 @@
 import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { type Static, Type } from "@sinclair/typebox";
 import { getActivePhase } from "../checklist.js";
+import type { SearchSources } from "../search/sources.js";
 import type { SearchProvider, SearchResult } from "../search/types.js";
 import type { TravelState } from "../state.js";
 
@@ -15,6 +16,11 @@ const webSearchSchema = Type.Object({
 		description: "Search query for travel research (destinations, activities, hotels, flights, etc.)",
 	}),
 	num_results: Type.Optional(Type.Number({ description: "Number of results to return (default: 5, max: 10)" })),
+	purpose: Type.Optional(
+		Type.Literal("reviews", {
+			description: "Use for user-requested destination reviews; independent of the initial shortlist search budget.",
+		}),
+	),
 });
 
 type WebSearchInput = Static<typeof webSearchSchema>;
@@ -26,7 +32,7 @@ export interface WebSearchDetails {
 }
 
 export interface WebSearchOptions {
-	onResults?: (results: SearchResult[]) => void;
+	sources?: SearchSources;
 	getState?: () => TravelState;
 	/** Hard cap for shortlist_destinations research. Default: 2. */
 	shortlistSearchLimit?: number;
@@ -54,7 +60,7 @@ export function createWebSearchTool(
 			const phaseKey = state ? `${state.sessionId}:${activePhase ?? "unknown"}` : undefined;
 			const shortlistLimit = options.shortlistSearchLimit ?? 2;
 
-			if (activePhase === "shortlist_destinations" && phaseKey) {
+			if (activePhase === "shortlist_destinations" && phaseKey && params.purpose !== "reviews") {
 				const priorCount = searchCountsByPhase.get(phaseKey) ?? 0;
 				if (priorCount >= shortlistLimit) {
 					return {
@@ -76,8 +82,7 @@ export function createWebSearchTool(
 
 			const numResults = Math.min(params.num_results ?? 5, 10);
 			const results = await searchProvider.search(params.query, numResults, signal);
-			options.onResults?.(results);
-			const formatted = formatSearchResults(results);
+			const formatted = formatSearchResults(results, options.sources);
 
 			return {
 				content: [{ type: "text", text: formatted }],
@@ -91,13 +96,19 @@ export function createWebSearchTool(
 	};
 }
 
-function formatSearchResults(results: SearchResult[]): string {
+function formatSearchResults(results: SearchResult[], sources?: SearchSources): string {
 	if (results.length === 0) {
 		return "No results found.";
 	}
 	return results
 		.map((r, i) => {
 			const lines = [`${i + 1}. ${r.title}`, `   URL: ${r.url}`, `   ${r.snippet}`];
+			if (sources && /^https?:\/\//i.test(r.url))
+				lines.splice(
+					1,
+					0,
+					`   Source ID: ${sources.add(r)} (use this ID when saving reviews; do not copy the URL)`,
+				);
 			if (r.content) {
 				const truncated = r.content.length > 500 ? `${r.content.slice(0, 500)}...` : r.content;
 				lines.push(`   Content: ${truncated}`);
