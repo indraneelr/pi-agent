@@ -5,6 +5,7 @@ All notable changes to `@mariozechner/pi-travel-agent` will be documented in thi
 ## [Unreleased]
 
 ### Fixed
+- Count original/thumbnail variants as one photo, verify fallback thumbnail dimensions independently, exclude saved identities and redirects on subsequent searches, and restrict SearxNG requests to configurable photo engines.
 - Accept positive numeric shortlist durations, describe the card schema explicitly, and allow short durations when advancing to place selection.
 - Normalize review provider names and omit unverified ratings without blocking sourced review themes.
 - Save reviews using short search source IDs so opaque Google redirect URLs remain intact; allow requested review searches after the initial shortlist search budget is used.

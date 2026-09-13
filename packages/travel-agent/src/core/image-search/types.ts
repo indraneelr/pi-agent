@@ -12,6 +12,8 @@ export interface ImageSearchQuery {
 }
 
 export interface ImageCandidate {
+	/** Original image shared by full-size and thumbnail variants of one result. */
+	identityUrl?: string;
 	url: string;
 	width?: number;
 	height?: number;
@@ -20,6 +22,7 @@ export interface ImageCandidate {
 }
 
 export interface ValidImageResult {
+	identityUrl?: string;
 	url: string;
 	width: number;
 	height: number;
@@ -29,6 +32,7 @@ export interface ValidImageResult {
 }
 
 export interface ValidatedImage {
+	identityUrl?: string;
 	kind: "image";
 	url: string;
 	finalUrl: string;

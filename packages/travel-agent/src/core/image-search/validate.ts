@@ -4,6 +4,7 @@ import { type ValidateImageUrlsOptions, validateImageUrls } from "../image-valid
 import type { ImageCandidate, ValidImageResult } from "./types.js";
 
 export interface ValidateImageCandidatesOptions {
+	excludeUrls?: string[];
 	/** Return already-validated photos when the search time budget is exhausted. */
 	maxDurationMs?: number;
 	minHeight: number;
@@ -39,10 +40,13 @@ export async function validateImageCandidates(
 	const deadline = options.maxDurationMs === undefined ? Number.POSITIVE_INFINITY : Date.now() + options.maxDurationMs;
 
 	const images: ValidImageResult[] = [];
+	const seen = new Set(options.excludeUrls ?? []);
 	let rejectedCount = 0;
 
 	for (const candidate of deduped) {
 		if (images.length >= options.limit) break;
+		const identity = candidate.identityUrl ?? candidate.url;
+		if (seen.has(identity) || seen.has(candidate.url)) continue;
 		options.signal?.throwIfAborted();
 		if (Date.now() >= deadline) break;
 		// Stop probing once the requested photos are found. Previously even one
@@ -56,6 +60,8 @@ export async function validateImageCandidates(
 			rejectedCount++;
 			continue;
 		}
+		const finalUrl = result.finalUrl ?? candidate.url;
+		if (seen.has(finalUrl)) continue;
 
 		let width = finitePositive(candidate.width) ? Math.round(candidate.width!) : undefined;
 		let height = finitePositive(candidate.height) ? Math.round(candidate.height!) : undefined;
@@ -82,14 +88,18 @@ export async function validateImageCandidates(
 			continue;
 		}
 
+		seen.add(identity);
+		seen.add(candidate.url);
+		seen.add(finalUrl);
 		images.push({
+			identityUrl: identity,
 			url: candidate.url,
 			width,
 			height,
 			title: candidate.title,
 			source: candidate.source,
 			validation: {
-				finalUrl: result.finalUrl ?? candidate.url,
+				finalUrl,
 				httpStatus: result.status,
 				contentType: result.contentType,
 				validatedAt: new Date().toISOString(),

@@ -59,6 +59,7 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 				JSON.stringify({
 					results: Array.from({ length: 16 }, (_, i) => ({
 						img_src: `https://photos.example/${i}.png`,
+						thumbnail_src: `https://photos.example/thumb-${i}.png`,
 						width: 1280,
 						height: 720,
 						url: "https://photos.example/source",
@@ -115,6 +116,16 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		await card.getByRole("button", { name: "See images", exact: true }).click();
 		await card.getByText("1 / 8", { exact: true }).waitFor();
 		await card.getByRole("button", { name: "See more images", exact: true }).click();
+		await card.getByText("1 / 16", { exact: true }).waitFor();
+		const galleryUrls = new Set<string>();
+		for (let photo = 0; photo < 16; photo++) {
+			const src = await card.locator(".destination-carousel img").getAttribute("src");
+			expect(src).not.toContain("thumb-");
+			galleryUrls.add(src!);
+			await card.getByRole("button", { name: "Next photo of Kyoto" }).click();
+		}
+		expect(galleryUrls.size).toBe(16);
+		await page.reload();
 		await card.getByText("1 / 16", { exact: true }).waitFor();
 		await card.getByRole("button", { name: "Next photo of Kyoto" }).click();
 		await card.getByText("2 / 16", { exact: true }).waitFor();

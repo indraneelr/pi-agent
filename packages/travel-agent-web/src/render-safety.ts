@@ -10,7 +10,12 @@ export function requireValidatedImages(): boolean {
 }
 
 export function getRenderableDestinationImages(card: DestinationImageCarrier): ValidatedImage[] {
-	const validated = (card.validatedImages ?? []).filter(isRenderableValidatedImage);
+	const seen = new Set<string>();
+	const validated = (card.validatedImages ?? []).filter((image) => {
+		if (!isRenderableValidatedImage(image) || seen.has(image.finalUrl)) return false;
+		seen.add(image.finalUrl);
+		return true;
+	});
 	if (requireValidatedImages()) return validated;
 	if (validated.length > 0) return validated;
 	return (card.imageLinks ?? []).filter(isRenderableRawImageUrl).map(toDebugImageEvidence);

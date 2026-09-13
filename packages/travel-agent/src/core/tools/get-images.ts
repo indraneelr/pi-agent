@@ -101,7 +101,11 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 							minHeight,
 							maxHeight,
 							signal,
-							excludeUrls: existing.flatMap((image) => [image.url, image.finalUrl]),
+							excludeUrls: existing.flatMap((image) => [
+								image.url,
+								image.finalUrl,
+								image.identityUrl ?? image.url,
+							]),
 						},
 						timeoutMs,
 					);
@@ -119,6 +123,7 @@ export function createGetImagesTool(deps: GetImagesDeps): AgentTool<typeof getIm
 											{
 												kind: "image" as const,
 												url: image.url,
+												identityUrl: image.identityUrl,
 												...image.validation,
 												provider: result.provider,
 												source: image.source,

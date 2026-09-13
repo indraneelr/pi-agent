@@ -22,6 +22,13 @@ afterEach(() => {
 });
 
 describe("render safety", () => {
+	test("renders a final image URL only once even when repeated in saved evidence", () => {
+		expect(
+			getRenderableDestinationImages({
+				validatedImages: [validImage, { ...validImage, url: "https://other.example/alias.jpg" }],
+			}),
+		).toEqual([validImage]);
+	});
 	test("can render raw destination imageLinks when strict validation toggle is off", () => {
 		import.meta.env.VITE_REQUIRE_VALIDATED_IMAGES = "false";
 		const images = getRenderableDestinationImages({ imageLinks: ["https://fake.example/image.jpg"] });

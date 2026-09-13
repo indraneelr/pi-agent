@@ -62,6 +62,7 @@ export function createStagehandImageSearchProvider(options: StagehandImageSearch
 					minHeight: query.minHeight,
 					maxHeight: query.maxHeight,
 					limit: query.count,
+					excludeUrls: query.excludeUrls,
 					validate: options.validate,
 					dimensionProbe: options.dimensionProbe,
 					signal: query.signal,
