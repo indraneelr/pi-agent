@@ -1,0 +1,71 @@
+{
+	"version": 1,
+	"status": "draft",
+	"description": "Editable search catalogue. Query strings are starting points for review, not validated search recipes. This file is not yet connected to the running agent.",
+	"editing": {
+		"select_by": "Purpose ID, then query ID. Select one query at a time; do not execute every alternative automatically.",
+		"syntax": "Replace {variable} placeholders with literal trip or place values before URL encoding the complete query. Missing values must be supplied; never send unresolved placeholders.",
+		"change_queries": "Edit the template strings or add alternatives. Keep IDs stable when changing wording.",
+		"query_vs_instruction": "Templates contain search terms only. Instructions about extraction, citations, output language and JSON belong in the research prompt.",
+		"source_validation": "Search operators help discovery. Verify the final URL and matching entity after opening the result. Do not treat a search snippet as a verified provider rating."
+	},
+	"variables": {
+		"country": "Country being researched, e.g. Vietnam.",
+		"place": "Destination city or region, e.g. Hoi An.",
+		"exact_place": "Specific entity whose listing or reviews are needed, e.g. Hoi An Ancient Town. Do not silently replace a city with an attraction.",
+		"location": "City, region or country needed to distinguish the entity; avoid repeating its name.",
+		"interest": "One travel interest, e.g. beaches. Research another interest in a separate query when needed.",
+		"traveler_constraint": "One relevant constraint, e.g. young children or wheelchair access.",
+		"review_topic": "One concern to investigate, e.g. crowds, accessibility or ticket prices."
+	},
+	"purposes": {
+		"discover_destinations": {
+			"purpose": "Discover destinations",
+			"description": "Find candidate places within the requested country, before evaluating the full trip fit.",
+			"queries": [
+				{ "id": "by_interest", "template": "{country} {interest} places to visit" },
+				{ "id": "general", "template": "{country} destinations travel guide" }
+			]
+		},
+		"assess_family_suitability": {
+			"purpose": "Assess family suitability",
+			"description": "Find practical evidence about one destination and one traveler constraint.",
+			"queries": [
+				{ "id": "practical", "template": "{place} {country} travel with {traveler_constraint}" },
+				{ "id": "experiences", "template": "{place} {country} {traveler_constraint} travel experiences" }
+			]
+		},
+		"find_google_listing": {
+			"purpose": "Find Google listing",
+			"description": "Resolve a specific place to a Google Maps listing. A city may have no applicable aggregate rating.",
+			"queries": [
+				{ "id": "listing", "template": "{exact_place} {location} Google Maps" },
+				{ "id": "domain", "template": "site:google.com/maps {exact_place} {location}" }
+			]
+		},
+		"find_tripadvisor_listing": {
+			"purpose": "Find Tripadvisor listing",
+			"description": "Resolve the requested entity to a Tripadvisor listing; distinguish destination guides from rated attractions, hotels and businesses.",
+			"queries": [
+				{ "id": "listing", "template": "site:tripadvisor.com {exact_place} {location}" },
+				{ "id": "reviews", "template": "{exact_place} {location} Tripadvisor reviews" }
+			]
+		},
+		"find_positive_experiences": {
+			"purpose": "Find positive experiences",
+			"description": "Find reported highlights. Read mixed reviews too; this search alone cannot establish overall sentiment.",
+			"queries": [
+				{ "id": "highlights", "template": "{exact_place} {location} visitor highlights" },
+				{ "id": "experiences", "template": "{exact_place} {location} visitor experiences" }
+			]
+		},
+		"find_drawbacks": {
+			"purpose": "Find drawbacks",
+			"description": "Investigate specific limitations without interpreting complaint-focused results as representative sentiment.",
+			"queries": [
+				{ "id": "general", "template": "{exact_place} {location} visitor complaints" },
+				{ "id": "topic", "template": "{exact_place} {location} {review_topic} reviews" }
+			]
+		}
+	}
+}
