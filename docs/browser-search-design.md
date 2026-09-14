@@ -2,6 +2,8 @@
 
 Assessment date: 2026-09-14. Scope: choose a browser for retrieving search results and reading source pages; create the template catalogue. No browser migration or runtime query changes in this change.
 
+Update: the [standalone live evaluation](lightpanda-retrieval-evaluation-2026-09-14.md) found successful article reading and partial Google Maps review retrieval, but blocked search/Tripadvisor access and inconsistent Maps responses. Read those findings before choosing a production backend.
+
 ## Editable catalogue
 
 Edit [search-templates.json](../packages/travel-agent/search-templates.json). It contains six purpose IDs, descriptions, named query alternatives and a shared placeholder glossary. All query wording is draft for user editing. The running agent does not load this file yet.
