@@ -122,7 +122,9 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	app.get("/ready", async (_request, reply) => {
 		const checks = {
 			storage: checkStorage(config.dataDir),
-			encryption: config.credentialEncryptionSecret !== "dev-credential-secret-change-me",
+			encryption:
+				config.credentialEncryptionSecret !== "dev-credential-secret-change-me" &&
+				config.credentialEncryptionSecret !== config.authSessionSecret,
 			searxng: Boolean(config.searxngBaseUrl),
 			auth:
 				!config.authRequired ||

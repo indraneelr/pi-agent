@@ -105,8 +105,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		googleClientId: env.GOOGLE_CLIENT_ID,
 		googleClientSecret: env.GOOGLE_CLIENT_SECRET,
 		googleRedirectUri: env.GOOGLE_REDIRECT_URI,
-		credentialEncryptionSecret:
-			env.CREDENTIAL_ENCRYPTION_SECRET ?? env.AUTH_SESSION_SECRET ?? "dev-credential-secret-change-me",
+		// Never fall back to AUTH_SESSION_SECRET: one leaked secret must not both forge
+		// sessions and decrypt every stored key.
+		credentialEncryptionSecret: env.CREDENTIAL_ENCRYPTION_SECRET ?? "dev-credential-secret-change-me",
 		serverKeyFallbackAllowlist: parseList(env.SERVER_KEY_FALLBACK_ALLOWLIST),
 		searxngBaseUrl: env.SEARXNG_BASE_URL,
 		rateLimitPerMinute: Number(env.RATE_LIMIT_PER_MINUTE ?? "120"),
@@ -128,6 +129,8 @@ export function assertProductionConfig(config: ServerConfig): void {
 		throw new Error("Set a strong AUTH_SESSION_SECRET (at least 32 characters)");
 	if (config.credentialEncryptionSecret.length < 32 || config.credentialEncryptionSecret.startsWith("dev-"))
 		throw new Error("Set a strong CREDENTIAL_ENCRYPTION_SECRET (at least 32 characters)");
+	if (config.credentialEncryptionSecret === config.authSessionSecret)
+		throw new Error("CREDENTIAL_ENCRYPTION_SECRET must differ from AUTH_SESSION_SECRET");
 	if (!config.googleClientId || !config.googleClientSecret || !config.googleRedirectUri?.startsWith("https://"))
 		throw new Error("Production requires Google OAuth with an HTTPS redirect URI");
 	if (config.allowedUsers.length === 0) throw new Error("Set ALPHA_USER_ALLOWLIST for the private alpha");

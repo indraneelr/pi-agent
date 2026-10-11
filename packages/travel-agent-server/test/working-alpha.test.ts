@@ -81,6 +81,28 @@ describe("working alpha", () => {
 		);
 	});
 
+	it("requires a separate credential encryption secret in production", () => {
+		const sessionSecret = "s".repeat(40);
+		const production = {
+			NODE_ENV: "production",
+			AUTH_SESSION_SECRET: sessionSecret,
+			GOOGLE_CLIENT_ID: "client",
+			GOOGLE_CLIENT_SECRET: "secret",
+			GOOGLE_REDIRECT_URI: "https://wander.example/api/auth/callback",
+			ALPHA_USER_ALLOWLIST: "user@example.com",
+			CORS_ORIGINS: "https://wander.example",
+		};
+		// Unset: no silent fallback to the session secret.
+		expect(loadConfig(production).credentialEncryptionSecret).not.toBe(sessionSecret);
+		expect(() => assertProductionConfig(loadConfig(production))).toThrow("CREDENTIAL_ENCRYPTION_SECRET");
+		expect(() =>
+			assertProductionConfig(loadConfig({ ...production, CREDENTIAL_ENCRYPTION_SECRET: sessionSecret })),
+		).toThrow("must differ");
+		expect(() =>
+			assertProductionConfig(loadConfig({ ...production, CREDENTIAL_ENCRYPTION_SECRET: "c".repeat(40) })),
+		).not.toThrow();
+	});
+
 	it("times out a stuck stream, preserves the lock until settlement, then allows retry", async () => {
 		const cfg = config();
 		let finish = () => {};
