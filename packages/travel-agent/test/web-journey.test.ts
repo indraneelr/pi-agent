@@ -97,6 +97,10 @@ test("browser: consent, places, activities, itinerary, export, reload and mobile
 		);
 		const errors: string[] = [];
 		page.on("pageerror", (error) => errors.push(error.message));
+		// The server sends a strict CSP; any blocked script, style, font or image is a regression.
+		page.on("console", (message) => {
+			if (message.type() === "error" && /Content Security Policy/i.test(message.text())) errors.push(message.text());
+		});
 		await page.goto(address);
 		await page.getByRole("button", { name: "Terms & Privacy", exact: true }).click();
 		await page.getByRole("dialog", { name: "Terms and Privacy" }).waitFor();

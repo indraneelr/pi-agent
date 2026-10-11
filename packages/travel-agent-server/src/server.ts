@@ -74,6 +74,11 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 
 	app.register(cors, { origin: config.corsOrigins, credentials: true });
 
+	const headers = securityHeaders(config);
+	app.addHook("onSend", async (_request, reply) => {
+		reply.headers(headers);
+	});
+
 	app.addHook("onResponse", async (request, reply) => {
 		app.log.info(
 			{
@@ -397,6 +402,7 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 			Connection: "keep-alive",
 			// Disable proxy buffering so events flush immediately.
 			"X-Accel-Buffering": "no",
+			...headers,
 			...corsHeadersForRaw(request.headers.origin, config),
 		});
 		reply.hijack();
@@ -446,6 +452,33 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 	});
 	if (config.webDir) registerWeb(app, config.webDir);
 	return app;
+}
+
+/**
+ * Security headers for every response. The SPA bundle is same-origin with no
+ * inline scripts; images come from validated third-party HTTPS hosts.
+ */
+function securityHeaders(config: ServerConfig): Record<string, string> {
+	const headers: Record<string, string> = {
+		"Content-Security-Policy": [
+			"default-src 'self'",
+			"script-src 'self'",
+			"style-src 'self' 'unsafe-inline'",
+			"img-src 'self' https: data:",
+			"font-src 'self' data:",
+			"connect-src 'self'",
+			"frame-src 'none'",
+			"object-src 'none'",
+			"base-uri 'none'",
+			"form-action 'self'",
+			"frame-ancestors 'none'",
+		].join("; "),
+		"X-Content-Type-Options": "nosniff",
+		"X-Frame-Options": "DENY",
+		"Referrer-Policy": "strict-origin-when-cross-origin",
+	};
+	if (config.cookieSecure) headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+	return headers;
 }
 
 /** CORS headers for a hijacked (raw) SSE response, mirroring the cors plugin. */

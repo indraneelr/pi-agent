@@ -215,6 +215,29 @@ describe("server auth feature toggle", () => {
 		}
 	});
 
+	test("sends security headers on every response, with HSTS only for secure cookies", async () => {
+		const secure = createServer(loadConfig({ AUTH_REQUIRED: "true" }));
+		const local = createServer(loadConfig({ AUTH_REQUIRED: "false" }));
+		await Promise.all([secure.ready(), local.ready()]);
+		try {
+			for (const url of ["/health", "/api/travel/sessions", "/no-such-route"]) {
+				const res = await secure.inject({ method: "GET", url });
+				const csp = String(res.headers["content-security-policy"]);
+				expect(csp, url).toContain("script-src 'self'");
+				expect(csp, url).toContain("frame-ancestors 'none'");
+				expect(csp, url).toContain("object-src 'none'");
+				expect(res.headers["x-content-type-options"], url).toBe("nosniff");
+				expect(res.headers["x-frame-options"], url).toBe("DENY");
+				expect(res.headers["strict-transport-security"], url).toContain("max-age=31536000");
+			}
+			const res = await local.inject({ method: "GET", url: "/health" });
+			expect(res.headers["content-security-policy"]).toBeDefined();
+			expect(res.headers["strict-transport-security"]).toBeUndefined();
+		} finally {
+			await Promise.all([secure.close(), local.close()]);
+		}
+	});
+
 	test("blocks percent-encoded travel and credential paths when auth is required", async () => {
 		const app = createServer(loadConfig({ AUTH_REQUIRED: "true" }));
 		await app.ready();

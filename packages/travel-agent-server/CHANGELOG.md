@@ -16,3 +16,4 @@
 - Authorize travel and credential APIs by matched route so percent-encoded paths can no longer skip sign-in, the allowlist and rate limits ([#6](https://github.com/indraneelr/pi-agent/issues/6)).
 - Upgrade fastify to 5.12.5 and @fastify/cors to 11.3.1, and pin patched find-my-way and fast-uri, to clear known router and URL-parsing advisories ([#6](https://github.com/indraneelr/pi-agent/issues/6)).
 - Stop deriving the credential encryption key from `AUTH_SESSION_SECRET` when `CREDENTIAL_ENCRYPTION_SECRET` is unset; production now refuses to start unless the two secrets are set and different ([#6](https://github.com/indraneelr/pi-agent/issues/6)).
+- Send Content-Security-Policy, X-Content-Type-Options, X-Frame-Options and Referrer-Policy on every response, plus HSTS when cookies are secure ([#6](https://github.com/indraneelr/pi-agent/issues/6)).
