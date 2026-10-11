@@ -18,10 +18,10 @@
 	},
 	"dependencies": {
 		"@earendil-works/pi-agent-core": "*",
-		"@mariozechner/pi-travel-agent": "*",
 		"@earendil-works/pi-ai": "*",
-		"fastify": "^5.6.1",
-		"@fastify/cors": "^11.1.0"
+		"@fastify/cors": "^11.3.1",
+		"@mariozechner/pi-travel-agent": "*",
+		"fastify": "^5.12.5"
 	},
 	"devDependencies": {
 		"@types/node": "^22.10.5",
