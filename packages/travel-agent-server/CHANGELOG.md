@@ -13,3 +13,4 @@
 - Keep SSE connections open after request-body completion; bound generation, support cancellation and retain the run lock until work settles.
 - Apply key changes to subsequent runs and remove transcripts when deleting a trip.
 - Forward image-validation evidence and every itinerary activity to the browser.
+- Authorize travel and credential APIs by matched route so percent-encoded paths can no longer skip sign-in, the allowlist and rate limits ([#6](https://github.com/indraneelr/pi-agent/issues/6)).

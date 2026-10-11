@@ -16,6 +16,7 @@ All notable changes to `@mariozechner/pi-travel-agent` will be documented in thi
 - Keep Gemini grounding available when an optional browser-search fallback is unconfigured.
 - Persist validated image evidence for destination and activity rendering.
 - Surface provider failures from the agent harness; find saved conversations after deployment-directory changes and support deleting trip transcripts.
+- Fetch model- and search-supplied image URLs only from public http(s) hosts, re-checking every redirect hop and the resolved address, and probe at most ten links per card ([#6](https://github.com/indraneelr/pi-agent/issues/6)).
 
 ### Added
 - Preference-fit scoring module (`src/core/preference-fit.ts`) that scores Stage 2 destination cards against the actual run preferences across eight axes (beaches, culture, food, easy logistics, family/kids, budget, season/dates, trip length). Derives relevant axes from preferences, computes per-card fit, requires each tradeoff to map to at least one relevant axis, and checks menu-level theme coverage. Exported from the package public API.
