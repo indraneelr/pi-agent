@@ -1,6 +1,7 @@
 /** Validate image candidates and ensure dimensions are known. */
 
 import { type ValidateImageUrlsOptions, validateImageUrls } from "../image-validation.js";
+import { safeFetch } from "../safe-fetch.js";
 import type { ImageCandidate, ValidImageResult } from "./types.js";
 
 export interface ValidateImageCandidatesOptions {
@@ -138,13 +139,12 @@ export const defaultImageDimensionProbe: ImageDimensionProbe = async (url, { tim
 	const onAbort = () => controller.abort();
 	signal?.addEventListener("abort", onAbort, { once: true });
 	try {
-		const res = await fetch(url, {
+		const { response: res } = await safeFetch(url, {
 			headers: {
 				"user-agent": "PiTravelAgent/1.0 (image-dimension-probe)",
 				accept: "image/*",
 				range: "bytes=0-262143",
 			},
-			redirect: "follow",
 			signal: controller.signal,
 		});
 		if (!res.ok && res.status !== 206) return null;

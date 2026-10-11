@@ -13,6 +13,11 @@
  * so the logic is unit-testable without network access.
  */
 
+import { safeFetch } from "./safe-fetch.js";
+
+/** Model-supplied image links probed per card; extra links are dropped unprobed. */
+export const MAX_IMAGE_LINKS_PER_CARD = 10;
+
 export interface ImageLinkValidation {
 	url: string;
 	finalUrl?: string;
@@ -47,7 +52,7 @@ export type ImageHttpProbe = (
 	opts: { timeoutMs: number; signal?: AbortSignal },
 ) => Promise<ImageHttpProbeResponse>;
 
-/** Default probe: HEAD with GET fallback, follows redirects, verifies image content-type. */
+/** Default probe: HEAD with GET fallback, follows redirects to public hosts only, verifies image content-type. */
 export const defaultImageHttpProbe: ImageHttpProbe = async (url, { timeoutMs, signal }) => {
 	const headers: Record<string, string> = {
 		// Wikimedia + most open hosts block bare/unknown user agents with 403/429.
@@ -62,14 +67,13 @@ export const defaultImageHttpProbe: ImageHttpProbe = async (url, { timeoutMs, si
 		signal?.addEventListener("abort", onParentAbort, { once: true });
 		try {
 			// GET uses a tiny range so we don't download the whole image.
-			const res = await fetch(url, {
+			const { response: res, finalUrl } = await safeFetch(url, {
 				method,
 				headers: method === "GET" ? { ...headers, range: "bytes=0-0" } : headers,
-				redirect: "follow",
 				signal: controller.signal,
 			});
 			await res.body?.cancel();
-			return { status: res.status, contentType: res.headers.get("content-type"), finalUrl: res.url };
+			return { status: res.status, contentType: res.headers.get("content-type"), finalUrl };
 		} finally {
 			clearTimeout(timer);
 			signal?.removeEventListener("abort", onParentAbort);
@@ -198,12 +202,11 @@ const defaultWikimediaHttp: WikimediaHttp = async (url, { timeoutMs, signal }) =
 	const onParentAbort = () => controller.abort();
 	signal?.addEventListener("abort", onParentAbort, { once: true });
 	try {
-		const res = await fetch(url, {
+		const { response: res } = await safeFetch(url, {
 			headers: {
 				"user-agent": "PiTravelAgent/1.0 (https://github.com/oraios; image-link-validator)",
 				accept: "application/json",
 			},
-			redirect: "follow",
 			signal: controller.signal,
 		});
 		return await res.text();
@@ -283,7 +286,9 @@ export async function cleanDestinationImageLinks(
 	let refetched = 0;
 
 	for (const card of cards) {
-		const candidates = (card.imageLinks ?? []).filter((u) => typeof u === "string");
+		const candidates = (card.imageLinks ?? [])
+			.filter((u) => typeof u === "string")
+			.slice(0, MAX_IMAGE_LINKS_PER_CARD);
 		totalChecked += candidates.length;
 		if (candidates.length === 0 && !refetch) continue;
 

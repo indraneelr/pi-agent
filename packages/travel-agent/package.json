@@ -24,6 +24,7 @@
 		"@sinclair/typebox": "^0.34.14",
 		"chalk": "^5.4.1",
 		"playwright": "^1.59.1",
+		"undici": "^8.3.0",
 		"zod": "^3.25.76"
 	},
 	"devDependencies": {
