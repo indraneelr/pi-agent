@@ -215,6 +215,24 @@ describe("server auth feature toggle", () => {
 		}
 	});
 
+	test("blocks percent-encoded travel and credential paths when auth is required", async () => {
+		const app = createServer(loadConfig({ AUTH_REQUIRED: "true" }));
+		await app.ready();
+		try {
+			for (const [method, url] of [
+				["POST", "/api/%74ravel/sessions"],
+				["GET", "/api/%74ravel/sessions/abc"],
+				["POST", "/api/travel/%73essions"],
+				["GET", "/api/%63redentials"],
+			] as const) {
+				const res = await app.inject({ method, url });
+				expect(res.statusCode, `${method} ${url}`).toBe(401);
+			}
+		} finally {
+			await app.close();
+		}
+	});
+
 	test("redirects to Google login and creates a signed session on callback", async () => {
 		const fetchMock = vi.spyOn(globalThis, "fetch");
 		fetchMock.mockResolvedValueOnce(jsonResponse({ id_token: "id-token" })).mockResolvedValueOnce(

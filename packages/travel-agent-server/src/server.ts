@@ -97,7 +97,10 @@ export function createServer(config: ServerConfig = loadConfig(), manager?: Trav
 				!origin || config.corsOrigins.includes(origin) || (!config.production && config.corsOrigins.includes("*"));
 			if (!allowed) return reply.status(403).send({ error: "Request origin is not allowed" });
 		}
-		const protectedApi = request.url.startsWith("/api/travel/") || request.url.startsWith("/api/credentials");
+		// Gate on the matched route pattern, not the raw URL: the router percent-decodes
+		// paths, so "/api/%74ravel/..." reaches travel routes without matching a raw prefix.
+		const route = request.routeOptions.url ?? "";
+		const protectedApi = route.startsWith("/api/travel/") || route.startsWith("/api/credentials");
 		if (!protectedApi) return;
 		const user = getRequestUser(request, config);
 		if (
