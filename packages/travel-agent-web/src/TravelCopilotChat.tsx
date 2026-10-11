@@ -2,6 +2,7 @@ import { Markdown } from "@copilotkit/react-ui";
 import type { FormEvent, ReactNode } from "react";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { FillerContent, ValidatedImage } from "./api.js";
+import { assistantMarkdownRehypePlugins } from "./render-safety.js";
 
 const ImageEvidenceContext = createContext<ValidatedImage[]>([]);
 
@@ -182,6 +183,7 @@ function CopilotMarkdown({ content }: { content: string }) {
 		<div className="markdown-content copilot-markdown-content">
 			<Markdown
 				content={contentWithoutImages}
+				rehypePlugins={assistantMarkdownRehypePlugins}
 				components={{
 					img: ({ src, alt }) => <SafeMarkdownImage src={typeof src === "string" ? src : undefined} alt={alt ?? "Travel image"} />,
 				}}

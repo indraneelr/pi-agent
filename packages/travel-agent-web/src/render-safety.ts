@@ -1,4 +1,13 @@
+import rehypeSanitize from "rehype-sanitize";
 import type { ValidatedImage } from "./api.js";
+
+/**
+ * Rehype plugins for model-generated Markdown. CopilotKit's Markdown always
+ * enables rehype-raw, so raw HTML from the model (or a prompt-injected search
+ * result it echoes) must be sanitized after parsing: no scripts, iframes,
+ * styles, forms, event handlers or non-http(s)/mailto links.
+ */
+export const assistantMarkdownRehypePlugins = [rehypeSanitize];
 
 export interface DestinationImageCarrier {
 	imageLinks?: string[];

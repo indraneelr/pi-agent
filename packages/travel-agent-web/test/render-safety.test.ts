@@ -1,6 +1,13 @@
+import { Markdown } from "@copilotkit/react-ui";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, test } from "vitest";
 import type { ValidatedImage } from "../src/api.js";
-import { canRenderMarkdownImage, getRenderableDestinationImages } from "../src/render-safety.js";
+import {
+	assistantMarkdownRehypePlugins,
+	canRenderMarkdownImage,
+	getRenderableDestinationImages,
+} from "../src/render-safety.js";
 
 const validImage: ValidatedImage = {
 	kind: "image",
@@ -62,5 +69,31 @@ describe("render safety", () => {
 
 	test("silently blocks model-generated Markdown image URLs", () => {
 		expect(canRenderMarkdownImage("https://example.com/plausible-but-unverified.jpg")).toBe(false);
+	});
+
+	test("strips executable and embedding HTML from assistant Markdown", () => {
+		const content = [
+			"**Naxos** is great.",
+			"<iframe srcdoc=\"<script>fetch('/api/credentials')</script>\"></iframe>",
+			"<script>alert(1)</script>",
+			"<style>body{display:none}</style>",
+			'<form action="https://evil.example"><input name="key"></form>',
+			'<a href="javascript:alert(1)">bad</a> <a href="https://ok.example">good</a>',
+			'<b onclick="alert(1)">bold</b>',
+		].join("\n\n");
+		const html = renderToStaticMarkup(
+			createElement(Markdown, { content, rehypePlugins: assistantMarkdownRehypePlugins }),
+		);
+		expect(html).toContain("<strong>Naxos</strong>");
+		expect(html).toContain('href="https://ok.example"');
+		expect(html).toContain("<b>bold</b>");
+		for (const forbidden of ["<iframe", "srcdoc", "<script", "<style", "<form", "javascript:", "onclick"]) {
+			expect(html, forbidden).not.toContain(forbidden);
+		}
+		// Only GFM task-list checkboxes survive: forced disabled, outside any form.
+		for (const input of html.match(/<input[^>]*>/g) ?? []) {
+			expect(input).toContain('type="checkbox"');
+			expect(input).toContain("disabled");
+		}
 	});
 });
