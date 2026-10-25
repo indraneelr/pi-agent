@@ -22,6 +22,7 @@ import { loadChecklistConfig } from "./checklist.js";
 import { cleanDestinationImageLinks } from "./image-validation.js";
 import { loadTravelState, type PersistenceOptions, saveTravelState } from "./persistence.js";
 import { TravelProviderError } from "./provider-error.js";
+import { createExaDiscoverySearch } from "./search/exa.js";
 import type { SearchProvider } from "./search/types.js";
 import { createTravelState, type TravelState } from "./state.js";
 import { buildTravelSystemPrompt, type TravelSystemPromptOptions } from "./system-prompt.js";
@@ -53,6 +54,8 @@ export interface CreateTravelSessionOptions {
 	checklistConfigPath?: string;
 	/** System prompt options. */
 	promptOptions?: TravelSystemPromptOptions;
+	/** Experimental: Exa API key enabling one-search place discovery for the shortlist. */
+	exaApiKey?: string;
 }
 
 export interface TravelConversationMessage {
@@ -123,6 +126,7 @@ export async function createTravelSession(options: CreateTravelSessionOptions): 
 		model: options.model,
 		getApiKey: options.apiKey ? () => options.apiKey as string : undefined,
 		imageTimeoutMs: options.imageTimeoutMs,
+		exaDiscoverySearch: options.exaApiKey ? createExaDiscoverySearch(options.exaApiKey) : undefined,
 		cleanImageLinks: (cards) => cleanDestinationImageLinks(cards, { refetch: true }),
 	});
 
@@ -135,7 +139,11 @@ export async function createTravelSession(options: CreateTravelSessionOptions): 
 		model: options.model,
 		thinkingLevel: options.thinkingLevel ?? "medium",
 		tools,
-		systemPrompt: () => buildTravelSystemPrompt(stateRef.get(), options.promptOptions),
+		systemPrompt: () =>
+			buildTravelSystemPrompt(stateRef.get(), {
+				...options.promptOptions,
+				exaDiscovery: options.promptOptions?.exaDiscovery ?? Boolean(options.exaApiKey),
+			}),
 		...(options.apiKey ? { getApiKeyAndHeaders: async () => ({ apiKey: options.apiKey as string }) } : {}),
 	});
 	const agent = await TravelAgentHarnessFacade.create(harness, session);

@@ -103,6 +103,16 @@ describe("working alpha", () => {
 		).not.toThrow();
 	});
 
+	it("keeps Exa discovery off by default and refuses the flag without a key", () => {
+		expect(loadConfig({}).exaDiscovery).toBe(false);
+		expect(() => assertProductionConfig(loadConfig({ EXA_DISCOVERY: "1" }))).toThrow(
+			"EXA_DISCOVERY requires EXA_API_KEY",
+		);
+		const enabled = loadConfig({ EXA_DISCOVERY: "1", EXA_API_KEY: "exa-key" });
+		expect(enabled).toMatchObject({ exaDiscovery: true, exaApiKey: "exa-key" });
+		expect(() => assertProductionConfig(enabled)).not.toThrow();
+	});
+
 	it("times out a stuck stream, preserves the lock until settlement, then allows retry", async () => {
 		const cfg = config();
 		let finish = () => {};

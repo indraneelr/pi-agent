@@ -5,6 +5,7 @@
 ### Added
 - Serve the production web bundle from the API origin; validate private-alpha production configuration at startup.
 - Expiring auth sessions, verified-email allowlisting, origin checks and real provider key validation.
+- `EXA_DISCOVERY=1` with `EXA_API_KEY` turns on experimental Exa place discovery for every trip; startup fails if the flag is set without a key, and each discovery logs its Exa and extraction cost.
 
 ### Fixed
 - Use source IDs for review citations and request eight photos when expanding destination galleries.

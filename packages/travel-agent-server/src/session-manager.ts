@@ -408,6 +408,9 @@ export class TravelSessionManager {
 					// State can change after any tool completes; push a fresh snapshot so
 					// cards update live rather than only at the end.
 					if (event.type === "tool_execution_end") safeEmit(stateSnapshotEvent(active.state));
+					// Experimental Exa discovery: record spend and outcome per call.
+					if (event.type === "tool_execution_end" && event.toolName === "discover_places")
+						this.logger.info({ sessionId, ...event.result?.details }, "Place discovery completed");
 				});
 				if (action) await runResearchAction(active, action, safeEmit, controller.signal);
 				else await active.agent.prompt(message);
@@ -643,7 +646,14 @@ export class TravelSessionManager {
 				"No search provider detected. Provide a Gemini key, or set BRAVE_API_KEY, LINKUP_API_KEY, or GEMINI_API_KEY.",
 			);
 		}
-		this.logger.info({ sessionId, searchProvider: searchProvider.name }, "Built web-search provider");
+		this.logger.info(
+			{
+				sessionId,
+				searchProvider: searchProvider.name,
+				placeDiscovery: this.config.exaDiscovery ? "exa" : "web_search",
+			},
+			"Built web-search provider",
+		);
 		try {
 			return await createTravelSession({
 				model,
@@ -652,6 +662,7 @@ export class TravelSessionManager {
 				searchProvider,
 				dataDir: this.config.dataDir,
 				imageTimeoutMs: this.config.imageTimeoutMs,
+				exaApiKey: this.config.exaDiscovery ? this.config.exaApiKey : undefined,
 			});
 		} catch {
 			throw new SessionConfigurationError(

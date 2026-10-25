@@ -26,6 +26,8 @@ export interface TravelSystemPromptOptions {
 	minImageLinks?: number;
 	/** Travel research websites. Default: ["TripAdvisor", "Viator", "Lonely Planet", "Nomadic Matt", "The Points Guy", "Conde Nast Traveler"] */
 	researchWebsites?: string[];
+	/** Experimental: shortlist research uses discover_places (one Exa search) instead of web_search. */
+	exaDiscovery?: boolean;
 }
 
 /** Build the complete system prompt for the travel agent. */
@@ -34,7 +36,7 @@ export function buildTravelSystemPrompt(state: TravelState, options: TravelSyste
 
 	sections.push(buildMetadata());
 	sections.push(buildRoleSection());
-	sections.push(buildToolsSection());
+	sections.push(buildToolsSection(options));
 	sections.push(buildChecklistSection(state));
 	sections.push(buildPhaseInstructionsSection(state, options));
 	sections.push(buildStateSection(state));
@@ -56,11 +58,14 @@ You follow a structured checklist workflow. Work through each phase in order, us
 If the user wants to revisit an earlier step (e.g., change preferences, see more destinations, exclude places), use the go_back_to_phase tool. This will invalidate downstream work and you'll re-do those steps interactively.`;
 }
 
-function buildToolsSection(): string {
+function buildToolsSection(options: TravelSystemPromptOptions): string {
+	const discover = options.exaDiscovery
+		? "- discover_places: Candidate places within the destination from one broad search of recent travel guides, ranked for this traveler. Use it for shortlist research instead of web_search.\n"
+		: "";
 	return `# Available Tools
 
 - web_search: Search the web for travel information (destinations, activities, hotels, flights, reviews)
-- get_images: Request count=8 on every image search, including the initial shortlist. Search for real, validated image URLs with width/height for structured state only. Use this whenever the user asks to see images or before saving imageLinks. Never invent image URLs. Never place image URLs in conversational Markdown; the UI renders validated image galleries from saved state.
+${discover}- get_images: Request count=8 on every image search, including the initial shortlist. Search for real, validated image URLs with width/height for structured state only. Use this whenever the user asks to see images or before saving imageLinks. Never invent image URLs. Never place image URLs in conversational Markdown; the UI renders validated image galleries from saved state.
 - save_destination_reviews: Save review pros, cons and ratings to a destination card. Cite short Source IDs from web_search using source_ids; the tool resolves the exact URLs.
 - save_destination_shortlist: Save the destination shortlist / choice cards (destination research). Use this — NOT update_travel_state — for destination_research.
 - update_travel_state: Save other structured data to the session (preferences, activities, itinerary, accommodation, flights, selections)
@@ -148,7 +153,11 @@ Every card's 'tradeoff' field MUST be contextual to a preference the traveler ac
 - Bad (will be rejected): "Limited nightlife after midnight", "Some downsides apply", "It is what it is" — none map to a stated preference.
 
 Steps:
-1. Use web_search briefly to research destinations matching the preferences. Limit shortlist research to 1-2 web_search calls unless the user explicitly asks for deeper research.
+1. ${
+		options.exaDiscovery
+			? "Call discover_places once (page 1). Build the option cards only from the places it returns, preferring the top-ranked ones, and use its source URLs as each card's sources. Do not call web_search for shortlist research unless discover_places says it is unavailable. If the user asks for more places, call discover_places with the next page."
+			: "Use web_search briefly to research destinations matching the preferences. Limit shortlist research to 1-2 web_search calls unless the user explicitly asks for deeper research."
+	}
 2. For each potential destination, gather: name, description, why it matches, themes, reviews, and imageQuery. When the user wants photos, use get_images with count=8, min_height 720 and destination_name for tool-owned validation evidence. Aim for ${minImageLinks} images when available. If image search fails or the user asks to proceed without photos, stop image retries and immediately save all cards with empty imageLinks. Do not include image Markdown in your user-facing prose.
 3. Score each destination against the user's preferences.
 4. Immediately save the research using save_destination_shortlist.

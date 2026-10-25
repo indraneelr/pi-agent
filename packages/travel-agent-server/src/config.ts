@@ -42,6 +42,10 @@ export interface ServerConfig {
 	credentialEncryptionSecret: string;
 	/** Users allowed to use server-funded fallback LLM keys. */
 	serverKeyFallbackAllowlist: string[];
+	/** Experimental: shortlist place discovery through one Exa search (EXA_DISCOVERY=1). */
+	exaDiscovery: boolean;
+	/** Server-owned Exa API key for experimental discovery. */
+	exaApiKey: string | undefined;
 	/** SearXNG base URL for alpha image/search readiness. */
 	searxngBaseUrl: string | undefined;
 	/** Simple per-user/IP request limit per minute for alpha abuse control. */
@@ -109,6 +113,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 		// sessions and decrypt every stored key.
 		credentialEncryptionSecret: env.CREDENTIAL_ENCRYPTION_SECRET ?? "dev-credential-secret-change-me",
 		serverKeyFallbackAllowlist: parseList(env.SERVER_KEY_FALLBACK_ALLOWLIST),
+		exaDiscovery: parseBoolean(env.EXA_DISCOVERY) ?? false,
+		exaApiKey: env.EXA_API_KEY,
 		searxngBaseUrl: env.SEARXNG_BASE_URL,
 		rateLimitPerMinute: Number(env.RATE_LIMIT_PER_MINUTE ?? "120"),
 		production:
@@ -122,6 +128,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
 export function assertProductionConfig(config: ServerConfig): void {
 	if (!Number.isFinite(config.messageTimeoutMs) || config.messageTimeoutMs <= 0)
 		throw new Error("TRAVEL_AGENT_MESSAGE_TIMEOUT_MS must be positive");
+	if (config.exaDiscovery && !config.exaApiKey) throw new Error("EXA_DISCOVERY requires EXA_API_KEY");
 	if (!config.production) return;
 	if (!config.authRequired || !config.cookieSecure)
 		throw new Error("Production requires authentication and secure cookies");
