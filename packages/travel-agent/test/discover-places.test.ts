@@ -28,6 +28,7 @@ function place(name: string, themes: string[], goodFor: string[] = [], sources =
 		themes,
 		goodFor,
 		sourceUrls: Array.from({ length: sources }, (_, i) => `https://guide.example/${name}/${i}`),
+		includes: [],
 	};
 }
 
@@ -46,10 +47,17 @@ function text(result: { content: Array<{ type: string; text?: string }> }): stri
 }
 
 describe("Exa discovery request", () => {
-	it("sends one 50-result lite search limited to the last five years", () => {
-		const request = buildExaDiscoveryRequest("Japan", new Date("2026-10-25T00:00:00.000Z"));
+	it("sends one 50-result lite search for the stated themes, limited to the last five years", () => {
+		const request = buildExaDiscoveryRequest(
+			"Japan",
+			["history", "culture", "nature"],
+			new Date("2026-10-25T00:00:00.000Z"),
+		);
+		expect(buildExaDiscoveryRequest("Japan").query).toBe(
+			"most interesting destinations, best places to visit in Japan",
+		);
 		expect(request).toEqual({
-			query: "most interesting destinations, best places to visit in Japan",
+			query: "most interesting destinations, best places to visit in Japan for history, culture, nature",
 			type: "lite",
 			numResults: 50,
 			startPublishedDate: "2021-10-25T00:00:00.000Z",
@@ -57,13 +65,14 @@ describe("Exa discovery request", () => {
 		});
 	});
 
-	it("posts to Exa with the key header and maps results and cost", async () => {
+	it("posts to Exa with the key header, maps results and cost, and drops Exa's own pages", async () => {
 		const fetchMock = vi.fn(
 			async () =>
 				new Response(
 					JSON.stringify({
 						results: [
 							{ title: "Best places", url: "https://a.example", publishedDate: null, highlights: ["Kyoto"] },
+							{ title: "Exa places", url: "https://exa.ai/library/places?q=1", highlights: ["Kyoto"] },
 						],
 						costDollars: { total: 0.044 },
 						searchTime: 856,
@@ -71,11 +80,14 @@ describe("Exa discovery request", () => {
 				),
 		);
 		const search = createExaDiscoverySearch("exa-key", fetchMock as unknown as typeof fetch);
-		const response = await search("Japan");
+		const response = await search("Japan", ["temples"]);
 		const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
 		expect(url).toBe("https://api.exa.ai/search");
 		expect((init.headers as Record<string, string>)["x-api-key"]).toBe("exa-key");
-		expect(JSON.parse(String(init.body)).numResults).toBe(50);
+		expect(JSON.parse(String(init.body))).toMatchObject({
+			numResults: 50,
+			query: "most interesting destinations, best places to visit in Japan for temples",
+		});
 		expect(response).toEqual({
 			results: [{ title: "Best places", url: "https://a.example", publishedDate: undefined, highlights: ["Kyoto"] }],
 			costDollars: 0.044,
@@ -88,7 +100,7 @@ describe("Exa discovery request", () => {
 			"exa-key",
 			(async () => new Response('{"error":"Not supported"}', { status: 400 })) as unknown as typeof fetch,
 		);
-		await expect(search("Japan")).rejects.toThrow("Exa search failed: 400");
+		await expect(search("Japan", [])).rejects.toThrow("Exa search failed: 400");
 	});
 });
 
@@ -109,13 +121,35 @@ describe("place post-filter", () => {
 		expect(ranked[3]).toMatchObject({ matchedThemes: [], groupMatch: false });
 	});
 
+	it("sinks remote places and long stays on a short trip", () => {
+		const preferences = { ...japanState().preferences, num_nights: 5 };
+		const ranked = rankPlaces(
+			[
+				{ ...place("Hokkaido", ["food", "nature"], [], 3), remote: true },
+				{ ...place("Shikoku", ["temples", "nature"], [], 3), typicalDays: 4 },
+				place("Nikko", ["temples", "nature"], [], 3),
+			],
+			preferences,
+		);
+		expect(ranked.map((p) => [p.name, p.fitWarnings])).toEqual([
+			["Nikko", []],
+			["Shikoku", ["needs 4 of 5 nights"]],
+			["Hokkaido", ["remote for a 5-night trip"]],
+		]);
+		// Long trips can absorb a domestic flight.
+		expect(
+			rankPlaces([{ ...place("Hokkaido", ["food"]), remote: true }], { ...preferences, num_nights: 14 })[0]
+				.fitWarnings,
+		).toEqual([]);
+	});
+
 	it("parses extractor JSON, maps source indexes to URLs and drops duplicates", () => {
 		const results: ExaDiscoveryResult[] = [
 			{ title: "A", url: "https://a.example", highlights: [] },
 			{ title: "B", url: "https://b.example", highlights: [] },
 		];
 		const places = parseExtractedPlaces(
-			'```json\n{"places":[{"name":"Kyoto","why":"Temples","themes":["temples"],"goodFor":["couples"],"sources":[0,1,1,9]},{"name":"kyoto","sources":[0]},{"name":""}]}\n```',
+			'```json\n{"places":[{"name":"Kyoto","why":"Temples","themes":["temples"],"goodFor":["couples"],"typicalDays":3,"remote":false,"partOf":"","sources":[0,1,1,9]},{"name":"kyoto","sources":[0]},{"name":""}]}\n```',
 			results,
 		);
 		expect(places).toEqual([
@@ -125,9 +159,36 @@ describe("place post-filter", () => {
 				themes: ["temples"],
 				goodFor: ["couples"],
 				sourceUrls: ["https://a.example", "https://b.example"],
+				typicalDays: 3,
+				remote: false,
+				includes: [],
 			},
 		]);
 		expect(() => parseExtractedPlaces("no json here", results)).toThrow("invalid JSON");
+	});
+
+	it("folds sub-areas into their listed parent", () => {
+		const results: ExaDiscoveryResult[] = [
+			{ title: "A", url: "https://a.example", highlights: [] },
+			{ title: "B", url: "https://b.example", highlights: [] },
+		];
+		const places = parseExtractedPlaces(
+			JSON.stringify({
+				places: [
+					{ name: "Kyoto", themes: ["temples"], sources: [0] },
+					{ name: "Arashiyama", themes: ["nature"], goodFor: ["couples"], partOf: "Kyoto", sources: [1] },
+					{ name: "Kurama", themes: ["hiking"], partOf: "Kansai", sources: [1] },
+				],
+			}),
+			results,
+		);
+		expect(places.map((p) => p.name)).toEqual(["Kyoto", "Kurama"]);
+		expect(places[0]).toMatchObject({
+			includes: ["Arashiyama"],
+			themes: ["temples", "nature"],
+			goodFor: ["couples"],
+			sourceUrls: ["https://a.example", "https://b.example"],
+		});
 	});
 });
 
@@ -148,7 +209,7 @@ describe("discover_places tool", () => {
 		const { tool, search, extract } = setup(places);
 
 		const first = await tool.execute("1", {});
-		expect(search).toHaveBeenCalledWith("Japan", undefined);
+		expect(search).toHaveBeenCalledWith("Japan", ["food", "temples", "nature"], undefined);
 		expect(first.details).toMatchObject({
 			cached: false,
 			resultCount: 1,

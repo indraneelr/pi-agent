@@ -22,13 +22,19 @@ export interface ExaDiscoveryResponse {
 	searchTimeMs?: number;
 }
 
-export type ExaDiscoverySearch = (destination: string, signal?: AbortSignal) => Promise<ExaDiscoveryResponse>;
+export type ExaDiscoverySearch = (
+	destination: string,
+	themes: string[],
+	signal?: AbortSignal,
+) => Promise<ExaDiscoveryResponse>;
 
-export function buildExaDiscoveryRequest(destination: string, now = new Date()) {
+/** Themes steer retrieval past generic top-10 lists toward places that fit the trip. */
+export function buildExaDiscoveryRequest(destination: string, themes: string[] = [], now = new Date()) {
 	const start = new Date(now);
 	start.setUTCFullYear(start.getUTCFullYear() - EXA_RECENCY_YEARS);
+	const forThemes = themes.length > 0 ? ` for ${themes.join(", ")}` : "";
 	return {
-		query: `most interesting destinations, best places to visit in ${destination}`,
+		query: `most interesting destinations, best places to visit in ${destination}${forThemes}`,
 		type: "lite",
 		numResults: EXA_DISCOVERY_RESULTS,
 		startPublishedDate: start.toISOString(),
@@ -43,11 +49,11 @@ interface ExaSearchResponse {
 }
 
 export function createExaDiscoverySearch(apiKey: string, fetchImpl: typeof fetch = fetch): ExaDiscoverySearch {
-	return async (destination, signal) => {
+	return async (destination, themes, signal) => {
 		const response = await fetchImpl("https://api.exa.ai/search", {
 			method: "POST",
 			headers: { "content-type": "application/json", "x-api-key": apiKey },
-			body: JSON.stringify(buildExaDiscoveryRequest(destination)),
+			body: JSON.stringify(buildExaDiscoveryRequest(destination, themes)),
 			signal,
 		});
 		if (!response.ok) {
@@ -57,14 +63,26 @@ export function createExaDiscoverySearch(apiKey: string, fetchImpl: typeof fetch
 		}
 		const data = (await response.json()) as ExaSearchResponse;
 		return {
-			results: (data.results ?? []).map((r) => ({
-				title: r.title ?? r.url,
-				url: r.url,
-				publishedDate: r.publishedDate ?? undefined,
-				highlights: r.highlights ?? [],
-			})),
+			results: (data.results ?? [])
+				.filter((r) => !isExaOwnPage(r.url))
+				.map((r) => ({
+					title: r.title ?? r.url,
+					url: r.url,
+					publishedDate: r.publishedDate ?? undefined,
+					highlights: r.highlights ?? [],
+				})),
 			costDollars: data.costDollars?.total,
 			searchTimeMs: data.searchTime,
 		};
 	};
+}
+
+/** Exa's own library pages are search artifacts, not travel sources. */
+function isExaOwnPage(url: string): boolean {
+	try {
+		const host = new URL(url).hostname.toLowerCase();
+		return host === "exa.ai" || host.endsWith(".exa.ai");
+	} catch {
+		return true;
+	}
 }

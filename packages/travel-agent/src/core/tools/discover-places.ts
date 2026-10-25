@@ -3,7 +3,7 @@
  *
  * Runs one broad Exa search per destination, extracts candidate places from
  * the result pool with a single model call kept out of the chat transcript,
- * then ranks them locally against the traveler's themes and group. Only a
+ * then ranks them locally against the traveler's themes, group and trip length. Only a
  * compact page of candidates reaches the planner's context.
  */
 
@@ -18,6 +18,8 @@ const HIGHLIGHT_CHARS_PER_RESULT = 1500;
 const MAX_SOURCES_PER_PLACE = 3;
 /** Keeps extraction output well inside its token limit; 50 guide pages name far more places. */
 const MAX_EXTRACTED_PLACES = 30;
+/** Trips this short lose too much time to a domestic flight or long transfer. */
+const SHORT_TRIP_NIGHTS = 7;
 
 const discoverPlacesSchema = Type.Object({
 	page: Type.Optional(
@@ -35,12 +37,20 @@ export interface DiscoveredPlace {
 	themes: string[];
 	goodFor: string[];
 	sourceUrls: string[];
+	/** Days the pages suggest for a worthwhile visit. */
+	typicalDays?: number;
+	/** Needs a domestic flight or 3+ hours overland from the main international gateways. */
+	remote?: boolean;
+	/** Sub-areas merged into this place, e.g. Arashiyama into Kyoto. */
+	includes: string[];
 }
 
 export interface RankedPlace extends DiscoveredPlace {
 	score: number;
 	matchedThemes: string[];
 	groupMatch: boolean;
+	/** Why trip length or distance lowered the rank. */
+	fitWarnings: string[];
 }
 
 export type PlaceExtractor = (
@@ -102,14 +112,15 @@ export function createDiscoverPlacesTool(
 					details: { ...base, cached: false, error: "missing destination" },
 				};
 
-			const key = `${state.sessionId}:${destination.toLowerCase()}`;
+			const themes = state.preferences.travel_themes ?? state.preferences.interests ?? [];
+			const key = `${state.sessionId}:${destination.toLowerCase()}:${themes.join(",").toLowerCase()}`;
 			let discovery = discoveries.get(key);
 			const cached = Boolean(discovery);
 			if (!discovery) {
 				let response = searches.get(key);
 				try {
 					if (!response) {
-						response = await deps.search(destination, signal);
+						response = await deps.search(destination, themes, signal);
 						searches.set(key, response);
 					}
 					const extracted = await deps.extract(destination, response.results, signal);
@@ -169,20 +180,34 @@ export function createDiscoverPlacesTool(
 }
 
 /**
- * Post-filter: rank by stated themes, group suitability, then how many
- * sources mention the place. Unmatched places sink rather than disappear.
+ * Post-filter: rank by stated themes, group suitability, trip-length fit, then
+ * how many sources mention the place. Unmatched places sink rather than disappear.
  */
 export function rankPlaces(places: DiscoveredPlace[], preferences: TravelState["preferences"]): RankedPlace[] {
 	const themes = (preferences.travel_themes ?? preferences.interests ?? []).map(normalizeTag).filter(Boolean);
 	const group = normalizeTag(String(preferences.group_type ?? ""));
+	const nights = Number(preferences.num_nights) || undefined;
 	return places
 		.map((place) => {
 			const tags = place.themes.map(normalizeTag);
 			const matchedThemes = themes.filter((theme) => tags.some((tag) => tagsMatch(tag, theme)));
 			const groupMatch = Boolean(group) && place.goodFor.some((tag) => tagsMatch(normalizeTag(tag), group));
+			const fitWarnings: string[] = [];
+			let penalty = 0;
+			if (nights && nights <= SHORT_TRIP_NIGHTS && place.remote) {
+				fitWarnings.push(`remote for a ${nights}-night trip`);
+				penalty += 4;
+			}
+			if (nights && place.typicalDays && place.typicalDays > nights / 2) {
+				fitWarnings.push(`needs ${place.typicalDays} of ${nights} nights`);
+				penalty += 2;
+			}
 			const score =
-				matchedThemes.length * 3 + (groupMatch ? 2 : 0) + Math.min(place.sourceUrls.length, MAX_SOURCES_PER_PLACE);
-			return { ...place, score, matchedThemes, groupMatch };
+				matchedThemes.length * 3 +
+				(groupMatch ? 2 : 0) +
+				Math.min(place.sourceUrls.length, MAX_SOURCES_PER_PLACE) -
+				penalty;
+			return { ...place, score, matchedThemes, groupMatch, fitWarnings };
 		})
 		.sort((a, b) => b.score - a.score || b.sourceUrls.length - a.sourceUrls.length);
 }
@@ -203,12 +228,15 @@ function formatPage(places: RankedPlace[], page: number, total: number): string 
 		const fit = [
 			place.matchedThemes.length ? `matches ${place.matchedThemes.join(", ")}` : "matches no stated theme",
 			place.groupMatch ? "suits the group" : undefined,
+			...place.fitWarnings,
 		]
 			.filter(Boolean)
 			.join("; ");
 		return [
 			`${start + i + 1}. ${place.name} (${fit})`,
 			`   Why: ${place.why}`,
+			...(place.includes.length ? [`   Includes: ${place.includes.join(", ")}`] : []),
+			...(place.typicalDays ? [`   Typical stay: ${place.typicalDays} days`] : []),
 			`   Tags: ${[...place.themes, ...place.goodFor].join(", ") || "none"}`,
 			`   Sources: ${place.sourceUrls.slice(0, MAX_SOURCES_PER_PLACE).join(" ") || "none"}`,
 		].join("\n");
@@ -229,10 +257,13 @@ Use only what the pages say. For each place give:
 - name: the common English name
 - why: one sentence of at most 20 words on why the pages recommend it
 - themes: short lowercase tags such as food, temples, culture, nature, beaches, hiking, nightlife, onsen, history, shopping
-- goodFor: short lowercase tags such as families, couples, solo, friends, seniors, first-timers
+- goodFor: short lowercase tags such as families, couples, solo, friends, seniors, first-timers. Tag only groups the pages or the place's character clearly favor; leave it empty rather than listing every group
+- typicalDays: whole days the pages suggest for a worthwhile visit (1 for a day trip)
+- remote: true if reaching it from ${destination}'s main international gateways needs a domestic flight or more than 3 hours overland
+- partOf: the name of another place in your list that contains this one (a district of a city, an area of a region), otherwise ""
 - sources: the [index] numbers of the pages that recommend it
 
-Reply with only a JSON object: {"places":[{"name":"","why":"","themes":[],"goodFor":[],"sources":[0]}]}
+Reply with only a JSON object: {"places":[{"name":"","why":"","themes":[],"goodFor":[],"typicalDays":1,"remote":false,"partOf":"","sources":[0]}]}
 
 ${corpus}`;
 		const message = await completeSimple(
@@ -269,12 +300,11 @@ export function parseExtractedPlaces(text: string, results: ExaDiscoveryResult[]
 	if (!Array.isArray(raw)) throw new Error("Place extraction returned no places array");
 	const strings = (value: unknown) =>
 		Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.trim() !== "") : [];
-	const seen = new Set<string>();
-	const places: DiscoveredPlace[] = [];
+	const byName = new Map<string, DiscoveredPlace>();
+	const parents = new Map<string, string>();
 	for (const item of raw as Array<Record<string, unknown>>) {
 		const name = typeof item?.name === "string" ? item.name.trim() : "";
-		if (!name || seen.has(name.toLowerCase())) continue;
-		seen.add(name.toLowerCase());
+		if (!name || byName.has(name.toLowerCase())) continue;
 		const sourceUrls = [
 			...new Set(
 				(Array.isArray(item.sources) ? item.sources : [])
@@ -282,13 +312,30 @@ export function parseExtractedPlaces(text: string, results: ExaDiscoveryResult[]
 					.filter((url): url is string => Boolean(url)),
 			),
 		];
-		places.push({
+		const days = Number(item.typicalDays);
+		byName.set(name.toLowerCase(), {
 			name,
 			why: typeof item.why === "string" ? item.why.trim() : "",
 			themes: strings(item.themes),
 			goodFor: strings(item.goodFor),
 			sourceUrls,
+			typicalDays: Number.isFinite(days) && days > 0 ? Math.round(days) : undefined,
+			remote: item.remote === true,
+			includes: [],
 		});
+		const partOf = typeof item.partOf === "string" ? item.partOf.trim().toLowerCase() : "";
+		if (partOf && partOf !== name.toLowerCase()) parents.set(name.toLowerCase(), partOf);
 	}
-	return places;
+	// Fold sub-areas into a listed parent so one city does not fill several cards.
+	for (const [child, parentName] of parents) {
+		const parent = byName.get(parentName);
+		const place = byName.get(child);
+		if (!parent || !place || parents.has(parentName)) continue;
+		parent.includes.push(place.name, ...place.includes);
+		parent.themes = [...new Set([...parent.themes, ...place.themes])];
+		parent.goodFor = [...new Set([...parent.goodFor, ...place.goodFor])];
+		parent.sourceUrls = [...new Set([...parent.sourceUrls, ...place.sourceUrls])];
+		byName.delete(child);
+	}
+	return [...byName.values()];
 }
