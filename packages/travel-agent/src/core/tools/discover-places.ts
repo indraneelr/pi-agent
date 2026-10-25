@@ -10,12 +10,14 @@
 import type { AgentTool, AgentToolResult } from "@earendil-works/pi-agent-core";
 import { completeSimple, type Model } from "@earendil-works/pi-ai";
 import { type Static, Type } from "@sinclair/typebox";
-import type { ExaDiscoveryResult, ExaDiscoverySearch } from "../search/exa.js";
+import type { ExaDiscoveryResponse, ExaDiscoveryResult, ExaDiscoverySearch } from "../search/exa.js";
 import type { TravelState } from "../state.js";
 
 export const DISCOVERY_PAGE_SIZE = 12;
 const HIGHLIGHT_CHARS_PER_RESULT = 1500;
 const MAX_SOURCES_PER_PLACE = 3;
+/** Keeps extraction output well inside its token limit; 50 guide pages name far more places. */
+const MAX_EXTRACTED_PLACES = 30;
 
 const discoverPlacesSchema = Type.Object({
 	page: Type.Optional(
@@ -77,6 +79,8 @@ export function createDiscoverPlacesTool(
 ): AgentTool<typeof discoverPlacesSchema, DiscoverPlacesDetails> {
 	// One Exa search per session and destination; "more places" pages through the same pool.
 	const discoveries = new Map<string, Discovery>();
+	// Paid search responses survive a failed extraction so a retry does not search again.
+	const searches = new Map<string, ExaDiscoveryResponse>();
 	return {
 		name: "discover_places",
 		label: "Discover Places",
@@ -102,8 +106,12 @@ export function createDiscoverPlacesTool(
 			let discovery = discoveries.get(key);
 			const cached = Boolean(discovery);
 			if (!discovery) {
+				let response = searches.get(key);
 				try {
-					const response = await deps.search(destination, signal);
+					if (!response) {
+						response = await deps.search(destination, signal);
+						searches.set(key, response);
+					}
 					const extracted = await deps.extract(destination, response.results, signal);
 					discovery = {
 						resultCount: response.results.length,
@@ -120,7 +128,13 @@ export function createDiscoverPlacesTool(
 								text: "Place discovery is unavailable right now. Use web_search (at most 2 calls) for shortlist research instead.",
 							},
 						],
-						details: { ...base, cached: false, error: message },
+						details: {
+							...base,
+							cached: false,
+							resultCount: response?.results.length ?? 0,
+							searchCostDollars: response?.costDollars,
+							error: message,
+						},
 					};
 				}
 				discoveries.set(key, discovery);
@@ -210,10 +224,10 @@ export function createModelPlaceExtractor(model: Model<any>, getApiKey?: () => s
 			.map((r, i) => `[${i}] ${r.title} (${r.url})\n${r.highlights.join("\n").slice(0, HIGHLIGHT_CHARS_PER_RESULT)}`)
 			.join("\n\n");
 		const prompt = `Below are ${results.length} recent web pages about places to visit in ${destination}.
-List every distinct place within ${destination} (city, town, island, region, park or area; not single attractions such as one temple or museum) that these pages recommend.
+List up to ${MAX_EXTRACTED_PLACES} distinct places within ${destination} (city, town, island, region, park or area; not single attractions such as one temple or museum) that these pages recommend, most widely recommended first.
 Use only what the pages say. For each place give:
 - name: the common English name
-- why: one sentence on why the pages recommend it
+- why: one sentence of at most 20 words on why the pages recommend it
 - themes: short lowercase tags such as food, temples, culture, nature, beaches, hiking, nightlife, onsen, history, shopping
 - goodFor: short lowercase tags such as families, couples, solo, friends, seniors, first-timers
 - sources: the [index] numbers of the pages that recommend it
@@ -232,7 +246,14 @@ ${corpus}`;
 			.filter((c): c is { type: "text"; text: string } => c.type === "text")
 			.map((c) => c.text)
 			.join("");
-		return { places: parseExtractedPlaces(text, results), costDollars: message.usage.cost.total };
+		try {
+			return { places: parseExtractedPlaces(text, results), costDollars: message.usage.cost.total };
+		} catch (error) {
+			const reason = error instanceof Error ? error.message : String(error);
+			throw new Error(
+				`${reason} (stop: ${message.stopReason}, ${text.length} chars, ${message.usage.output} output tokens)`,
+			);
+		}
 	};
 }
 

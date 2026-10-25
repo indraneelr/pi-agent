@@ -171,6 +171,24 @@ describe("discover_places tool", () => {
 		expect(extract).toHaveBeenCalledTimes(1);
 	});
 
+	it("keeps the paid search when extraction fails, reports its cost and only re-extracts on retry", async () => {
+		const { tool, search, extract } = setup([place("Kyoto", ["food"])]);
+		extract.mockRejectedValueOnce(new Error("Place extraction returned invalid JSON (stop: length)"));
+
+		const failed = await tool.execute("1", {});
+		expect(text(failed)).toContain("Use web_search (at most 2 calls)");
+		expect(failed.details).toMatchObject({
+			resultCount: 1,
+			searchCostDollars: 0.044,
+			error: expect.stringContaining("length"),
+		});
+
+		const retried = await tool.execute("2", {});
+		expect(text(retried)).toContain("Kyoto");
+		expect(search).toHaveBeenCalledTimes(1);
+		expect(extract).toHaveBeenCalledTimes(2);
+	});
+
 	it("tells the planner to fall back to web_search when Exa fails, without caching the failure", async () => {
 		const { tool, search } = setup([place("Kyoto", ["food"])]);
 		search.mockRejectedValueOnce(new Error("Exa search failed: 401"));
